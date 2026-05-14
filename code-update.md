@@ -25,6 +25,12 @@ git commit -m "说明本次修改内容"
 git push origin main
 ```
 
+```
+# 服务器
+cd /root/weld-robot
+git pull ~/git/weld-robot.git main
+```
+
 说明：
 
 - `git status` 用于确认哪些文件被修改。
