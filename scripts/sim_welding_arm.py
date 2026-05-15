@@ -35,6 +35,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--floating", action="store_true", help="Do not fix the robot base to the world.")
     parser.add_argument("--physics-dt", type=float, default=1.0 / 60.0, help="Physics timestep in seconds.")
     parser.add_argument("--rendering-dt", type=float, default=1.0 / 60.0, help="Rendering timestep in seconds.")
+    parser.add_argument("--num-steps", type=int, default=-1, help="Number of simulation steps to run; -1 runs forever.")
     return parser.parse_args()
 
 
@@ -214,12 +215,15 @@ def main() -> None:
 
         world.reset()
         set_initial_joint_positions(robot_prim_path)
-        add_camera_view()
+        if not args.headless:
+            add_camera_view()
 
         print(f"[weldRobot] Isaac Sim scene ready: {robot_prim_path}")
         print("[weldRobot] Press Ctrl+C in the terminal to stop.")
-        while simulation_app.is_running():
+        step_count = 0
+        while simulation_app.is_running() and (args.num_steps < 0 or step_count < args.num_steps):
             world.step(render=True)
+            step_count += 1
             time.sleep(0.0)
 
     finally:
