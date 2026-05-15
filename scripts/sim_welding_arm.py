@@ -159,6 +159,17 @@ def set_initial_joint_positions(robot_prim_path: str) -> None:
 
 
 def add_camera_view() -> None:
+    camera_eye = (2.0, -2.4, 1.4)
+    camera_target = (0.0, 0.0, 0.45)
+
+    for module_name in ("isaacsim.core.utils.viewports", "omni.isaac.core.utils.viewports"):
+        try:
+            viewports = __import__(module_name, fromlist=["set_camera_view"])
+            viewports.set_camera_view(eye=camera_eye, target=camera_target, camera_prim_path="/OmniverseKit_Persp")
+            return
+        except Exception:
+            pass
+
     import omni.kit.commands
     from pxr import Gf, UsdGeom
 
@@ -176,9 +187,9 @@ def add_camera_view() -> None:
 
     stage = get_context().get_stage()
     camera = stage.GetPrimAtPath("/World/Camera")
-    UsdGeom.XformCommonAPI(camera).SetTranslate(Gf.Vec3d(1.8, -2.2, 1.4))
+    UsdGeom.XformCommonAPI(camera).SetTranslate(Gf.Vec3d(*camera_eye))
     UsdGeom.XformCommonAPI(camera).SetRotate(
-        Gf.Vec3f(60.0, 0.0, 40.0), UsdGeom.XformCommonAPI.RotationOrderXYZ
+        Gf.Vec3f(63.0, 0.0, 39.0), UsdGeom.XformCommonAPI.RotationOrderXYZ
     )
 
     viewport_ext = "omni.kit.viewport.utility"

@@ -76,3 +76,6 @@ git log --oneline -5
 git remote -v
 ```
 
+## 实例被占用
+在mac上输入
+```

@@ -57,9 +57,12 @@ def prepare_output_paths(args: argparse.Namespace) -> Path:
 
 
 def add_recording_camera(rep, resolution: tuple[int, int]):
+    camera_position = (2.0, -2.4, 1.4)
+    camera_target = (0.0, 0.0, 0.45)
+    print(f"[weldRobot] Recording camera eye={camera_position}, look_at={camera_target}")
     camera = rep.create.camera(
-        position=(1.8, -2.2, 1.4),
-        rotation=(60.0, 0.0, 40.0),
+        position=camera_position,
+        look_at=camera_target,
         focal_length=28.0,
         focus_distance=3.0,
     )
@@ -120,6 +123,7 @@ def main() -> None:
 
         resolved_urdf = make_resolved_urdf(args.urdf)
         robot_prim_path = import_robot_from_urdf(resolved_urdf, "/World/UR5ePen", fix_base=True)
+        print(f"[weldRobot] Imported robot prim: {robot_prim_path}")
 
         world.reset()
         set_initial_joint_positions(robot_prim_path)
