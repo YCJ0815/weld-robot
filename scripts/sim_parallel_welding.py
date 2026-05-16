@@ -14,6 +14,7 @@ import struct
 import subprocess
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,10 @@ from sim_welding_arm import (  # noqa: E402
     make_resolved_urdf,
     set_initial_joint_positions,
 )
+
+
+def log(message: str) -> None:
+    print(message, flush=True)
 
 
 def parse_args() -> argparse.Namespace:
@@ -210,6 +215,8 @@ def set_xform_translation(prim: Any, translation: tuple[float, float, float]) ->
 def add_scene_lighting(stage: Any) -> None:
     from pxr import Gf, UsdLux
 
+    ensure_xform(stage, "/World/Lights")
+
     dome = UsdLux.DomeLight.Define(stage, "/World/Lights/Dome")
     dome.CreateIntensityAttr(450.0)
     dome.CreateColorAttr(Gf.Vec3f(1.0, 1.0, 1.0))
@@ -319,13 +326,13 @@ def import_stl_as_mesh(
     shader.CreateInput("roughness", "float").Set(0.55)
     shader.CreateInput("metallic", "float").Set(0.0)
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
-    UsdShade.MaterialBindingAPI(mesh).Bind(material)
+    UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
 
     if debug_box:
         center = tuple((min_point[axis] + max_point[axis]) / 2.0 for axis in range(3))
         add_debug_cube(stage, f"{prim_path}_DebugBox", center, size)
 
-    print(
+    log(
         f"[weldRobot] STL bounds for {stl_path.name}: "
         f"min={min_point}, max={max_point}, size_m={size}, scale={scale}, z_offset={z_offset}"
     )
@@ -393,7 +400,7 @@ def scene_camera_pose(jobs: list[dict[str, Any]], explicit_eye: list[float] | No
 
 def add_recording_camera(rep: Any, jobs: list[dict[str, Any]], args: argparse.Namespace):
     eye, target = scene_camera_pose(jobs, args.camera_eye, args.camera_target)
-    print(f"[weldRobot] Recording camera eye={eye}, look_at={target}")
+    log(f"[weldRobot] Recording camera eye={eye}, look_at={target}")
     camera = rep.create.camera(
         position=eye,
         look_at=target,
@@ -418,6 +425,8 @@ def main() -> None:
     args = parse_args()
     jobs = load_manifest(args.manifest, args.max_jobs)
     frames_dir = prepare_recording_paths(args) if args.record else None
+    if args.record:
+        log(f"[weldRobot] Prepared recording directory: {frames_dir}")
 
     try:
         from isaacsim import SimulationApp
@@ -457,7 +466,7 @@ def main() -> None:
                 debug_workpiece_box=args.debug_workpiece_box,
             )
             spawned.append(spawned_job)
-            print(
+            log(
                 f"[weldRobot] {spawned_job['id']}: "
                 f"robot={spawned_job['robot_prim_path']} "
                 f"workpiece={spawned_job['workpiece_prim_path']} "
@@ -482,11 +491,11 @@ def main() -> None:
             writer.initialize(output_dir=str(frames_dir), rgb=True)
             writer.attach([render_product])
 
-        print(f"[weldRobot] Parallel scene ready: {len(spawned)} robots and {len(spawned)} workpieces.")
+        log(f"[weldRobot] Parallel scene ready: {len(spawned)} robots and {len(spawned)} workpieces.")
         if args.record:
-            print(f"[weldRobot] Recording frames to: {frames_dir}")
+            log(f"[weldRobot] Recording frames to: {frames_dir}")
         else:
-            print("[weldRobot] Press Ctrl+C in the terminal to stop.")
+            log("[weldRobot] Press Ctrl+C in the terminal to stop.")
         step_count = 0
         while simulation_app.is_running() and (args.num_steps < 0 or step_count < args.num_steps):
             world.step(render=True)
@@ -494,15 +503,19 @@ def main() -> None:
                 step_replicator(rep, args)
             step_count += 1
             if args.record and step_count % max(args.fps, 1) == 0:
-                print(f"[weldRobot] Recorded {step_count} frames")
+                log(f"[weldRobot] Recorded {step_count} frames")
             time.sleep(0.0)
 
         if args.record and writer is not None:
             rep.orchestrator.wait_until_complete()
             writer.detach()
             png_count = len(list(frames_dir.glob("*.png"))) + len(list(frames_dir.glob("**/*.png")))
-            print(f"[weldRobot] PNG files written under {frames_dir}: {png_count}")
+            log(f"[weldRobot] PNG files written under {frames_dir}: {png_count}")
 
+    except Exception:
+        log("[weldRobot] Fatal error while building or recording the scene:")
+        traceback.print_exc()
+        raise
     finally:
         simulation_app.close()
 
@@ -510,7 +523,7 @@ def main() -> None:
         encode_video(frames_dir, args.output, args.fps)
         if not args.keep_frames:
             shutil.rmtree(frames_dir)
-        print(f"[weldRobot] Video saved to: {args.output}")
+        log(f"[weldRobot] Video saved to: {args.output}")
 
 
 if __name__ == "__main__":
