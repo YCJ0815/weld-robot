@@ -1,0 +1,3374 @@
+{
+    "input": "13GC-12_contact_edges.json",
+    "up_axis": {
+        "mode": "auto_ransac_weld_plane",
+        "vector": [
+            -0.017082255373011487,
+            -0.999854084234808,
+            8.240354738589936e-05
+        ]
+    },
+    "rules": {
+        "priority_mode": "vertical_first",
+        "priority": [
+            "vertical",
+            "horizontal",
+            "other"
+        ],
+        "in_class_mode": "length_desc",
+        "vertical_deg": 20.0,
+        "horizontal_deg": 70.0,
+        "base_plane_weld_tol": 2.0,
+        "ransac_iter": 4000
+    },
+    "base_frame": {
+        "origin": [
+            -775.0033700656037,
+            16328.770682862276,
+            18268.723134214906
+        ],
+        "x_axis": [
+            -0.006524793965039083,
+            0.00019388827986162565,
+            0.9999786945085625
+        ],
+        "y_axis": [
+            -0.9998327978292596,
+            0.01708135376099722,
+            -0.006527153943845385
+        ],
+        "z_axis": [
+            -0.017082255373011487,
+            -0.999854084234808,
+            8.240354738589936e-05
+        ]
+    },
+    "base_plane_debug": {
+        "mode": "ransac_weld_points",
+        "dist_tol": 2.0,
+        "n_iter": 4000,
+        "points": 548,
+        "status": "ok",
+        "best_inliers": 160,
+        "inlier_ratio": 0.291970802919708,
+        "best_normal": [
+            -0.017082255373011487,
+            -0.999854084234808,
+            8.240354738589936e-05
+        ],
+        "best_d": -16311.643844718566,
+        "best_spread": 728724.1635932422,
+        "base_frame": {
+            "origin": [
+                -775.0033700656037,
+                16328.770682862276,
+                18268.723134214906
+            ],
+            "x_axis": [
+                -0.006524793965039083,
+                0.00019388827986162565,
+                0.9999786945085625
+            ],
+            "y_axis": [
+                -0.9998327978292596,
+                0.01708135376099722,
+                -0.006527153943845385
+            ],
+            "z_axis": [
+                -0.017082255373011487,
+                -0.999854084234808,
+                8.240354738589936e-05
+            ]
+        }
+    },
+    "weld_order": [
+        {
+            "order": 1,
+            "edge_id": "193",
+            "orientation": "vertical",
+            "length": 296.00659185069895
+        },
+        {
+            "order": 2,
+            "edge_id": "196",
+            "orientation": "vertical",
+            "length": 296.00659185069895
+        },
+        {
+            "order": 3,
+            "edge_id": "217",
+            "orientation": "vertical",
+            "length": 296.00659185069895
+        },
+        {
+            "order": 4,
+            "edge_id": "220",
+            "orientation": "vertical",
+            "length": 296.00659185069895
+        },
+        {
+            "order": 5,
+            "edge_id": "273",
+            "orientation": "vertical",
+            "length": 296.00659185069895
+        },
+        {
+            "order": 6,
+            "edge_id": "276",
+            "orientation": "vertical",
+            "length": 296.00659185069895
+        },
+        {
+            "order": 7,
+            "edge_id": "365",
+            "orientation": "vertical",
+            "length": 296.00659185069895
+        },
+        {
+            "order": 8,
+            "edge_id": "368",
+            "orientation": "vertical",
+            "length": 296.00659185069895
+        },
+        {
+            "order": 9,
+            "edge_id": "153",
+            "orientation": "vertical",
+            "length": 200.0
+        },
+        {
+            "order": 10,
+            "edge_id": "161",
+            "orientation": "vertical",
+            "length": 200.0
+        },
+        {
+            "order": 11,
+            "edge_id": "461",
+            "orientation": "vertical",
+            "length": 200.0
+        },
+        {
+            "order": 12,
+            "edge_id": "464",
+            "orientation": "vertical",
+            "length": 200.0
+        },
+        {
+            "order": 13,
+            "edge_id": "61",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 14,
+            "edge_id": "64",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 15,
+            "edge_id": "101",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 16,
+            "edge_id": "104",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 17,
+            "edge_id": "105",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 18,
+            "edge_id": "108",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 19,
+            "edge_id": "141",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 20,
+            "edge_id": "144",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 21,
+            "edge_id": "173",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 22,
+            "edge_id": "176",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 23,
+            "edge_id": "177",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 24,
+            "edge_id": "180",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 25,
+            "edge_id": "201",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 26,
+            "edge_id": "204",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 27,
+            "edge_id": "209",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 28,
+            "edge_id": "212",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 29,
+            "edge_id": "257",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 30,
+            "edge_id": "260",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 31,
+            "edge_id": "261",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 32,
+            "edge_id": "264",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 33,
+            "edge_id": "313",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 34,
+            "edge_id": "316",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 35,
+            "edge_id": "357",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 36,
+            "edge_id": "360",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 37,
+            "edge_id": "361",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 38,
+            "edge_id": "364",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 39,
+            "edge_id": "405",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 40,
+            "edge_id": "408",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 41,
+            "edge_id": "409",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 42,
+            "edge_id": "412",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 43,
+            "edge_id": "453",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 44,
+            "edge_id": "456",
+            "orientation": "vertical",
+            "length": 180.0
+        },
+        {
+            "order": 45,
+            "edge_id": "156",
+            "orientation": "vertical",
+            "length": 83.0
+        },
+        {
+            "order": 46,
+            "edge_id": "158",
+            "orientation": "vertical",
+            "length": 83.0
+        },
+        {
+            "order": 47,
+            "edge_id": "163",
+            "orientation": "vertical",
+            "length": 83.0
+        },
+        {
+            "order": 48,
+            "edge_id": "165",
+            "orientation": "vertical",
+            "length": 83.0
+        },
+        {
+            "order": 49,
+            "edge_id": "86",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 50,
+            "edge_id": "87",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 51,
+            "edge_id": "246",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 52,
+            "edge_id": "247",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 53,
+            "edge_id": "294",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 54,
+            "edge_id": "295",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 55,
+            "edge_id": "350",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 56,
+            "edge_id": "351",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 57,
+            "edge_id": "382",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 58,
+            "edge_id": "383",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 59,
+            "edge_id": "434",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 60,
+            "edge_id": "435",
+            "orientation": "vertical",
+            "length": 80.0
+        },
+        {
+            "order": 61,
+            "edge_id": "53",
+            "orientation": "vertical",
+            "length": 76.02590180000152
+        },
+        {
+            "order": 62,
+            "edge_id": "56",
+            "orientation": "vertical",
+            "length": 76.02590180000152
+        },
+        {
+            "order": 63,
+            "edge_id": "206",
+            "orientation": "vertical",
+            "length": 76.00720647999879
+        },
+        {
+            "order": 64,
+            "edge_id": "207",
+            "orientation": "vertical",
+            "length": 76.00720647999879
+        },
+        {
+            "order": 65,
+            "edge_id": "282",
+            "orientation": "vertical",
+            "length": 76.00000051000097
+        },
+        {
+            "order": 66,
+            "edge_id": "283",
+            "orientation": "vertical",
+            "length": 76.00000051000097
+        },
+        {
+            "order": 67,
+            "edge_id": "126",
+            "orientation": "vertical",
+            "length": 76.00000050000017
+        },
+        {
+            "order": 68,
+            "edge_id": "127",
+            "orientation": "vertical",
+            "length": 76.00000050000017
+        },
+        {
+            "order": 69,
+            "edge_id": "369",
+            "orientation": "vertical",
+            "length": 76.00000000000182
+        },
+        {
+            "order": 70,
+            "edge_id": "372",
+            "orientation": "vertical",
+            "length": 76.00000000000182
+        },
+        {
+            "order": 71,
+            "edge_id": "378",
+            "orientation": "vertical",
+            "length": 76.00000000000182
+        },
+        {
+            "order": 72,
+            "edge_id": "379",
+            "orientation": "vertical",
+            "length": 76.00000000000182
+        },
+        {
+            "order": 73,
+            "edge_id": "417",
+            "orientation": "vertical",
+            "length": 76.00000000000182
+        },
+        {
+            "order": 74,
+            "edge_id": "420",
+            "orientation": "vertical",
+            "length": 76.00000000000182
+        },
+        {
+            "order": 75,
+            "edge_id": "426",
+            "orientation": "vertical",
+            "length": 76.00000000000182
+        },
+        {
+            "order": 76,
+            "edge_id": "427",
+            "orientation": "vertical",
+            "length": 76.00000000000182
+        },
+        {
+            "order": 77,
+            "edge_id": "13",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 78,
+            "edge_id": "16",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 79,
+            "edge_id": "22",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 80,
+            "edge_id": "23",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 81,
+            "edge_id": "41",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 82,
+            "edge_id": "44",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 83,
+            "edge_id": "50",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 84,
+            "edge_id": "51",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 85,
+            "edge_id": "73",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 86,
+            "edge_id": "76",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 87,
+            "edge_id": "82",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 88,
+            "edge_id": "83",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 89,
+            "edge_id": "133",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 90,
+            "edge_id": "136",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 91,
+            "edge_id": "289",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 92,
+            "edge_id": "292",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 93,
+            "edge_id": "321",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 94,
+            "edge_id": "324",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 95,
+            "edge_id": "330",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 96,
+            "edge_id": "331",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 97,
+            "edge_id": "337",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 98,
+            "edge_id": "340",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 99,
+            "edge_id": "346",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 100,
+            "edge_id": "347",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 101,
+            "edge_id": "385",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 102,
+            "edge_id": "388",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 103,
+            "edge_id": "394",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 104,
+            "edge_id": "395",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 105,
+            "edge_id": "469",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 106,
+            "edge_id": "472",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 107,
+            "edge_id": "478",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 108,
+            "edge_id": "479",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 109,
+            "edge_id": "517",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 110,
+            "edge_id": "520",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 111,
+            "edge_id": "526",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 112,
+            "edge_id": "527",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 113,
+            "edge_id": "529",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 114,
+            "edge_id": "532",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 115,
+            "edge_id": "538",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 116,
+            "edge_id": "539",
+            "orientation": "vertical",
+            "length": 76.0
+        },
+        {
+            "order": 117,
+            "edge_id": "89",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 118,
+            "edge_id": "92",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 119,
+            "edge_id": "98",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 120,
+            "edge_id": "99",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 121,
+            "edge_id": "233",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 122,
+            "edge_id": "236",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 123,
+            "edge_id": "242",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 124,
+            "edge_id": "243",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 125,
+            "edge_id": "297",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 126,
+            "edge_id": "300",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 127,
+            "edge_id": "306",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 128,
+            "edge_id": "307",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 129,
+            "edge_id": "437",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 130,
+            "edge_id": "440",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 131,
+            "edge_id": "446",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 132,
+            "edge_id": "447",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 133,
+            "edge_id": "485",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 134,
+            "edge_id": "488",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 135,
+            "edge_id": "494",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 136,
+            "edge_id": "495",
+            "orientation": "vertical",
+            "length": 75.99999999999818
+        },
+        {
+            "order": 137,
+            "edge_id": "25",
+            "orientation": "vertical",
+            "length": 68.0
+        },
+        {
+            "order": 138,
+            "edge_id": "34",
+            "orientation": "vertical",
+            "length": 68.0
+        },
+        {
+            "order": 139,
+            "edge_id": "334",
+            "orientation": "vertical",
+            "length": 35.00000000065192
+        },
+        {
+            "order": 140,
+            "edge_id": "335",
+            "orientation": "vertical",
+            "length": 35.00000000065192
+        },
+        {
+            "order": 141,
+            "edge_id": "28",
+            "orientation": "vertical",
+            "length": 25.25
+        },
+        {
+            "order": 142,
+            "edge_id": "32",
+            "orientation": "vertical",
+            "length": 25.25
+        },
+        {
+            "order": 143,
+            "edge_id": "36",
+            "orientation": "vertical",
+            "length": 25.25
+        },
+        {
+            "order": 144,
+            "edge_id": "40",
+            "orientation": "vertical",
+            "length": 25.25
+        },
+        {
+            "order": 145,
+            "edge_id": "2",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 146,
+            "edge_id": "3",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 147,
+            "edge_id": "5",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 148,
+            "edge_id": "8",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 149,
+            "edge_id": "9",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 150,
+            "edge_id": "12",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 151,
+            "edge_id": "65",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 152,
+            "edge_id": "68",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 153,
+            "edge_id": "69",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 154,
+            "edge_id": "72",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 155,
+            "edge_id": "110",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 156,
+            "edge_id": "111",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 157,
+            "edge_id": "113",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 158,
+            "edge_id": "116",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 159,
+            "edge_id": "117",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 160,
+            "edge_id": "120",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 161,
+            "edge_id": "122",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 162,
+            "edge_id": "123",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 163,
+            "edge_id": "145",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 164,
+            "edge_id": "148",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 165,
+            "edge_id": "149",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 166,
+            "edge_id": "152",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 167,
+            "edge_id": "170",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 168,
+            "edge_id": "171",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 169,
+            "edge_id": "181",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 170,
+            "edge_id": "184",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 171,
+            "edge_id": "185",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 172,
+            "edge_id": "188",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 173,
+            "edge_id": "190",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 174,
+            "edge_id": "191",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 175,
+            "edge_id": "213",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 176,
+            "edge_id": "216",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 177,
+            "edge_id": "221",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 178,
+            "edge_id": "224",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 179,
+            "edge_id": "226",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 180,
+            "edge_id": "227",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 181,
+            "edge_id": "230",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 182,
+            "edge_id": "231",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 183,
+            "edge_id": "250",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 184,
+            "edge_id": "251",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 185,
+            "edge_id": "265",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 186,
+            "edge_id": "268",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 187,
+            "edge_id": "270",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 188,
+            "edge_id": "271",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 189,
+            "edge_id": "278",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 190,
+            "edge_id": "279",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 191,
+            "edge_id": "309",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 192,
+            "edge_id": "312",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 193,
+            "edge_id": "317",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 194,
+            "edge_id": "320",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 195,
+            "edge_id": "398",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 196,
+            "edge_id": "399",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 197,
+            "edge_id": "430",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 198,
+            "edge_id": "431",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 199,
+            "edge_id": "457",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 200,
+            "edge_id": "460",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 201,
+            "edge_id": "482",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 202,
+            "edge_id": "483",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 203,
+            "edge_id": "498",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 204,
+            "edge_id": "499",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 205,
+            "edge_id": "506",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 206,
+            "edge_id": "507",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 207,
+            "edge_id": "509",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 208,
+            "edge_id": "512",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 209,
+            "edge_id": "513",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 210,
+            "edge_id": "516",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 211,
+            "edge_id": "546",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 212,
+            "edge_id": "547",
+            "orientation": "vertical",
+            "length": 8.0
+        },
+        {
+            "order": 213,
+            "edge_id": "167",
+            "orientation": "horizontal",
+            "length": 348.0
+        },
+        {
+            "order": 214,
+            "edge_id": "168",
+            "orientation": "horizontal",
+            "length": 348.0
+        },
+        {
+            "order": 215,
+            "edge_id": "18",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 216,
+            "edge_id": "19",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 217,
+            "edge_id": "46",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 218,
+            "edge_id": "47",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 219,
+            "edge_id": "78",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 220,
+            "edge_id": "79",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 221,
+            "edge_id": "94",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 222,
+            "edge_id": "95",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 223,
+            "edge_id": "129",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 224,
+            "edge_id": "132",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 225,
+            "edge_id": "238",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 226,
+            "edge_id": "239",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 227,
+            "edge_id": "285",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 228,
+            "edge_id": "288",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 229,
+            "edge_id": "302",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 230,
+            "edge_id": "303",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 231,
+            "edge_id": "326",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 232,
+            "edge_id": "327",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 233,
+            "edge_id": "342",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 234,
+            "edge_id": "343",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 235,
+            "edge_id": "374",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 236,
+            "edge_id": "375",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 237,
+            "edge_id": "390",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 238,
+            "edge_id": "391",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 239,
+            "edge_id": "422",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 240,
+            "edge_id": "423",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 241,
+            "edge_id": "442",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 242,
+            "edge_id": "443",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 243,
+            "edge_id": "474",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 244,
+            "edge_id": "475",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 245,
+            "edge_id": "490",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 246,
+            "edge_id": "491",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 247,
+            "edge_id": "522",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 248,
+            "edge_id": "523",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 249,
+            "edge_id": "534",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 250,
+            "edge_id": "535",
+            "orientation": "horizontal",
+            "length": 334.0
+        },
+        {
+            "order": 251,
+            "edge_id": "462",
+            "orientation": "horizontal",
+            "length": 310.0
+        },
+        {
+            "order": 252,
+            "edge_id": "463",
+            "orientation": "horizontal",
+            "length": 310.0
+        },
+        {
+            "order": 253,
+            "edge_id": "310",
+            "orientation": "horizontal",
+            "length": 275.2612928771762
+        },
+        {
+            "order": 254,
+            "edge_id": "311",
+            "orientation": "horizontal",
+            "length": 275.2612928771762
+        },
+        {
+            "order": 255,
+            "edge_id": "1",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 256,
+            "edge_id": "4",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 257,
+            "edge_id": "109",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 258,
+            "edge_id": "112",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 259,
+            "edge_id": "121",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 260,
+            "edge_id": "124",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 261,
+            "edge_id": "169",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 262,
+            "edge_id": "172",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 263,
+            "edge_id": "189",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 264,
+            "edge_id": "192",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 265,
+            "edge_id": "225",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 266,
+            "edge_id": "228",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 267,
+            "edge_id": "229",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 268,
+            "edge_id": "232",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 269,
+            "edge_id": "249",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 270,
+            "edge_id": "252",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 271,
+            "edge_id": "269",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 272,
+            "edge_id": "272",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 273,
+            "edge_id": "277",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 274,
+            "edge_id": "280",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 275,
+            "edge_id": "397",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 276,
+            "edge_id": "400",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 277,
+            "edge_id": "414",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 278,
+            "edge_id": "415",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 279,
+            "edge_id": "429",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 280,
+            "edge_id": "432",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 281,
+            "edge_id": "481",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 282,
+            "edge_id": "484",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 283,
+            "edge_id": "497",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 284,
+            "edge_id": "500",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 285,
+            "edge_id": "505",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 286,
+            "edge_id": "508",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 287,
+            "edge_id": "545",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 288,
+            "edge_id": "548",
+            "orientation": "horizontal",
+            "length": 230.0
+        },
+        {
+            "order": 289,
+            "edge_id": "118",
+            "orientation": "horizontal",
+            "length": 202.0
+        },
+        {
+            "order": 290,
+            "edge_id": "119",
+            "orientation": "horizontal",
+            "length": 202.0
+        },
+        {
+            "order": 291,
+            "edge_id": "466",
+            "orientation": "horizontal",
+            "length": 189.99441530941897
+        },
+        {
+            "order": 292,
+            "edge_id": "467",
+            "orientation": "horizontal",
+            "length": 189.99441530941897
+        },
+        {
+            "order": 293,
+            "edge_id": "138",
+            "orientation": "horizontal",
+            "length": 180.5415954600011
+        },
+        {
+            "order": 294,
+            "edge_id": "139",
+            "orientation": "horizontal",
+            "length": 180.5415954600011
+        },
+        {
+            "order": 295,
+            "edge_id": "198",
+            "orientation": "horizontal",
+            "length": 180.0000000000671
+        },
+        {
+            "order": 296,
+            "edge_id": "255",
+            "orientation": "horizontal",
+            "length": 180.0000000000671
+        },
+        {
+            "order": 297,
+            "edge_id": "450",
+            "orientation": "horizontal",
+            "length": 179.99999999996717
+        },
+        {
+            "order": 298,
+            "edge_id": "451",
+            "orientation": "horizontal",
+            "length": 179.99999999996717
+        },
+        {
+            "order": 299,
+            "edge_id": "502",
+            "orientation": "horizontal",
+            "length": 179.99999999996717
+        },
+        {
+            "order": 300,
+            "edge_id": "503",
+            "orientation": "horizontal",
+            "length": 179.99999999996717
+        },
+        {
+            "order": 301,
+            "edge_id": "199",
+            "orientation": "horizontal",
+            "length": 179.99999999996706
+        },
+        {
+            "order": 302,
+            "edge_id": "254",
+            "orientation": "horizontal",
+            "length": 179.99999999996706
+        },
+        {
+            "order": 303,
+            "edge_id": "59",
+            "orientation": "horizontal",
+            "length": 120.00000000316706
+        },
+        {
+            "order": 304,
+            "edge_id": "355",
+            "orientation": "horizontal",
+            "length": 120.00000000316706
+        },
+        {
+            "order": 305,
+            "edge_id": "403",
+            "orientation": "horizontal",
+            "length": 120.00000000316706
+        },
+        {
+            "order": 306,
+            "edge_id": "543",
+            "orientation": "horizontal",
+            "length": 120.00000000316706
+        },
+        {
+            "order": 307,
+            "edge_id": "6",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 308,
+            "edge_id": "7",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 309,
+            "edge_id": "10",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 310,
+            "edge_id": "11",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 311,
+            "edge_id": "66",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 312,
+            "edge_id": "67",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 313,
+            "edge_id": "70",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 314,
+            "edge_id": "71",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 315,
+            "edge_id": "114",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 316,
+            "edge_id": "115",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 317,
+            "edge_id": "146",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 318,
+            "edge_id": "147",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 319,
+            "edge_id": "150",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 320,
+            "edge_id": "151",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 321,
+            "edge_id": "182",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 322,
+            "edge_id": "183",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 323,
+            "edge_id": "186",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 324,
+            "edge_id": "187",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 325,
+            "edge_id": "214",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 326,
+            "edge_id": "215",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 327,
+            "edge_id": "222",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 328,
+            "edge_id": "223",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 329,
+            "edge_id": "266",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 330,
+            "edge_id": "267",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 331,
+            "edge_id": "318",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 332,
+            "edge_id": "319",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 333,
+            "edge_id": "458",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 334,
+            "edge_id": "459",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 335,
+            "edge_id": "510",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 336,
+            "edge_id": "511",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 337,
+            "edge_id": "514",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 338,
+            "edge_id": "515",
+            "orientation": "horizontal",
+            "length": 120.0
+        },
+        {
+            "order": 339,
+            "edge_id": "58",
+            "orientation": "horizontal",
+            "length": 119.99999999316807
+        },
+        {
+            "order": 340,
+            "edge_id": "354",
+            "orientation": "horizontal",
+            "length": 119.99999999316807
+        },
+        {
+            "order": 341,
+            "edge_id": "402",
+            "orientation": "horizontal",
+            "length": 119.99999999316807
+        },
+        {
+            "order": 342,
+            "edge_id": "542",
+            "orientation": "horizontal",
+            "length": 119.99999999316807
+        },
+        {
+            "order": 343,
+            "edge_id": "85",
+            "orientation": "horizontal",
+            "length": 80.0
+        },
+        {
+            "order": 344,
+            "edge_id": "88",
+            "orientation": "horizontal",
+            "length": 80.0
+        },
+        {
+            "order": 345,
+            "edge_id": "245",
+            "orientation": "horizontal",
+            "length": 80.0
+        },
+        {
+            "order": 346,
+            "edge_id": "248",
+            "orientation": "horizontal",
+            "length": 80.0
+        },
+        {
+            "order": 347,
+            "edge_id": "381",
+            "orientation": "horizontal",
+            "length": 80.0
+        },
+        {
+            "order": 348,
+            "edge_id": "384",
+            "orientation": "horizontal",
+            "length": 80.0
+        },
+        {
+            "order": 349,
+            "edge_id": "433",
+            "orientation": "horizontal",
+            "length": 80.0
+        },
+        {
+            "order": 350,
+            "edge_id": "436",
+            "orientation": "horizontal",
+            "length": 80.0
+        },
+        {
+            "order": 351,
+            "edge_id": "30",
+            "orientation": "horizontal",
+            "length": 71.80000018999999
+        },
+        {
+            "order": 352,
+            "edge_id": "38",
+            "orientation": "horizontal",
+            "length": 71.80000018999999
+        },
+        {
+            "order": 353,
+            "edge_id": "154",
+            "orientation": "horizontal",
+            "length": 13.0
+        },
+        {
+            "order": 354,
+            "edge_id": "155",
+            "orientation": "horizontal",
+            "length": 13.0
+        },
+        {
+            "order": 355,
+            "edge_id": "160",
+            "orientation": "horizontal",
+            "length": 13.0
+        },
+        {
+            "order": 356,
+            "edge_id": "162",
+            "orientation": "horizontal",
+            "length": 13.0
+        },
+        {
+            "order": 357,
+            "edge_id": "90",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 358,
+            "edge_id": "91",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 359,
+            "edge_id": "93",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 360,
+            "edge_id": "96",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 361,
+            "edge_id": "97",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 362,
+            "edge_id": "100",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 363,
+            "edge_id": "322",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 364,
+            "edge_id": "323",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 365,
+            "edge_id": "325",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 366,
+            "edge_id": "328",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 367,
+            "edge_id": "329",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 368,
+            "edge_id": "332",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 369,
+            "edge_id": "438",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 370,
+            "edge_id": "439",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 371,
+            "edge_id": "441",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 372,
+            "edge_id": "444",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 373,
+            "edge_id": "445",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 374,
+            "edge_id": "448",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 375,
+            "edge_id": "518",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 376,
+            "edge_id": "519",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 377,
+            "edge_id": "521",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 378,
+            "edge_id": "524",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 379,
+            "edge_id": "525",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 380,
+            "edge_id": "528",
+            "orientation": "horizontal",
+            "length": 12.0
+        },
+        {
+            "order": 381,
+            "edge_id": "293",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 382,
+            "edge_id": "296",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 383,
+            "edge_id": "333",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 384,
+            "edge_id": "336",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 385,
+            "edge_id": "349",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 386,
+            "edge_id": "352",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 387,
+            "edge_id": "413",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 388,
+            "edge_id": "416",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 389,
+            "edge_id": "465",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 390,
+            "edge_id": "468",
+            "orientation": "horizontal",
+            "length": 10.0
+        },
+        {
+            "order": 391,
+            "edge_id": "194",
+            "orientation": "horizontal",
+            "length": 8.00000000009211
+        },
+        {
+            "order": 392,
+            "edge_id": "275",
+            "orientation": "horizontal",
+            "length": 8.00000000009211
+        },
+        {
+            "order": 393,
+            "edge_id": "14",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 394,
+            "edge_id": "15",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 395,
+            "edge_id": "17",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 396,
+            "edge_id": "20",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 397,
+            "edge_id": "21",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 398,
+            "edge_id": "24",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 399,
+            "edge_id": "54",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 400,
+            "edge_id": "55",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 401,
+            "edge_id": "62",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 402,
+            "edge_id": "63",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 403,
+            "edge_id": "74",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 404,
+            "edge_id": "75",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 405,
+            "edge_id": "77",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 406,
+            "edge_id": "80",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 407,
+            "edge_id": "81",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 408,
+            "edge_id": "84",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 409,
+            "edge_id": "102",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 410,
+            "edge_id": "103",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 411,
+            "edge_id": "106",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 412,
+            "edge_id": "107",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 413,
+            "edge_id": "137",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 414,
+            "edge_id": "140",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 415,
+            "edge_id": "142",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 416,
+            "edge_id": "143",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 417,
+            "edge_id": "174",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 418,
+            "edge_id": "175",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 419,
+            "edge_id": "178",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 420,
+            "edge_id": "179",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 421,
+            "edge_id": "202",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 422,
+            "edge_id": "203",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 423,
+            "edge_id": "205",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 424,
+            "edge_id": "208",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 425,
+            "edge_id": "210",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 426,
+            "edge_id": "211",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 427,
+            "edge_id": "258",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 428,
+            "edge_id": "259",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 429,
+            "edge_id": "262",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 430,
+            "edge_id": "263",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 431,
+            "edge_id": "314",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 432,
+            "edge_id": "315",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 433,
+            "edge_id": "358",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 434,
+            "edge_id": "359",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 435,
+            "edge_id": "362",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 436,
+            "edge_id": "363",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 437,
+            "edge_id": "370",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 438,
+            "edge_id": "371",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 439,
+            "edge_id": "373",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 440,
+            "edge_id": "376",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 441,
+            "edge_id": "377",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 442,
+            "edge_id": "380",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 443,
+            "edge_id": "406",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 444,
+            "edge_id": "407",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 445,
+            "edge_id": "410",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 446,
+            "edge_id": "411",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 447,
+            "edge_id": "418",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 448,
+            "edge_id": "419",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 449,
+            "edge_id": "421",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 450,
+            "edge_id": "424",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 451,
+            "edge_id": "425",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 452,
+            "edge_id": "428",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 453,
+            "edge_id": "454",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 454,
+            "edge_id": "455",
+            "orientation": "horizontal",
+            "length": 8.0
+        },
+        {
+            "order": 455,
+            "edge_id": "218",
+            "orientation": "horizontal",
+            "length": 7.999999999992179
+        },
+        {
+            "order": 456,
+            "edge_id": "366",
+            "orientation": "horizontal",
+            "length": 7.999999999992179
+        },
+        {
+            "order": 457,
+            "edge_id": "60",
+            "orientation": "horizontal",
+            "length": 7.999999999992065
+        },
+        {
+            "order": 458,
+            "edge_id": "195",
+            "orientation": "horizontal",
+            "length": 7.999999999992065
+        },
+        {
+            "order": 459,
+            "edge_id": "219",
+            "orientation": "horizontal",
+            "length": 7.999999999992065
+        },
+        {
+            "order": 460,
+            "edge_id": "274",
+            "orientation": "horizontal",
+            "length": 7.999999999992065
+        },
+        {
+            "order": 461,
+            "edge_id": "356",
+            "orientation": "horizontal",
+            "length": 7.999999999992065
+        },
+        {
+            "order": 462,
+            "edge_id": "367",
+            "orientation": "horizontal",
+            "length": 7.999999999992065
+        },
+        {
+            "order": 463,
+            "edge_id": "404",
+            "orientation": "horizontal",
+            "length": 7.999999999992065
+        },
+        {
+            "order": 464,
+            "edge_id": "544",
+            "orientation": "horizontal",
+            "length": 7.999999999992065
+        },
+        {
+            "order": 465,
+            "edge_id": "401",
+            "orientation": "horizontal",
+            "length": 7.999999999991838
+        },
+        {
+            "order": 466,
+            "edge_id": "57",
+            "orientation": "horizontal",
+            "length": 7.999999999991724
+        },
+        {
+            "order": 467,
+            "edge_id": "353",
+            "orientation": "horizontal",
+            "length": 7.999999999991724
+        },
+        {
+            "order": 468,
+            "edge_id": "541",
+            "orientation": "horizontal",
+            "length": 7.999999999991724
+        },
+        {
+            "order": 469,
+            "edge_id": "197",
+            "orientation": "horizontal",
+            "length": 7.999999991154704
+        },
+        {
+            "order": 470,
+            "edge_id": "200",
+            "orientation": "horizontal",
+            "length": 7.999999991154704
+        },
+        {
+            "order": 471,
+            "edge_id": "253",
+            "orientation": "horizontal",
+            "length": 7.999999991154704
+        },
+        {
+            "order": 472,
+            "edge_id": "256",
+            "orientation": "horizontal",
+            "length": 7.999999991154704
+        },
+        {
+            "order": 473,
+            "edge_id": "449",
+            "orientation": "horizontal",
+            "length": 7.999999991154704
+        },
+        {
+            "order": 474,
+            "edge_id": "452",
+            "orientation": "horizontal",
+            "length": 7.999999991154704
+        },
+        {
+            "order": 475,
+            "edge_id": "501",
+            "orientation": "horizontal",
+            "length": 7.999999991154704
+        },
+        {
+            "order": 476,
+            "edge_id": "504",
+            "orientation": "horizontal",
+            "length": 7.999999991154704
+        },
+        {
+            "order": 477,
+            "edge_id": "26",
+            "orientation": "horizontal",
+            "length": 7.599999905000004
+        },
+        {
+            "order": 478,
+            "edge_id": "27",
+            "orientation": "horizontal",
+            "length": 7.599999905000004
+        },
+        {
+            "order": 479,
+            "edge_id": "33",
+            "orientation": "horizontal",
+            "length": 7.599999905000004
+        },
+        {
+            "order": 480,
+            "edge_id": "35",
+            "orientation": "horizontal",
+            "length": 7.599999905000004
+        },
+        {
+            "order": 481,
+            "edge_id": "42",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 482,
+            "edge_id": "43",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 483,
+            "edge_id": "45",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 484,
+            "edge_id": "48",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 485,
+            "edge_id": "49",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 486,
+            "edge_id": "52",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 487,
+            "edge_id": "125",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 488,
+            "edge_id": "128",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 489,
+            "edge_id": "130",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 490,
+            "edge_id": "131",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 491,
+            "edge_id": "134",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 492,
+            "edge_id": "135",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 493,
+            "edge_id": "234",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 494,
+            "edge_id": "235",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 495,
+            "edge_id": "237",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 496,
+            "edge_id": "240",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 497,
+            "edge_id": "241",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 498,
+            "edge_id": "244",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 499,
+            "edge_id": "281",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 500,
+            "edge_id": "284",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 501,
+            "edge_id": "286",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 502,
+            "edge_id": "287",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 503,
+            "edge_id": "290",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 504,
+            "edge_id": "291",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 505,
+            "edge_id": "298",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 506,
+            "edge_id": "299",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 507,
+            "edge_id": "301",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 508,
+            "edge_id": "304",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 509,
+            "edge_id": "305",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 510,
+            "edge_id": "308",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 511,
+            "edge_id": "338",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 512,
+            "edge_id": "339",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 513,
+            "edge_id": "341",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 514,
+            "edge_id": "344",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 515,
+            "edge_id": "345",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 516,
+            "edge_id": "348",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 517,
+            "edge_id": "386",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 518,
+            "edge_id": "387",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 519,
+            "edge_id": "389",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 520,
+            "edge_id": "392",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 521,
+            "edge_id": "393",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 522,
+            "edge_id": "396",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 523,
+            "edge_id": "470",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 524,
+            "edge_id": "471",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 525,
+            "edge_id": "473",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 526,
+            "edge_id": "476",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 527,
+            "edge_id": "477",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 528,
+            "edge_id": "480",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 529,
+            "edge_id": "486",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 530,
+            "edge_id": "487",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 531,
+            "edge_id": "489",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 532,
+            "edge_id": "492",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 533,
+            "edge_id": "493",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 534,
+            "edge_id": "496",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 535,
+            "edge_id": "530",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 536,
+            "edge_id": "531",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 537,
+            "edge_id": "533",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 538,
+            "edge_id": "536",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 539,
+            "edge_id": "537",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 540,
+            "edge_id": "540",
+            "orientation": "horizontal",
+            "length": 6.0
+        },
+        {
+            "order": 541,
+            "edge_id": "157",
+            "orientation": "other",
+            "length": 20.420352248333657
+        },
+        {
+            "order": 542,
+            "edge_id": "159",
+            "orientation": "other",
+            "length": 20.420352248333657
+        },
+        {
+            "order": 543,
+            "edge_id": "164",
+            "orientation": "other",
+            "length": 20.420352248333657
+        },
+        {
+            "order": 544,
+            "edge_id": "166",
+            "orientation": "other",
+            "length": 20.420352248333657
+        },
+        {
+            "order": 545,
+            "edge_id": "29",
+            "orientation": "other",
+            "length": 10.210176124166829
+        },
+        {
+            "order": 546,
+            "edge_id": "31",
+            "orientation": "other",
+            "length": 10.210176124166829
+        },
+        {
+            "order": 547,
+            "edge_id": "37",
+            "orientation": "other",
+            "length": 10.210176124166829
+        },
+        {
+            "order": 548,
+            "edge_id": "39",
+            "orientation": "other",
+            "length": 10.210176124166829
+        }
+    ]
+}

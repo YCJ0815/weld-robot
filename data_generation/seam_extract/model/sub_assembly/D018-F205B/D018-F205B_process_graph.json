@@ -1,0 +1,5820 @@
+{
+  "meta": {
+    "input_geometry_graph_meta": {
+      "source_step": "D018-F205B.stp",
+      "point_tol": 0.2,
+      "key_ndigits": 6,
+      "min_geom_edge_length": 0.05,
+      "include_weld_edges_in_adjacent": false,
+      "store_all_geom_edges": false,
+      "notes": "nodes are weld endpoints; adjacent geom edges are topo edges adjacent to node points."
+    },
+    "params": {
+      "bspline_rms_tol": 0.25,
+      "require_arc_center": false,
+      "bspline_min_angle_deg": 8.0,
+      "bspline_max_radius": 500.0,
+      "bspline_min_sagitta_abs": 0.3,
+      "bspline_min_sagitta_ratio": 0.02,
+      "detect_chamfer_holes": true,
+      "chamfer_min_angle_deg": 92.0,
+      "chamfer_max_angle_deg": 150.0,
+      "chamfer_max_length": 50.0
+    },
+    "notes": "process attributes only. geometry is in geometry_graph.json"
+  },
+  "nodes": {
+    "N1": {
+      "process": {
+        "through_hole_edge_ids": []
+      }
+    },
+    "N2": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G19",
+          "G28"
+        ]
+      }
+    },
+    "N3": {
+      "process": {
+        "through_hole_edge_ids": []
+      }
+    },
+    "N4": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G29",
+          "G31"
+        ]
+      }
+    },
+    "N5": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G219",
+          "G241"
+        ]
+      }
+    },
+    "N6": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G221",
+          "G230"
+        ]
+      }
+    },
+    "N7": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G225",
+          "G239"
+        ]
+      }
+    },
+    "N8": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G223",
+          "G228"
+        ]
+      }
+    },
+    "N9": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G109",
+          "G114"
+        ]
+      }
+    },
+    "N10": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G112",
+          "G122"
+        ]
+      }
+    },
+    "N11": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G116",
+          "G128"
+        ]
+      }
+    },
+    "N12": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G123",
+          "G125"
+        ]
+      }
+    },
+    "N13": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G193",
+          "G201"
+        ]
+      }
+    },
+    "N14": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G190",
+          "G209"
+        ]
+      }
+    },
+    "N15": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G195",
+          "G199"
+        ]
+      }
+    },
+    "N16": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G198",
+          "G207"
+        ]
+      }
+    },
+    "N17": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G37",
+          "G61"
+        ]
+      }
+    },
+    "N18": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G39",
+          "G54"
+        ]
+      }
+    },
+    "N19": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G43",
+          "G59"
+        ]
+      }
+    },
+    "N20": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G41",
+          "G52"
+        ]
+      }
+    },
+    "N21": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G275",
+          "G283"
+        ]
+      }
+    },
+    "N22": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G274",
+          "G291"
+        ]
+      }
+    },
+    "N23": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G277",
+          "G281"
+        ]
+      }
+    },
+    "N24": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G280",
+          "G289"
+        ]
+      }
+    },
+    "N25": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G190",
+          "G209"
+        ]
+      }
+    },
+    "N26": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G192",
+          "G216"
+        ]
+      }
+    },
+    "N27": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G198",
+          "G207"
+        ]
+      }
+    },
+    "N28": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G196",
+          "G215"
+        ]
+      }
+    },
+    "N29": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G304",
+          "G311"
+        ]
+      }
+    },
+    "N30": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G302",
+          "G319"
+        ]
+      }
+    },
+    "N31": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G306",
+          "G313"
+        ]
+      }
+    },
+    "N32": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G308",
+          "G320"
+        ]
+      }
+    },
+    "N33": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G280",
+          "G289"
+        ]
+      }
+    },
+    "N34": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G278",
+          "G296"
+        ]
+      }
+    },
+    "N35": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G11",
+          "G5"
+        ]
+      }
+    },
+    "N36": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G15",
+          "G6"
+        ]
+      }
+    },
+    "N37": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G13",
+          "G3"
+        ]
+      }
+    },
+    "N38": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G16",
+          "G2"
+        ]
+      }
+    },
+    "N39": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G161",
+          "G165"
+        ]
+      }
+    },
+    "N40": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G163",
+          "G173"
+        ]
+      }
+    },
+    "N41": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G168",
+          "G175"
+        ]
+      }
+    },
+    "N42": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G170",
+          "G177"
+        ]
+      }
+    },
+    "N43": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G75",
+          "G95"
+        ]
+      }
+    },
+    "N44": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G77",
+          "G86"
+        ]
+      }
+    },
+    "N45": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G77",
+          "G86"
+        ]
+      }
+    },
+    "N46": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G74",
+          "G99"
+        ]
+      }
+    },
+    "N47": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G79",
+          "G84"
+        ]
+      }
+    },
+    "N48": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G82",
+          "G97"
+        ]
+      }
+    },
+    "N49": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G246",
+          "G250"
+        ]
+      }
+    },
+    "N50": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G248",
+          "G262"
+        ]
+      }
+    },
+    "N51": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G253",
+          "G264"
+        ]
+      }
+    },
+    "N52": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G259",
+          "G265"
+        ]
+      }
+    },
+    "N53": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G168",
+          "G175"
+        ]
+      }
+    },
+    "N54": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G166",
+          "G183"
+        ]
+      }
+    },
+    "N55": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G170",
+          "G177"
+        ]
+      }
+    },
+    "N56": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G172",
+          "G184"
+        ]
+      }
+    },
+    "N57": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G329",
+          "G342"
+        ]
+      }
+    },
+    "N58": {
+      "process": {
+        "through_hole_edge_ids": []
+      }
+    },
+    "N59": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G331",
+          "G340"
+        ]
+      }
+    },
+    "N60": {
+      "process": {
+        "through_hole_edge_ids": []
+      }
+    },
+    "N61": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G105",
+          "G111"
+        ]
+      }
+    },
+    "N62": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G107",
+          "G126"
+        ]
+      }
+    },
+    "N63": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G109",
+          "G114"
+        ]
+      }
+    },
+    "N64": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G116",
+          "G128"
+        ]
+      }
+    },
+    "N65": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G39",
+          "G54"
+        ]
+      }
+    },
+    "N66": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G34",
+          "G65"
+        ]
+      }
+    },
+    "N67": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G41",
+          "G52"
+        ]
+      }
+    },
+    "N68": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G46",
+          "G63"
+        ]
+      }
+    },
+    "N69": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G221",
+          "G230"
+        ]
+      }
+    },
+    "N70": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G218",
+          "G244"
+        ]
+      }
+    },
+    "N71": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G223",
+          "G228"
+        ]
+      }
+    },
+    "N72": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G226",
+          "G243"
+        ]
+      }
+    },
+    "N73": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G82",
+          "G97"
+        ]
+      }
+    },
+    "N74": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G104",
+          "G80"
+        ]
+      }
+    },
+    "N75": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G137",
+          "G145"
+        ]
+      }
+    },
+    "N76": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G134",
+          "G153"
+        ]
+      }
+    },
+    "N77": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G139",
+          "G143"
+        ]
+      }
+    },
+    "N78": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G142",
+          "G151"
+        ]
+      }
+    },
+    "N79": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G34",
+          "G65"
+        ]
+      }
+    },
+    "N80": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G36",
+          "G72"
+        ]
+      }
+    },
+    "N81": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G46",
+          "G63"
+        ]
+      }
+    },
+    "N82": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G44",
+          "G71"
+        ]
+      }
+    },
+    "N83": {
+      "process": {
+        "through_hole_edge_ids": []
+      }
+    },
+    "N84": {
+      "process": {
+        "through_hole_edge_ids": []
+      }
+    },
+    "N85": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G304",
+          "G311"
+        ]
+      }
+    },
+    "N86": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G306",
+          "G313"
+        ]
+      }
+    },
+    "N87": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G327",
+          "G349"
+        ]
+      }
+    },
+    "N88": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G329",
+          "G342"
+        ]
+      }
+    },
+    "N89": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G333",
+          "G347"
+        ]
+      }
+    },
+    "N90": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G331",
+          "G340"
+        ]
+      }
+    },
+    "N91": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G134",
+          "G153"
+        ]
+      }
+    },
+    "N92": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G136",
+          "G160"
+        ]
+      }
+    },
+    "N93": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G142",
+          "G151"
+        ]
+      }
+    },
+    "N94": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G140",
+          "G159"
+        ]
+      }
+    },
+    "N95": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G252",
+          "G266"
+        ]
+      }
+    },
+    "N96": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G246",
+          "G250"
+        ]
+      }
+    },
+    "N97": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G260",
+          "G268"
+        ]
+      }
+    },
+    "N98": {
+      "process": {
+        "through_hole_edge_ids": [
+          "G248",
+          "G262"
+        ]
+      }
+    }
+  },
+  "geom_edges": {
+    "G1": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G2": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N38"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.999999999997,
+            3289.9999999999895
+          ],
+          "radius": 34.99999999998783,
+          "angle_est": 1.5707963267956693,
+          "plane_normal": [
+            -0.0,
+            1.0,
+            0.0
+          ],
+          "fit_rms": 5.959536915587246e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999761618
+      }
+    },
+    "G3": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N37"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -733.9999999999975,
+            217.7419594688066
+          ],
+          "radius": 35.000000000005784,
+          "angle_est": 1.5707963267943927,
+          "plane_normal": [
+            1.0837884207168105e-14,
+            -1.0,
+            8.659739592076221e-15
+          ],
+          "fit_rms": 1.168202464555223e-11,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492383,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999532719
+      }
+    },
+    "G4": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G5": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N35"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -744.9999999999973,
+            217.7419594688066
+          ],
+          "radius": 35.000000000005784,
+          "angle_est": 1.5707963267943927,
+          "plane_normal": [
+            6.083925738395785e-15,
+            -1.0,
+            5.3290705182007506e-15
+          ],
+          "fit_rms": 1.168202464555223e-11,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492383,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999532719
+      }
+    },
+    "G6": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N36"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -744.9999999999972,
+            3289.9999999999895
+          ],
+          "radius": 34.99999999998783,
+          "angle_est": 1.5707963267956693,
+          "plane_normal": [
+            -0.0,
+            -1.0,
+            0.0
+          ],
+          "fit_rms": 5.959536915587246e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999761618
+      }
+    },
+    "G7": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G8": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G9": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G10": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G11": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N35"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -744.9999999999973,
+            217.7419594688066
+          ],
+          "radius": 35.000000000005784,
+          "angle_est": 1.5707963267943927,
+          "plane_normal": [
+            6.083925738395785e-15,
+            -1.0,
+            5.3290705182007506e-15
+          ],
+          "fit_rms": 1.168202464555223e-11,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492383,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999532719
+      }
+    },
+    "G12": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G13": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N37"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -733.9999999999975,
+            217.7419594688066
+          ],
+          "radius": 35.000000000005784,
+          "angle_est": 1.5707963267943927,
+          "plane_normal": [
+            1.0837884207168105e-14,
+            -1.0,
+            8.659739592076221e-15
+          ],
+          "fit_rms": 1.168202464555223e-11,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492383,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999532719
+      }
+    },
+    "G14": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G15": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N36"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -744.9999999999972,
+            3289.9999999999895
+          ],
+          "radius": 34.99999999998783,
+          "angle_est": 1.5707963267956693,
+          "plane_normal": [
+            -0.0,
+            -1.0,
+            0.0
+          ],
+          "fit_rms": 5.959536915587246e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999761618
+      }
+    },
+    "G16": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N38"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.999999999997,
+            3289.9999999999895
+          ],
+          "radius": 34.99999999998783,
+          "angle_est": 1.5707963267956693,
+          "plane_normal": [
+            -0.0,
+            1.0,
+            0.0
+          ],
+          "fit_rms": 5.959536915587246e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999761618
+      }
+    },
+    "G17": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G18": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G19": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N2"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -2244.9999999999995,
+            3289.9999999999895
+          ],
+          "radius": 34.999999999987836,
+          "angle_est": 1.5707963267956675,
+          "plane_normal": [
+            -2.1228659020376858e-14,
+            -1.0,
+            5.773159728050814e-15
+          ],
+          "fit_rms": 5.937902475085269e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999762484
+      }
+    },
+    "G20": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G21": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G22": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G23": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G24": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G25": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G26": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G27": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G28": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N2"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -2244.9999999999995,
+            3289.9999999999895
+          ],
+          "radius": 34.999999999987836,
+          "angle_est": 1.5707963267956675,
+          "plane_normal": [
+            -2.1228659020376858e-14,
+            -1.0,
+            5.773159728050814e-15
+          ],
+          "fit_rms": 5.937902475085269e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999762484
+      }
+    },
+    "G29": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N4"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -2234.0,
+            3289.9999999999895
+          ],
+          "radius": 34.999999999987836,
+          "angle_est": 1.5707963267956675,
+          "plane_normal": [
+            0.0,
+            1.0,
+            5.10702591327572e-15
+          ],
+          "fit_rms": 5.937902475085269e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999762484
+      }
+    },
+    "G30": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G31": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N4"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -2234.0,
+            3289.9999999999895
+          ],
+          "radius": 34.999999999987836,
+          "angle_est": 1.5707963267956675,
+          "plane_normal": [
+            0.0,
+            1.0,
+            5.10702591327572e-15
+          ],
+          "fit_rms": 5.937902475085269e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999762484
+      }
+    },
+    "G32": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G33": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G34": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N66",
+          "N79"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2234.0000000000023,
+            2926.0
+          ],
+          "radius": 35.00000000000008,
+          "angle_est": 1.5707963267950227,
+          "plane_normal": [
+            -0.0,
+            -3.1657334886751227e-15,
+            -1.0
+          ],
+          "fit_rms": 7.349832978077631e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999706006
+      }
+    },
+    "G35": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G36": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N80"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G37": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N17"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G38": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G39": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N18",
+          "N65"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -745.0000000000118,
+            2926.000000000001
+          ],
+          "radius": 34.99999999998229,
+          "angle_est": 1.5707963267956713,
+          "plane_normal": [
+            -1.0836596793775193e-14,
+            1.6255361350108044e-14,
+            -1.0
+          ],
+          "fit_rms": 8.5950658111091e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492664,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999656197
+      }
+    },
+    "G40": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G41": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N20",
+          "N67"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -745.0000000000118,
+            2915.000000000001
+          ],
+          "radius": 34.99999999998229,
+          "angle_est": 1.5707963267956713,
+          "plane_normal": [
+            -1.433834195867634e-14,
+            2.3012622398220758e-14,
+            -1.0
+          ],
+          "fit_rms": 8.5950658111091e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492664,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999656197
+      }
+    },
+    "G42": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G43": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N19"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G44": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N82"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G45": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G46": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N68",
+          "N81"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2234.0000000000023,
+            2914.999999999999
+          ],
+          "radius": 35.00000000000008,
+          "angle_est": 1.5707963267950227,
+          "plane_normal": [
+            2.05957684676911e-14,
+            1.90706580638723e-14,
+            -1.0
+          ],
+          "fit_rms": 7.349832978077631e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999706006
+      }
+    },
+    "G47": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G48": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G49": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G50": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G51": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G52": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N20",
+          "N67"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -745.0000000000118,
+            2915.000000000001
+          ],
+          "radius": 34.99999999998229,
+          "angle_est": 1.5707963267956713,
+          "plane_normal": [
+            -1.433834195867634e-14,
+            2.3012622398220758e-14,
+            -1.0
+          ],
+          "fit_rms": 8.5950658111091e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492664,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999656197
+      }
+    },
+    "G53": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G54": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N18",
+          "N65"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -745.0000000000118,
+            2926.000000000001
+          ],
+          "radius": 34.99999999998229,
+          "angle_est": 1.5707963267956713,
+          "plane_normal": [
+            -1.0836596793775193e-14,
+            1.6255361350108044e-14,
+            -1.0
+          ],
+          "fit_rms": 8.5950658111091e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492664,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999656197
+      }
+    },
+    "G55": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G56": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G57": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G58": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G59": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N19"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G60": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G61": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N17"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G62": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G63": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N68",
+          "N81"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2234.0000000000023,
+            2914.999999999999
+          ],
+          "radius": 35.00000000000008,
+          "angle_est": 1.5707963267950227,
+          "plane_normal": [
+            2.05957684676911e-14,
+            1.90706580638723e-14,
+            -1.0
+          ],
+          "fit_rms": 7.349832978077631e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999706006
+      }
+    },
+    "G64": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G65": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N66",
+          "N79"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2234.0000000000023,
+            2926.0
+          ],
+          "radius": 35.00000000000008,
+          "angle_est": 1.5707963267950227,
+          "plane_normal": [
+            -0.0,
+            -3.1657334886751227e-15,
+            -1.0
+          ],
+          "fit_rms": 7.349832978077631e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999706006
+      }
+    },
+    "G66": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G67": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G68": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G69": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G70": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G71": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N82"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G72": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N80"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G73": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G74": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N46"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -752.2340207388394,
+            491.6175856139636
+          ],
+          "radius": 35.00000000000008,
+          "angle_est": 1.5707963267950222,
+          "plane_normal": [
+            -0.0,
+            -0.6576382489855422,
+            -0.7533338791473739
+          ],
+          "fit_rms": 7.38331061950304e-12,
+          "chord_len": 49.49747468305829,
+          "sagitta": 10.251262658492687,
+          "min_sagitta_used": 0.9899494936611659
+        },
+        "through_hole_score": 0.9999999999704667
+      }
+    },
+    "G75": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N43"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623731177,
+          "max_angle_deg": 135.00000000000117,
+          "max_angle_rad": 2.3561944901923653
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G76": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G77": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N44",
+          "N45"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2233.99999999999,
+            1785.1555652286816
+          ],
+          "radius": 34.999999999984524,
+          "angle_est": 1.570796326795575,
+          "plane_normal": [
+            -7.307321760914924e-15,
+            0.6576382489854439,
+            0.7533338791474598
+          ],
+          "fit_rms": 8.316022717457274e-12,
+          "chord_len": 49.49747468305756,
+          "sagitta": 10.251262658492498,
+          "min_sagitta_used": 0.9899494936611513
+        },
+        "through_hole_score": 0.9999999999667359
+      }
+    },
+    "G78": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G79": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N47"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2226.7659792611507,
+            1793.4422378993017
+          ],
+          "radius": 34.99999999998427,
+          "angle_est": 1.5707963267955716,
+          "plane_normal": [
+            -0.0,
+            -0.6576382489854532,
+            -0.7533338791474515
+          ],
+          "fit_rms": 8.380094087001906e-12,
+          "chord_len": 49.49747468305721,
+          "sagitta": 10.25126265849274,
+          "min_sagitta_used": 0.9899494936611443
+        },
+        "through_hole_score": 0.9999999999664796
+      }
+    },
+    "G80": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N74"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623731354,
+          "max_angle_deg": 134.99999999999795,
+          "max_angle_rad": 2.3561944901923093
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G81": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G82": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N48",
+          "N73"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -744.9999999999984,
+            499.9042582845845
+          ],
+          "radius": 35.00000000000015,
+          "angle_est": 1.5707963267950182,
+          "plane_normal": [
+            -0.0,
+            -0.6576382489855435,
+            -0.7533338791473727
+          ],
+          "fit_rms": 7.376665649316969e-12,
+          "chord_len": 49.49747468305829,
+          "sagitta": 10.25126265849266,
+          "min_sagitta_used": 0.9899494936611659
+        },
+        "through_hole_score": 0.9999999999704934
+      }
+    },
+    "G83": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G84": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N47"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2226.7659792611507,
+            1793.4422378993017
+          ],
+          "radius": 34.99999999998427,
+          "angle_est": 1.5707963267955716,
+          "plane_normal": [
+            -0.0,
+            -0.6576382489854532,
+            -0.7533338791474515
+          ],
+          "fit_rms": 8.380094087001906e-12,
+          "chord_len": 49.49747468305721,
+          "sagitta": 10.25126265849274,
+          "min_sagitta_used": 0.9899494936611443
+        },
+        "through_hole_score": 0.9999999999664796
+      }
+    },
+    "G85": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G86": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N44",
+          "N45"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2233.99999999999,
+            1785.1555652286816
+          ],
+          "radius": 34.999999999984524,
+          "angle_est": 1.570796326795575,
+          "plane_normal": [
+            -7.307321760914924e-15,
+            0.6576382489854439,
+            0.7533338791474598
+          ],
+          "fit_rms": 8.316022717457274e-12,
+          "chord_len": 49.49747468305756,
+          "sagitta": 10.251262658492498,
+          "min_sagitta_used": 0.9899494936611513
+        },
+        "through_hole_score": 0.9999999999667359
+      }
+    },
+    "G87": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G88": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G89": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G90": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G91": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G92": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G93": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G94": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G95": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N43"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623731177,
+          "max_angle_deg": 135.00000000000117,
+          "max_angle_rad": 2.3561944901923653
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G96": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G97": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N48",
+          "N73"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -744.9999999999984,
+            499.9042582845845
+          ],
+          "radius": 35.00000000000015,
+          "angle_est": 1.5707963267950182,
+          "plane_normal": [
+            -0.0,
+            -0.6576382489855435,
+            -0.7533338791473727
+          ],
+          "fit_rms": 7.376665649316969e-12,
+          "chord_len": 49.49747468305829,
+          "sagitta": 10.25126265849266,
+          "min_sagitta_used": 0.9899494936611659
+        },
+        "through_hole_score": 0.9999999999704934
+      }
+    },
+    "G98": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G99": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N46"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -752.2340207388394,
+            491.6175856139636
+          ],
+          "radius": 35.00000000000008,
+          "angle_est": 1.5707963267950222,
+          "plane_normal": [
+            -0.0,
+            -0.6576382489855422,
+            -0.7533338791473739
+          ],
+          "fit_rms": 7.38331061950304e-12,
+          "chord_len": 49.49747468305829,
+          "sagitta": 10.251262658492687,
+          "min_sagitta_used": 0.9899494936611659
+        },
+        "through_hole_score": 0.9999999999704667
+      }
+    },
+    "G100": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G101": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G102": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G103": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G104": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N74"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623731354,
+          "max_angle_deg": 134.99999999999795,
+          "max_angle_rad": 2.3561944901923093
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G105": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N61"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G106": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G107": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N62"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G108": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G109": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N9",
+          "N63"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -1495.0,
+            2926.000000000008
+          ],
+          "radius": 34.99999999999232,
+          "angle_est": 1.570796326795213,
+          "plane_normal": [
+            0.0,
+            -1.0,
+            4.440892098500626e-16
+          ],
+          "fit_rms": 6.700137944591926e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999731994
+      }
+    },
+    "G110": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G111": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N61"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G112": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N10"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -1495.0,
+            3290.0000000000155
+          ],
+          "radius": 35.00000000002383,
+          "angle_est": 1.570796326793237,
+          "plane_normal": [
+            0.0,
+            -1.0,
+            4.107825191113079e-15
+          ],
+          "fit_rms": 1.3223147071530118e-11,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658451344,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999471074
+      }
+    },
+    "G113": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G114": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N9",
+          "N63"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -1495.0,
+            2926.000000000008
+          ],
+          "radius": 34.99999999999232,
+          "angle_est": 1.570796326795213,
+          "plane_normal": [
+            0.0,
+            -1.0,
+            4.440892098500626e-16
+          ],
+          "fit_rms": 6.700137944591926e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999731994
+      }
+    },
+    "G115": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G116": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N11",
+          "N64"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -1483.9999999999998,
+            2926.000000000008
+          ],
+          "radius": 34.99999999999232,
+          "angle_est": 1.570796326795213,
+          "plane_normal": [
+            -8.46264929907275e-15,
+            -1.0,
+            -4.1078251911130784e-15
+          ],
+          "fit_rms": 6.700137944591926e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999731994
+      }
+    },
+    "G117": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G118": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G119": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G120": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G121": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G122": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N10"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -1495.0,
+            3290.0000000000155
+          ],
+          "radius": 35.00000000002383,
+          "angle_est": 1.570796326793237,
+          "plane_normal": [
+            0.0,
+            -1.0,
+            4.107825191113079e-15
+          ],
+          "fit_rms": 1.3223147071530118e-11,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658451344,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999471074
+      }
+    },
+    "G123": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N12"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -1484.0,
+            3290.0000000000155
+          ],
+          "radius": 35.00000000002383,
+          "angle_est": 1.570796326793237,
+          "plane_normal": [
+            0.0,
+            -1.0,
+            8.881784197001252e-16
+          ],
+          "fit_rms": 1.3223147071530118e-11,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658451344,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999471074
+      }
+    },
+    "G124": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G125": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N12"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -1484.0,
+            3290.0000000000155
+          ],
+          "radius": 35.00000000002383,
+          "angle_est": 1.570796326793237,
+          "plane_normal": [
+            0.0,
+            -1.0,
+            8.881784197001252e-16
+          ],
+          "fit_rms": 1.3223147071530118e-11,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658451344,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999471074
+      }
+    },
+    "G126": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N62"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G127": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G128": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N11",
+          "N64"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -1483.9999999999998,
+            2926.000000000008
+          ],
+          "radius": 34.99999999999232,
+          "angle_est": 1.570796326795213,
+          "plane_normal": [
+            -8.46264929907275e-15,
+            -1.0,
+            -4.1078251911130784e-15
+          ],
+          "fit_rms": 6.700137944591926e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999731994
+      }
+    },
+    "G129": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G130": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G131": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G132": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G133": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G134": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N76",
+          "N91"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2244.999999999998,
+            2052.6283795206905
+          ],
+          "radius": 35.000000000000014,
+          "angle_est": 1.5707963267950282,
+          "plane_normal": [
+            0.0,
+            -5.571213534337295e-26,
+            1.0
+          ],
+          "fit_rms": 7.375879289186015e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999704965
+      }
+    },
+    "G135": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G136": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N92"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G137": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N75"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2822.6395022086613,
+            2052.6283795206905
+          ],
+          "radius": 34.999999999998145,
+          "angle_est": 1.5707963267948333,
+          "plane_normal": [
+            0.0,
+            8.91409568351337e-26,
+            1.0
+          ],
+          "fit_rms": 8.495653973016378e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999660174
+      }
+    },
+    "G138": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G139": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N77"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2822.6395022086613,
+            2063.6283795206905
+          ],
+          "radius": 34.999999999998145,
+          "angle_est": 1.5707963267948333,
+          "plane_normal": [
+            0.0,
+            8.91409568351337e-26,
+            1.0
+          ],
+          "fit_rms": 8.495653973016378e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999660174
+      }
+    },
+    "G140": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N94"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G141": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G142": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N78",
+          "N93"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2244.999999999998,
+            2063.6283795206905
+          ],
+          "radius": 35.000000000000014,
+          "angle_est": 1.5707963267950282,
+          "plane_normal": [
+            0.0,
+            -5.571213534337295e-26,
+            1.0
+          ],
+          "fit_rms": 7.375879289186015e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999704965
+      }
+    },
+    "G143": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N77"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2822.6395022086613,
+            2063.6283795206905
+          ],
+          "radius": 34.999999999998145,
+          "angle_est": 1.5707963267948333,
+          "plane_normal": [
+            0.0,
+            8.91409568351337e-26,
+            1.0
+          ],
+          "fit_rms": 8.495653973016378e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999660174
+      }
+    },
+    "G144": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G145": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N75"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2822.6395022086613,
+            2052.6283795206905
+          ],
+          "radius": 34.999999999998145,
+          "angle_est": 1.5707963267948333,
+          "plane_normal": [
+            0.0,
+            8.91409568351337e-26,
+            1.0
+          ],
+          "fit_rms": 8.495653973016378e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999660174
+      }
+    },
+    "G146": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G147": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G148": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G149": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G150": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G151": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N78",
+          "N93"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2244.999999999998,
+            2063.6283795206905
+          ],
+          "radius": 35.000000000000014,
+          "angle_est": 1.5707963267950282,
+          "plane_normal": [
+            0.0,
+            -5.571213534337295e-26,
+            1.0
+          ],
+          "fit_rms": 7.375879289186015e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999704965
+      }
+    },
+    "G152": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G153": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N76",
+          "N91"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2244.999999999998,
+            2052.6283795206905
+          ],
+          "radius": 35.000000000000014,
+          "angle_est": 1.5707963267950282,
+          "plane_normal": [
+            0.0,
+            -5.571213534337295e-26,
+            1.0
+          ],
+          "fit_rms": 7.375879289186015e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999704965
+      }
+    },
+    "G154": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G155": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G156": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G157": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G158": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G159": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N94"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G160": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N92"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G161": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N39"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -3082.4870473667,
+            2459.5334642757907
+          ],
+          "radius": 35.00000000002031,
+          "angle_est": 1.5707963267939842,
+          "plane_normal": [
+            -1.4338341958778737e-14,
+            -2.30126223983155e-14,
+            -1.0
+          ],
+          "fit_rms": 6.062098852371967e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461954,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999757516
+      }
+    },
+    "G162": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G163": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N40"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -3082.4870473667,
+            2448.53346427579
+          ],
+          "radius": 35.00000000002031,
+          "angle_est": 1.5707963267939842,
+          "plane_normal": [
+            -0.0,
+            -5.126438357244211e-15,
+            -1.0
+          ],
+          "fit_rms": 6.062098852371967e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461954,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999757516
+      }
+    },
+    "G164": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G165": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N39"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -3082.4870473667,
+            2459.5334642757907
+          ],
+          "radius": 35.00000000002031,
+          "angle_est": 1.5707963267939842,
+          "plane_normal": [
+            -1.4338341958778737e-14,
+            -2.30126223983155e-14,
+            -1.0
+          ],
+          "fit_rms": 6.062098852371967e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461954,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999757516
+      }
+    },
+    "G166": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N54"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G167": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G168": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N41",
+          "N53"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000006,
+            -2245.000000000032,
+            2459.533464275789
+          ],
+          "radius": 34.9999999999605,
+          "angle_est": 1.5707963267972052,
+          "plane_normal": [
+            -1.1416737300338731e-14,
+            1.1416737300346522e-14,
+            1.0
+          ],
+          "fit_rms": 8.258854688386419e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999669645
+      }
+    },
+    "G169": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G170": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N42",
+          "N55"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000006,
+            -2245.000000000032,
+            2448.5334642757894
+          ],
+          "radius": 34.9999999999605,
+          "angle_est": 1.5707963267972052,
+          "plane_normal": [
+            1.5000062662901112e-14,
+            -9.900367241236092e-15,
+            -1.0
+          ],
+          "fit_rms": 8.258854688386419e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999669645
+      }
+    },
+    "G171": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G172": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N56"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G173": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N40"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -3082.4870473667,
+            2448.53346427579
+          ],
+          "radius": 35.00000000002031,
+          "angle_est": 1.5707963267939842,
+          "plane_normal": [
+            -0.0,
+            -5.126438357244211e-15,
+            -1.0
+          ],
+          "fit_rms": 6.062098852371967e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461954,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999757516
+      }
+    },
+    "G174": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G175": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N41",
+          "N53"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000006,
+            -2245.000000000032,
+            2459.533464275789
+          ],
+          "radius": 34.9999999999605,
+          "angle_est": 1.5707963267972052,
+          "plane_normal": [
+            -1.1416737300338731e-14,
+            1.1416737300346522e-14,
+            1.0
+          ],
+          "fit_rms": 8.258854688386419e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999669645
+      }
+    },
+    "G176": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G177": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N42",
+          "N55"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000006,
+            -2245.000000000032,
+            2448.5334642757894
+          ],
+          "radius": 34.9999999999605,
+          "angle_est": 1.5707963267972052,
+          "plane_normal": [
+            1.5000062662901112e-14,
+            -9.900367241236092e-15,
+            -1.0
+          ],
+          "fit_rms": 8.258854688386419e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658492502,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999669645
+      }
+    },
+    "G178": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G179": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G180": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G181": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G182": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G183": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N54"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G184": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N56"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G185": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G186": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G187": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G188": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G189": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G190": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N14",
+          "N25"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2244.999999999998,
+            2842.32934870861
+          ],
+          "radius": 35.0000000000029,
+          "angle_est": 1.5707963267945244,
+          "plane_normal": [
+            1.6668918560286677e-14,
+            -9.72504360012256e-15,
+            1.0
+          ],
+          "fit_rms": 6.196012328813203e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999752159
+      }
+    },
+    "G191": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G192": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N26"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G193": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N13"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -3318.7019513737387,
+            2842.3293487086094
+          ],
+          "radius": 35.000000000040544,
+          "angle_est": 1.570796326792932,
+          "plane_normal": [
+            -0.0,
+            7.799698948069991e-26,
+            -1.0
+          ],
+          "fit_rms": 9.427919203273659e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658451344,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999622883
+      }
+    },
+    "G194": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G195": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N15"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -3318.7019513737387,
+            2853.32934870861
+          ],
+          "radius": 35.000000000040544,
+          "angle_est": 1.570796326792932,
+          "plane_normal": [
+            8.06747797334646e-15,
+            8.067477973351269e-15,
+            -1.0
+          ],
+          "fit_rms": 9.427919203273659e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658451344,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999622883
+      }
+    },
+    "G196": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N28"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G197": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G198": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N16",
+          "N27"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2244.999999999998,
+            2853.3293487086094
+          ],
+          "radius": 35.0000000000029,
+          "angle_est": 1.5707963267945244,
+          "plane_normal": [
+            -0.0,
+            6.768891548101569e-15,
+            -1.0
+          ],
+          "fit_rms": 6.196012328813203e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999752159
+      }
+    },
+    "G199": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N15"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -3318.7019513737387,
+            2853.32934870861
+          ],
+          "radius": 35.000000000040544,
+          "angle_est": 1.570796326792932,
+          "plane_normal": [
+            8.06747797334646e-15,
+            8.067477973351269e-15,
+            -1.0
+          ],
+          "fit_rms": 9.427919203273659e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658451344,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999622883
+      }
+    },
+    "G200": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G201": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N13"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999997,
+            -3318.7019513737387,
+            2842.3293487086094
+          ],
+          "radius": 35.000000000040544,
+          "angle_est": 1.570796326792932,
+          "plane_normal": [
+            -0.0,
+            7.799698948069991e-26,
+            -1.0
+          ],
+          "fit_rms": 9.427919203273659e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658451344,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999622883
+      }
+    },
+    "G202": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G203": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G204": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G205": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G206": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G207": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N16",
+          "N27"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2244.999999999998,
+            2853.3293487086094
+          ],
+          "radius": 35.0000000000029,
+          "angle_est": 1.5707963267945244,
+          "plane_normal": [
+            -0.0,
+            6.768891548101569e-15,
+            -1.0
+          ],
+          "fit_rms": 6.196012328813203e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999752159
+      }
+    },
+    "G208": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G209": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N14",
+          "N25"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -2244.999999999998,
+            2842.32934870861
+          ],
+          "radius": 35.0000000000029,
+          "angle_est": 1.5707963267945244,
+          "plane_normal": [
+            1.6668918560286677e-14,
+            -9.72504360012256e-15,
+            1.0
+          ],
+          "fit_rms": 6.196012328813203e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461632,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999752159
+      }
+    },
+    "G210": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G211": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G212": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G213": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G214": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G215": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N28"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G216": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N26"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730951,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G217": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G218": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N70"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162797.48056732916,
+            -2616.6453523247737,
+            3290.0000000002055
+          ],
+          "radius": 35.000000000191754,
+          "angle_est": 1.5707963267930203,
+          "plane_normal": [
+            -0.2290393337237173,
+            0.9734171683340066,
+            3.150957467578495e-13
+          ],
+          "fit_rms": 1.4542669298874498e-11,
+          "chord_len": 49.49747468327529,
+          "sagitta": 10.251262658507764,
+          "min_sagitta_used": 0.9899494936655059
+        },
+        "through_hole_score": 0.9999999999418293
+      }
+    },
+    "G219": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N5"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.14213562349908,
+          "max_angle_deg": 134.99999999897824,
+          "max_angle_rad": 2.356194490174512
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G220": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G221": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N6",
+          "N69"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162797.48056732916,
+            -2616.6453523247696,
+            2853.329348708417
+          ],
+          "radius": 35.000000000177145,
+          "angle_est": 1.570796326793746,
+          "plane_normal": [
+            -0.22903933372352767,
+            0.9734171683340513,
+            -1.6677295516141993e-13
+          ],
+          "fit_rms": 1.391095979832296e-11,
+          "chord_len": 49.49747468327529,
+          "sagitta": 10.251262658507839,
+          "min_sagitta_used": 0.9899494936655059
+        },
+        "through_hole_score": 0.9999999999443562
+      }
+    },
+    "G222": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G223": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N8",
+          "N71"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000015,
+            -2627.3529411764375,
+            2853.329348708424
+          ],
+          "radius": 35.00000000016772,
+          "angle_est": 1.5707963267940916,
+          "plane_normal": [
+            -0.22903933372349944,
+            0.9734171683340579,
+            -1.519332786187017e-13
+          ],
+          "fit_rms": 1.6555835999506796e-11,
+          "chord_len": 49.49747468327522,
+          "sagitta": 10.251262658507764,
+          "min_sagitta_used": 0.9899494936655044
+        },
+        "through_hole_score": 0.9999999999337766
+      }
+    },
+    "G224": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G225": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N7"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.14213562349908,
+          "max_angle_deg": 134.99999999897824,
+          "max_angle_rad": 2.356194490174512
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G226": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N72"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000017,
+            -2627.352941176427,
+            3290.0000000001696
+          ],
+          "radius": 35.00000000014787,
+          "angle_est": 1.5707963267951373,
+          "plane_normal": [
+            -0.22903933372335114,
+            0.9734171683340928,
+            2.4423735153889062e-14
+          ],
+          "fit_rms": 1.9508888911478676e-11,
+          "chord_len": 49.49747468327522,
+          "sagitta": 10.251262658507764,
+          "min_sagitta_used": 0.9899494936655044
+        },
+        "through_hole_score": 0.9999999999219644
+      }
+    },
+    "G227": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G228": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N8",
+          "N71"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000015,
+            -2627.3529411764375,
+            2853.329348708424
+          ],
+          "radius": 35.00000000016772,
+          "angle_est": 1.5707963267940916,
+          "plane_normal": [
+            -0.22903933372349944,
+            0.9734171683340579,
+            -1.519332786187017e-13
+          ],
+          "fit_rms": 1.6555835999506796e-11,
+          "chord_len": 49.49747468327522,
+          "sagitta": 10.251262658507764,
+          "min_sagitta_used": 0.9899494936655044
+        },
+        "through_hole_score": 0.9999999999337766
+      }
+    },
+    "G229": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G230": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N6",
+          "N69"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162797.48056732916,
+            -2616.6453523247696,
+            2853.329348708417
+          ],
+          "radius": 35.000000000177145,
+          "angle_est": 1.570796326793746,
+          "plane_normal": [
+            -0.22903933372352767,
+            0.9734171683340513,
+            -1.6677295516141993e-13
+          ],
+          "fit_rms": 1.391095979832296e-11,
+          "chord_len": 49.49747468327529,
+          "sagitta": 10.251262658507839,
+          "min_sagitta_used": 0.9899494936655059
+        },
+        "through_hole_score": 0.9999999999443562
+      }
+    },
+    "G231": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G232": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G233": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G234": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G235": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G236": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G237": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G238": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G239": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N7"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.14213562349908,
+          "max_angle_deg": 134.99999999897824,
+          "max_angle_rad": 2.356194490174512
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G240": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G241": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N5"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.14213562349908,
+          "max_angle_deg": 134.99999999897824,
+          "max_angle_rad": 2.356194490174512
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G242": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G243": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N72"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000017,
+            -2627.352941176427,
+            3290.0000000001696
+          ],
+          "radius": 35.00000000014787,
+          "angle_est": 1.5707963267951373,
+          "plane_normal": [
+            -0.22903933372335114,
+            0.9734171683340928,
+            2.4423735153889062e-14
+          ],
+          "fit_rms": 1.9508888911478676e-11,
+          "chord_len": 49.49747468327522,
+          "sagitta": 10.251262658507764,
+          "min_sagitta_used": 0.9899494936655044
+        },
+        "through_hole_score": 0.9999999999219644
+      }
+    },
+    "G244": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N70"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162797.48056732916,
+            -2616.6453523247737,
+            3290.0000000002055
+          ],
+          "radius": 35.000000000191754,
+          "angle_est": 1.5707963267930203,
+          "plane_normal": [
+            -0.2290393337237173,
+            0.9734171683340066,
+            3.150957467578495e-13
+          ],
+          "fit_rms": 1.4542669298874498e-11,
+          "chord_len": 49.49747468327529,
+          "sagitta": 10.251262658507764,
+          "min_sagitta_used": 0.9899494936655059
+        },
+        "through_hole_score": 0.9999999999418293
+      }
+    },
+    "G245": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G246": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N49",
+          "N96"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -734.0000000000193,
+            2000.0000000000002
+          ],
+          "radius": 35.000000000020336,
+          "angle_est": 1.5707963267939795,
+          "plane_normal": [
+            -0.0,
+            -5.660762824094457e-15,
+            -1.0
+          ],
+          "fit_rms": 6.067900914686209e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461714,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999757284
+      }
+    },
+    "G247": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G248": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N50",
+          "N98"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -734.0000000000193,
+            1989.0
+          ],
+          "radius": 35.000000000020336,
+          "angle_est": 1.5707963267939795,
+          "plane_normal": [
+            0.0,
+            2.915772083082489e-15,
+            1.0
+          ],
+          "fit_rms": 6.067900914686209e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461714,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999757284
+      }
+    },
+    "G249": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G250": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N49",
+          "N96"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -734.0000000000193,
+            2000.0000000000002
+          ],
+          "radius": 35.000000000020336,
+          "angle_est": 1.5707963267939795,
+          "plane_normal": [
+            -0.0,
+            -5.660762824094457e-15,
+            -1.0
+          ],
+          "fit_rms": 6.067900914686209e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461714,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999757284
+      }
+    },
+    "G251": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G252": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N95"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G253": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N51"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -6.750000000021085,
+            2000.0000000000007
+          ],
+          "radius": 34.99999999997989,
+          "angle_est": 1.5707963267957534,
+          "plane_normal": [
+            1.686568185718295e-14,
+            -1.2528541637438028e-14,
+            1.0
+          ],
+          "fit_rms": 8.022394602567357e-12,
+          "chord_len": 49.49747468305834,
+          "sagitta": 10.251262658492632,
+          "min_sagitta_used": 0.9899494936611669
+        },
+        "through_hole_score": 0.9999999999679104
+      }
+    },
+    "G254": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G255": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G256": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G257": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G258": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G259": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N52"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -6.750000000021085,
+            1988.9999999999995
+          ],
+          "radius": 34.99999999997989,
+          "angle_est": 1.5707963267957534,
+          "plane_normal": [
+            -8.097034515120825e-15,
+            1.2434174734865694e-14,
+            1.0
+          ],
+          "fit_rms": 8.022394602567357e-12,
+          "chord_len": 49.49747468305834,
+          "sagitta": 10.251262658492632,
+          "min_sagitta_used": 0.9899494936611669
+        },
+        "through_hole_score": 0.9999999999679104
+      }
+    },
+    "G260": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N97"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G261": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G262": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N50",
+          "N98"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -734.0000000000193,
+            1989.0
+          ],
+          "radius": 35.000000000020336,
+          "angle_est": 1.5707963267939795,
+          "plane_normal": [
+            0.0,
+            2.915772083082489e-15,
+            1.0
+          ],
+          "fit_rms": 6.067900914686209e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461714,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999757284
+      }
+    },
+    "G263": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G264": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N51"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -6.750000000021085,
+            2000.0000000000007
+          ],
+          "radius": 34.99999999997989,
+          "angle_est": 1.5707963267957534,
+          "plane_normal": [
+            1.686568185718295e-14,
+            -1.2528541637438028e-14,
+            1.0
+          ],
+          "fit_rms": 8.022394602567357e-12,
+          "chord_len": 49.49747468305834,
+          "sagitta": 10.251262658492632,
+          "min_sagitta_used": 0.9899494936611669
+        },
+        "through_hole_score": 0.9999999999679104
+      }
+    },
+    "G265": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N52"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.0,
+            -6.750000000021085,
+            1988.9999999999995
+          ],
+          "radius": 34.99999999997989,
+          "angle_est": 1.5707963267957534,
+          "plane_normal": [
+            -8.097034515120825e-15,
+            1.2434174734865694e-14,
+            1.0
+          ],
+          "fit_rms": 8.022394602567357e-12,
+          "chord_len": 49.49747468305834,
+          "sagitta": 10.251262658492632,
+          "min_sagitta_used": 0.9899494936611669
+        },
+        "through_hole_score": 0.9999999999679104
+      }
+    },
+    "G266": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N95"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G267": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G268": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N97"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G269": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G270": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G271": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G272": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G273": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G274": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N22"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.81363384056,
+            -1459.9984440410394,
+            1108.741494057592
+          ],
+          "radius": 34.99999999909877,
+          "angle_est": 1.5707963268353775,
+          "plane_normal": [
+            0.016942378169337958,
+            -0.7192365517775858,
+            0.6945586644834656
+          ],
+          "fit_rms": 2.4682770605397653e-11,
+          "chord_len": 49.49747468280097,
+          "sagitta": 10.251262658711816,
+          "min_sagitta_used": 0.9899494936560195
+        },
+        "through_hole_score": 0.9999999999012689
+      }
+    },
+    "G275": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N21"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.81363384056,
+            -1737.9504946109114,
+            820.9137199122582
+          ],
+          "radius": 34.999999999109356,
+          "angle_est": 1.5707963268350416,
+          "plane_normal": [
+            0.016942378169547037,
+            -0.7192365517782894,
+            0.694558664482732
+          ],
+          "fit_rms": 2.7376629472730782e-11,
+          "chord_len": 49.49747468280475,
+          "sagitta": 10.25126265871128,
+          "min_sagitta_used": 0.989949493656095
+        },
+        "through_hole_score": 0.9999999998904935
+      }
+    },
+    "G276": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G277": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N23"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999983,
+            -1745.86209668092,
+            828.5538652211361
+          ],
+          "radius": 34.99999999979703,
+          "angle_est": 1.5707963267958802,
+          "plane_normal": [
+            -0.016942378170016755,
+            0.7192365517781012,
+            -0.6945586644829155
+          ],
+          "fit_rms": 1.685900895839331e-11,
+          "chord_len": 49.497474682799925,
+          "sagitta": 10.251262658423181,
+          "min_sagitta_used": 0.9899494936559985
+        },
+        "through_hole_score": 0.9999999999325639
+      }
+    },
+    "G278": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N34"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623661881,
+          "max_angle_deg": 134.99999999946073,
+          "max_angle_rad": 2.356194490182933
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G279": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G280": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N24",
+          "N33"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999983,
+            -1467.9100461101805,
+            1116.381639367387
+          ],
+          "radius": 34.9999999997957,
+          "angle_est": 1.5707963267962288,
+          "plane_normal": [
+            -0.016942378170014233,
+            0.7192365517780487,
+            -0.6945586644829697
+          ],
+          "fit_rms": 1.1978134907577444e-11,
+          "chord_len": 49.49747468280097,
+          "sagitta": 10.251262658422743,
+          "min_sagitta_used": 0.9899494936560195
+        },
+        "through_hole_score": 0.9999999999520874
+      }
+    },
+    "G281": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N23"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999983,
+            -1745.86209668092,
+            828.5538652211361
+          ],
+          "radius": 34.99999999979703,
+          "angle_est": 1.5707963267958802,
+          "plane_normal": [
+            -0.016942378170016755,
+            0.7192365517781012,
+            -0.6945586644829155
+          ],
+          "fit_rms": 1.685900895839331e-11,
+          "chord_len": 49.497474682799925,
+          "sagitta": 10.251262658423181,
+          "min_sagitta_used": 0.9899494936559985
+        },
+        "through_hole_score": 0.9999999999325639
+      }
+    },
+    "G282": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G283": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N21"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.81363384056,
+            -1737.9504946109114,
+            820.9137199122582
+          ],
+          "radius": 34.999999999109356,
+          "angle_est": 1.5707963268350416,
+          "plane_normal": [
+            0.016942378169547037,
+            -0.7192365517782894,
+            0.694558664482732
+          ],
+          "fit_rms": 2.7376629472730782e-11,
+          "chord_len": 49.49747468280475,
+          "sagitta": 10.25126265871128,
+          "min_sagitta_used": 0.989949493656095
+        },
+        "through_hole_score": 0.9999999998904935
+      }
+    },
+    "G284": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G285": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G286": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G287": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G288": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G289": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N24",
+          "N33"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.99999999983,
+            -1467.9100461101805,
+            1116.381639367387
+          ],
+          "radius": 34.9999999997957,
+          "angle_est": 1.5707963267962288,
+          "plane_normal": [
+            -0.016942378170014233,
+            0.7192365517780487,
+            -0.6945586644829697
+          ],
+          "fit_rms": 1.1978134907577444e-11,
+          "chord_len": 49.49747468280097,
+          "sagitta": 10.251262658422743,
+          "min_sagitta_used": 0.9899494936560195
+        },
+        "through_hole_score": 0.9999999999520874
+      }
+    },
+    "G290": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G291": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N22"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162799.81363384056,
+            -1459.9984440410394,
+            1108.741494057592
+          ],
+          "radius": 34.99999999909877,
+          "angle_est": 1.5707963268353775,
+          "plane_normal": [
+            0.016942378169337958,
+            -0.7192365517775858,
+            0.6945586644834656
+          ],
+          "fit_rms": 2.4682770605397653e-11,
+          "chord_len": 49.49747468280097,
+          "sagitta": 10.251262658711816,
+          "min_sagitta_used": 0.9899494936560195
+        },
+        "through_hole_score": 0.9999999999012689
+      }
+    },
+    "G292": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G293": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G294": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G295": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G296": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N34"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623661881,
+          "max_angle_deg": 134.99999999946073,
+          "max_angle_rad": 2.356194490182933
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G297": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G298": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G299": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G300": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G301": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G302": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N30"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G303": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G304": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N29",
+          "N85"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.9999999999903,
+            1272.0
+          ],
+          "radius": 34.999999999988354,
+          "angle_est": 1.5707963267956673,
+          "plane_normal": [
+            -0.0,
+            1.6687177559338062e-15,
+            -1.0
+          ],
+          "fit_rms": 6.599400243812858e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461794,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999736024
+      }
+    },
+    "G305": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G306": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N31",
+          "N86"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.9999999999903,
+            1283.0
+          ],
+          "radius": 34.999999999988354,
+          "angle_est": 1.5707963267956673,
+          "plane_normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "fit_rms": 6.599400243812858e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461794,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999736024
+      }
+    },
+    "G307": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G308": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N32"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G309": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G310": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G311": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N29",
+          "N85"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.9999999999903,
+            1272.0
+          ],
+          "radius": 34.999999999988354,
+          "angle_est": 1.5707963267956673,
+          "plane_normal": [
+            -0.0,
+            1.6687177559338062e-15,
+            -1.0
+          ],
+          "fit_rms": 6.599400243812858e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461794,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999736024
+      }
+    },
+    "G312": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G313": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N31",
+          "N86"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.9999999999903,
+            1283.0
+          ],
+          "radius": 34.999999999988354,
+          "angle_est": 1.5707963267956673,
+          "plane_normal": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "fit_rms": 6.599400243812858e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461794,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999736024
+      }
+    },
+    "G314": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G315": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G316": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G317": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G318": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G319": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N30"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G320": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N32"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G321": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G322": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G323": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G324": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G325": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G326": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G327": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N87"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G328": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G329": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N57",
+          "N88"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.9999999999914,
+            816.0
+          ],
+          "radius": 34.99999999998832,
+          "angle_est": 1.5707963267956695,
+          "plane_normal": [
+            0.0,
+            -1.8500780899343114e-15,
+            1.0
+          ],
+          "fit_rms": 6.5733613809336684e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461794,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999737066
+      }
+    },
+    "G330": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G331": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N59",
+          "N90"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.9999999999914,
+            827.0
+          ],
+          "radius": 34.99999999998832,
+          "angle_est": 1.5707963267956695,
+          "plane_normal": [
+            -0.0,
+            1.6371642240983876e-15,
+            -1.0
+          ],
+          "fit_rms": 6.5733613809336684e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461794,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999737066
+      }
+    },
+    "G332": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G333": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N89"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G334": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G335": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G336": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G337": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G338": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G339": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G340": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N59",
+          "N90"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.9999999999914,
+            827.0
+          ],
+          "radius": 34.99999999998832,
+          "angle_est": 1.5707963267956695,
+          "plane_normal": [
+            -0.0,
+            1.6371642240983876e-15,
+            -1.0
+          ],
+          "fit_rms": 6.5733613809336684e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461794,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999737066
+      }
+    },
+    "G341": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G342": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N57",
+          "N88"
+        ],
+        "through_hole_geom": {
+          "type": "bspline_circle_fit",
+          "center": [
+            162800.00000000003,
+            -733.9999999999914,
+            816.0
+          ],
+          "radius": 34.99999999998832,
+          "angle_est": 1.5707963267956695,
+          "plane_normal": [
+            0.0,
+            -1.8500780899343114e-15,
+            1.0
+          ],
+          "fit_rms": 6.5733613809336684e-12,
+          "chord_len": 49.49747468305833,
+          "sagitta": 10.251262658461794,
+          "min_sagitta_used": 0.9899494936611666
+        },
+        "through_hole_score": 0.9999999999737066
+      }
+    },
+    "G343": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G344": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G345": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G346": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G347": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N89"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G348": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G349": {
+      "process": {
+        "through_hole_candidate": true,
+        "through_hole_attached_nodes": [
+          "N87"
+        ],
+        "through_hole_geom": {
+          "type": "chamfer",
+          "length": 14.142135623730955,
+          "max_angle_deg": 135.0,
+          "max_angle_rad": 2.356194490192345
+        },
+        "through_hole_score": 0.7
+      }
+    },
+    "G350": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G351": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    },
+    "G352": {
+      "process": {
+        "through_hole_candidate": false,
+        "through_hole_attached_nodes": [],
+        "through_hole_geom": {},
+        "through_hole_score": 0.0
+      }
+    }
+  }
+}
