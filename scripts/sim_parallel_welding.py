@@ -54,6 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fps", type=int, default=30, help="Recording frame rate.")
     parser.add_argument("--width", type=int, default=1280, help="Recording width.")
     parser.add_argument("--height", type=int, default=720, help="Recording height.")
+    parser.add_argument("--rt-subframes", type=int, default=8, help="Replicator render subframes per captured frame.")
     parser.add_argument(
         "--camera-eye",
         type=float,
@@ -113,9 +114,15 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
             f"Inspect frames in: {frames_dir}"
         )
 
-    frame_candidates = sorted(frames_dir.glob("*.png"))
+    frame_candidates = sorted(frames_dir.glob("*.png")) or sorted(frames_dir.glob("**/*.png"))
     if not frame_candidates:
         raise RuntimeError(f"No PNG frames were written in: {frames_dir}")
+
+    if not sorted(frames_dir.glob("*.png")):
+        raise RuntimeError(
+            "PNG frames were written in nested Replicator directories, but MP4 encoding expects them directly under "
+            f"{frames_dir}. Inspect nested files or set --frames-dir to a clean directory and rerun."
+        )
 
     command = [
         ffmpeg,
@@ -397,6 +404,16 @@ def add_recording_camera(rep: Any, jobs: list[dict[str, Any]], args: argparse.Na
     return rep.create.render_product(camera, resolution=(args.width, args.height))
 
 
+def step_replicator(rep: Any, args: argparse.Namespace) -> None:
+    try:
+        rep.orchestrator.step(rt_subframes=args.rt_subframes, delta_time=1.0 / args.fps)
+    except TypeError:
+        try:
+            rep.orchestrator.step(rt_subframes=args.rt_subframes)
+        except TypeError:
+            rep.orchestrator.step()
+
+
 def main() -> None:
     args = parse_args()
     jobs = load_manifest(args.manifest, args.max_jobs)
@@ -456,6 +473,10 @@ def main() -> None:
 
         writer = None
         if args.record:
+            try:
+                rep.orchestrator.set_capture_on_play(False)
+            except Exception:
+                pass
             render_product = add_recording_camera(rep, jobs, args)
             writer = rep.WriterRegistry.get("BasicWriter")
             writer.initialize(output_dir=str(frames_dir), rgb=True)
@@ -470,7 +491,7 @@ def main() -> None:
         while simulation_app.is_running() and (args.num_steps < 0 or step_count < args.num_steps):
             world.step(render=True)
             if args.record:
-                rep.orchestrator.step()
+                step_replicator(rep, args)
             step_count += 1
             if args.record and step_count % max(args.fps, 1) == 0:
                 print(f"[weldRobot] Recorded {step_count} frames")
@@ -479,6 +500,8 @@ def main() -> None:
         if args.record and writer is not None:
             rep.orchestrator.wait_until_complete()
             writer.detach()
+            png_count = len(list(frames_dir.glob("*.png"))) + len(list(frames_dir.glob("**/*.png")))
+            print(f"[weldRobot] PNG files written under {frames_dir}: {png_count}")
 
     finally:
         simulation_app.close()
