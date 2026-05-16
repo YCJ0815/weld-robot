@@ -286,16 +286,26 @@ def load_stl_mesh(stl_path: Path) -> tuple[list[tuple[float, float, float]], lis
     return parse_binary_stl(data)
 
 
-def add_debug_cube(stage: Any, prim_path: str, center: tuple[float, float, float], size: tuple[float, float, float]) -> None:
+def add_debug_axes(stage: Any, prim_path: str, center: tuple[float, float, float], size: tuple[float, float, float]) -> None:
     from pxr import Gf, UsdGeom
 
-    cube = UsdGeom.Cube.Define(stage, prim_path)
-    cube.CreateSizeAttr(1.0)
-    cube.CreateDisplayColorAttr([Gf.Vec3f(1.0, 0.05, 0.02)])
-    xformable = UsdGeom.Xformable(cube.GetPrim())
-    xformable.ClearXformOpOrder()
-    xformable.AddTranslateOp().Set(Gf.Vec3d(*center))
-    xformable.AddScaleOp().Set(Gf.Vec3f(max(size[0], 0.01), max(size[1], 0.01), max(size[2], 0.01)))
+    axis_length = max(max(size), 0.05) * 0.6
+    thickness = max(axis_length * 0.03, 0.005)
+    axes = (
+        ("X", Gf.Vec3f(1.0, 0.05, 0.02), (axis_length, thickness, thickness), (axis_length / 2, 0.0, 0.0)),
+        ("Y", Gf.Vec3f(0.05, 0.8, 0.05), (thickness, axis_length, thickness), (0.0, axis_length / 2, 0.0)),
+        ("Z", Gf.Vec3f(0.05, 0.2, 1.0), (thickness, thickness, axis_length), (0.0, 0.0, axis_length / 2)),
+    )
+    for axis_name, color, scale, offset in axes:
+        cube = UsdGeom.Cube.Define(stage, f"{prim_path}_{axis_name}")
+        cube.CreateSizeAttr(1.0)
+        cube.CreateDisplayColorAttr([color])
+        xformable = UsdGeom.Xformable(cube.GetPrim())
+        xformable.ClearXformOpOrder()
+        xformable.AddTranslateOp().Set(
+            Gf.Vec3d(center[0] + offset[0], center[1] + offset[1], center[2] + offset[2])
+        )
+        xformable.AddScaleOp().Set(Gf.Vec3f(*scale))
 
 
 def import_stl_as_mesh(
@@ -342,7 +352,7 @@ def import_stl_as_mesh(
 
     if debug_box:
         center = tuple(local_offset[axis] + (min_point[axis] + max_point[axis]) / 2.0 for axis in range(3))
-        add_debug_cube(stage, f"{prim_path}_DebugBox", center, size)
+        add_debug_axes(stage, f"{prim_path}_DebugAxes", center, size)
 
     log(
         f"[weldRobot] STL bounds for {stl_path.name}: "
