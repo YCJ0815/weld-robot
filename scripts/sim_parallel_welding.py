@@ -248,11 +248,22 @@ def import_stl_as_mesh(stage: Any, stl_path: Path, prim_path: str, scale: float)
     from pxr import Gf, UsdGeom
 
     points, face_counts, face_indices = load_stl_mesh(stl_path)
+    scaled_points = [tuple(coord * scale for coord in point) for point in points]
+    min_point = tuple(min(point[axis] for point in scaled_points) for axis in range(3))
+    max_point = tuple(max(point[axis] for point in scaled_points) for axis in range(3))
+    size = tuple(max_point[axis] - min_point[axis] for axis in range(3))
+
     mesh = UsdGeom.Mesh.Define(stage, prim_path)
-    mesh.CreatePointsAttr([Gf.Vec3f(*(coord * scale for coord in point)) for point in points])
+    mesh.CreatePointsAttr([Gf.Vec3f(*point) for point in scaled_points])
     mesh.CreateFaceVertexCountsAttr(face_counts)
     mesh.CreateFaceVertexIndicesAttr(face_indices)
     mesh.CreateSubdivisionSchemeAttr("none")
+    mesh.CreateExtentAttr([Gf.Vec3f(*min_point), Gf.Vec3f(*max_point)])
+    mesh.CreateDisplayColorAttr([Gf.Vec3f(0.78, 0.62, 0.38)])
+    print(
+        f"[weldRobot] STL bounds for {stl_path.name}: "
+        f"min={min_point}, max={max_point}, size_m={size}, scale={scale}"
+    )
     return prim_path
 
 
