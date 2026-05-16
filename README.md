@@ -31,6 +31,55 @@ This repository serves as a template for building projects or extensions based o
 
 **Keywords:** extension, template, isaaclab
 
+## Parallel welding scene
+
+Generate workpiece/path jobs:
+
+```bash
+python data_generation/src/main.py --count 4 --jobs-dir data_generation/data/generated_jobs --spacing 2.0
+```
+
+Import the generated STL workpieces and spawn one UR5e welding arm per job:
+
+```bash
+python scripts/sim_parallel_welding.py \
+  --manifest data_generation/data/generated_jobs/manifest.json
+```
+
+For server/headless runs:
+
+```bash
+python scripts/sim_parallel_welding.py \
+  --manifest data_generation/data/generated_jobs/manifest.json \
+  --headless
+```
+
+Record a headless MP4 for inspection:
+
+```bash
+python scripts/sim_parallel_welding.py \
+  --manifest data_generation/data/generated_jobs/manifest.json \
+  --headless \
+  --record \
+  --num-steps 180 \
+  --fps 30 \
+  --output outputs/parallel_welding_scene.mp4 \
+  --overwrite
+```
+
+Keep the intermediate PNG frames:
+
+```bash
+python scripts/sim_parallel_welding.py \
+  --manifest data_generation/data/generated_jobs/manifest.json \
+  --headless \
+  --record \
+  --num-steps 1 \
+  --keep-frames \
+  --output outputs/parallel_welding_snapshot.mp4 \
+  --overwrite
+```
+
 ## Installation
 
 - Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html). We recommend using the conda installation as it simplifies calling Python scripts from the terminal.

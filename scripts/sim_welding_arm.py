@@ -133,7 +133,7 @@ def import_robot_from_urdf(urdf_path: Path, prim_path: str, fix_base: bool) -> s
         if not success:
             raise RuntimeError(f"Isaac Sim failed to parse URDF: {urdf_path}")
 
-    imported_prim_path = urdf_interface.import_robot(root_path, file_name, parsed_robot, import_config, "")
+    imported_prim_path = urdf_interface.import_robot(root_path, file_name, parsed_robot, import_config, prim_path)
     if isinstance(imported_prim_path, tuple):
         imported_prim_path = imported_prim_path[-1]
     if not imported_prim_path:
@@ -147,7 +147,8 @@ def set_initial_joint_positions(robot_prim_path: str) -> None:
     except ImportError:
         from omni.isaac.core.articulations import Articulation as SingleArticulation
 
-    robot = SingleArticulation(prim_path=robot_prim_path, name="ur5e_pen")
+    articulation_name = "ur5e_pen_" + robot_prim_path.strip("/").replace("/", "_")
+    robot = SingleArticulation(prim_path=robot_prim_path, name=articulation_name)
     robot.initialize()
 
     joint_names = list(robot.dof_names)

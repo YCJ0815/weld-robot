@@ -1,0 +1,28 @@
+{
+  "schema": "weld_robot.simulation_jobs.v1",
+  "description": "Generated workpiece/path jobs for Isaac Sim parallel welding simulation.",
+  "path_resolution": "relative_to_manifest_directory",
+  "jobs_dir": ".",
+  "job_count": 1,
+  "default_frame": "workpiece",
+  "default_units": "mm",
+  "jobs": [
+    {
+      "id": "job_000",
+      "source_stem": "random_plate_0",
+      "workpiece_asset": "job_000/workpiece.stl",
+      "path_json": "job_000/path.json",
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_000/workpiece.step",
+      "stl_asset": "job_000/workpiece.stl",
+      "vector_json": "job_000/weld_vectors.json",
+      "raw_topology_json": "job_000/raw_weld_topology.json"
+    }
+  ]
+}
