@@ -88,6 +88,14 @@ def parse_args() -> argparse.Namespace:
         default=0.0025,
         help="Additional Z offset applied to imported STL vertices after scaling.",
     )
+    parser.add_argument(
+        "--workpiece-offset",
+        type=float,
+        nargs=3,
+        default=[0.45, 0.0, 0.0],
+        metavar=("X", "Y", "Z"),
+        help="Local workpiece offset relative to each robot/env origin, in meters. Manifest workpiece_offset overrides this when present.",
+    )
     parser.add_argument("--debug-workpiece-box", action="store_true", help="Add a red debug cube at each workpiece center.")
     return parser.parse_args()
 
@@ -296,6 +304,7 @@ def import_stl_as_mesh(
     prim_path: str,
     scale: float,
     z_offset: float,
+    local_offset: tuple[float, float, float],
     debug_box: bool,
 ) -> str:
     from pxr import Gf, Sdf, UsdGeom, UsdShade
@@ -317,6 +326,9 @@ def import_stl_as_mesh(
     mesh.CreateExtentAttr([Gf.Vec3f(*min_point), Gf.Vec3f(*max_point)])
     mesh.CreateDoubleSidedAttr(True)
     mesh.CreateDisplayColorAttr([Gf.Vec3f(0.78, 0.62, 0.38)])
+    xformable = UsdGeom.Xformable(mesh.GetPrim())
+    xformable.ClearXformOpOrder()
+    xformable.AddTranslateOp().Set(Gf.Vec3d(*local_offset))
 
     material_path = f"{prim_path}_Material"
     material = UsdShade.Material.Define(stage, material_path)
@@ -329,14 +341,22 @@ def import_stl_as_mesh(
     UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
 
     if debug_box:
-        center = tuple((min_point[axis] + max_point[axis]) / 2.0 for axis in range(3))
+        center = tuple(local_offset[axis] + (min_point[axis] + max_point[axis]) / 2.0 for axis in range(3))
         add_debug_cube(stage, f"{prim_path}_DebugBox", center, size)
 
     log(
         f"[weldRobot] STL bounds for {stl_path.name}: "
-        f"min={min_point}, max={max_point}, size_m={size}, scale={scale}, z_offset={z_offset}"
+        f"local_min={min_point}, local_max={max_point}, size_m={size}, "
+        f"scale={scale}, z_offset={z_offset}, local_offset={local_offset}"
     )
     return prim_path
+
+
+def workpiece_local_offset(job: dict[str, Any], default_offset: list[float]) -> tuple[float, float, float]:
+    offset = job.get("workpiece_offset", default_offset)
+    if not (isinstance(offset, list) and len(offset) == 3):
+        raise RuntimeError(f"Invalid workpiece_offset for {job['id']}: {offset!r}")
+    return (float(offset[0]), float(offset[1]), float(offset[2]))
 
 
 def spawn_job(
@@ -347,6 +367,7 @@ def spawn_job(
     fix_base: bool,
     workpiece_scale: float,
     workpiece_z_offset: float,
+    default_workpiece_offset: list[float],
     debug_workpiece_box: bool,
 ):
     env_path = f"/World/envs/env_{index:03d}"
@@ -362,12 +383,14 @@ def spawn_job(
     set_xform_translation(env_prim, origin_tuple)
 
     robot_prim_path = import_robot_from_urdf(resolved_urdf, robot_path, fix_base=fix_base)
+    local_offset = workpiece_local_offset(job, default_workpiece_offset)
     workpiece_prim_path = import_stl_as_mesh(
         stage,
         stl_path=job["workpiece_asset_path"],
         prim_path=workpiece_path,
         scale=workpiece_scale,
         z_offset=workpiece_z_offset,
+        local_offset=local_offset,
         debug_box=debug_workpiece_box,
     )
     return {
@@ -375,6 +398,7 @@ def spawn_job(
         "env_path": env_path,
         "robot_prim_path": robot_prim_path,
         "workpiece_prim_path": workpiece_prim_path,
+        "workpiece_offset": local_offset,
         "path_json": str(job["path_json_path"]),
     }
 
@@ -463,6 +487,7 @@ def main() -> None:
                 fix_base=not args.floating,
                 workpiece_scale=args.workpiece_scale,
                 workpiece_z_offset=args.workpiece_z_offset,
+                default_workpiece_offset=args.workpiece_offset,
                 debug_workpiece_box=args.debug_workpiece_box,
             )
             spawned.append(spawned_job)
@@ -470,6 +495,7 @@ def main() -> None:
                 f"[weldRobot] {spawned_job['id']}: "
                 f"robot={spawned_job['robot_prim_path']} "
                 f"workpiece={spawned_job['workpiece_prim_path']} "
+                f"workpiece_offset={spawned_job['workpiece_offset']} "
                 f"path={spawned_job['path_json']}"
             )
 

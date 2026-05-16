@@ -630,6 +630,7 @@ def build_simulation_jobs(
             "workpiece_asset": relative_to_directory(workpiece_asset, jobs_dir),
             "path_json": relative_to_directory(path_json, jobs_dir),
             "origin": [float(index) * float(spacing), 0.0, 0.0],
+            "workpiece_offset": [0.45, 0.0, 0.0],
             "frame": "workpiece",
             "units": "mm",
         }

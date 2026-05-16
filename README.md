@@ -46,6 +46,16 @@ python scripts/sim_parallel_welding.py \
   --manifest data_generation/data/generated_jobs/manifest.json
 ```
 
+Move only the workpiece relative to the robot/env origin:
+
+```bash
+python scripts/sim_parallel_welding.py \
+  --manifest data_generation/data/generated_jobs/manifest.json \
+  --workpiece-offset 0.45 0.0 0.0
+```
+
+`origin` in the manifest moves the whole robot-workpiece cell. `workpiece_offset` moves only the STL workpiece inside that cell, in meters.
+
 For server/headless runs:
 
 ```bash
