@@ -298,7 +298,7 @@ def import_stl_as_mesh(
     z_offset: float,
     debug_box: bool,
 ) -> str:
-    from pxr import Gf, UsdGeom, UsdShade
+    from pxr import Gf, Sdf, UsdGeom, UsdShade
 
     points, face_counts, face_indices = load_stl_mesh(stl_path)
     scaled_points = [
@@ -322,9 +322,9 @@ def import_stl_as_mesh(
     material = UsdShade.Material.Define(stage, material_path)
     shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
     shader.CreateIdAttr("UsdPreviewSurface")
-    shader.CreateInput("diffuseColor", "color3f").Set(Gf.Vec3f(0.78, 0.62, 0.38))
-    shader.CreateInput("roughness", "float").Set(0.55)
-    shader.CreateInput("metallic", "float").Set(0.0)
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.78, 0.62, 0.38))
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.55)
+    shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
 
