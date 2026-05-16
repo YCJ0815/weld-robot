@@ -76,6 +76,13 @@ def parse_args() -> argparse.Namespace:
         default=0.001,
         help="Scale applied to STL vertices. Generated data is in mm; Isaac Sim scene is in m.",
     )
+    parser.add_argument(
+        "--workpiece-z-offset",
+        type=float,
+        default=0.0025,
+        help="Additional Z offset applied to imported STL vertices after scaling.",
+    )
+    parser.add_argument("--debug-workpiece-box", action="store_true", help="Add a red debug cube at each workpiece center.")
     return parser.parse_args()
 
 
@@ -193,6 +200,19 @@ def set_xform_translation(prim: Any, translation: tuple[float, float, float]) ->
     xformable.AddTranslateOp().Set(Gf.Vec3d(*translation))
 
 
+def add_scene_lighting(stage: Any) -> None:
+    from pxr import Gf, UsdLux
+
+    dome = UsdLux.DomeLight.Define(stage, "/World/Lights/Dome")
+    dome.CreateIntensityAttr(450.0)
+    dome.CreateColorAttr(Gf.Vec3f(1.0, 1.0, 1.0))
+
+    distant = UsdLux.DistantLight.Define(stage, "/World/Lights/Key")
+    distant.CreateIntensityAttr(2500.0)
+    distant.CreateAngleAttr(0.35)
+    distant.CreateColorAttr(Gf.Vec3f(1.0, 0.96, 0.9))
+
+
 def parse_binary_stl(data: bytes) -> tuple[list[tuple[float, float, float]], list[int], list[int]]:
     if len(data) < 84:
         raise RuntimeError("Binary STL is too small.")
@@ -244,11 +264,33 @@ def load_stl_mesh(stl_path: Path) -> tuple[list[tuple[float, float, float]], lis
     return parse_binary_stl(data)
 
 
-def import_stl_as_mesh(stage: Any, stl_path: Path, prim_path: str, scale: float) -> str:
+def add_debug_cube(stage: Any, prim_path: str, center: tuple[float, float, float], size: tuple[float, float, float]) -> None:
     from pxr import Gf, UsdGeom
 
+    cube = UsdGeom.Cube.Define(stage, prim_path)
+    cube.CreateSizeAttr(1.0)
+    cube.CreateDisplayColorAttr([Gf.Vec3f(1.0, 0.05, 0.02)])
+    xformable = UsdGeom.Xformable(cube.GetPrim())
+    xformable.ClearXformOpOrder()
+    xformable.AddTranslateOp().Set(Gf.Vec3d(*center))
+    xformable.AddScaleOp().Set(Gf.Vec3f(max(size[0], 0.01), max(size[1], 0.01), max(size[2], 0.01)))
+
+
+def import_stl_as_mesh(
+    stage: Any,
+    stl_path: Path,
+    prim_path: str,
+    scale: float,
+    z_offset: float,
+    debug_box: bool,
+) -> str:
+    from pxr import Gf, UsdGeom, UsdShade
+
     points, face_counts, face_indices = load_stl_mesh(stl_path)
-    scaled_points = [tuple(coord * scale for coord in point) for point in points]
+    scaled_points = [
+        (point[0] * scale, point[1] * scale, point[2] * scale + z_offset)
+        for point in points
+    ]
     min_point = tuple(min(point[axis] for point in scaled_points) for axis in range(3))
     max_point = tuple(max(point[axis] for point in scaled_points) for axis in range(3))
     size = tuple(max_point[axis] - min_point[axis] for axis in range(3))
@@ -259,15 +301,40 @@ def import_stl_as_mesh(stage: Any, stl_path: Path, prim_path: str, scale: float)
     mesh.CreateFaceVertexIndicesAttr(face_indices)
     mesh.CreateSubdivisionSchemeAttr("none")
     mesh.CreateExtentAttr([Gf.Vec3f(*min_point), Gf.Vec3f(*max_point)])
+    mesh.CreateDoubleSidedAttr(True)
     mesh.CreateDisplayColorAttr([Gf.Vec3f(0.78, 0.62, 0.38)])
+
+    material_path = f"{prim_path}_Material"
+    material = UsdShade.Material.Define(stage, material_path)
+    shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
+    shader.CreateIdAttr("UsdPreviewSurface")
+    shader.CreateInput("diffuseColor", "color3f").Set(Gf.Vec3f(0.78, 0.62, 0.38))
+    shader.CreateInput("roughness", "float").Set(0.55)
+    shader.CreateInput("metallic", "float").Set(0.0)
+    material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
+    UsdShade.MaterialBindingAPI(mesh).Bind(material)
+
+    if debug_box:
+        center = tuple((min_point[axis] + max_point[axis]) / 2.0 for axis in range(3))
+        add_debug_cube(stage, f"{prim_path}_DebugBox", center, size)
+
     print(
         f"[weldRobot] STL bounds for {stl_path.name}: "
-        f"min={min_point}, max={max_point}, size_m={size}, scale={scale}"
+        f"min={min_point}, max={max_point}, size_m={size}, scale={scale}, z_offset={z_offset}"
     )
     return prim_path
 
 
-def spawn_job(stage: Any, job: dict[str, Any], index: int, resolved_urdf: Path, fix_base: bool, workpiece_scale: float):
+def spawn_job(
+    stage: Any,
+    job: dict[str, Any],
+    index: int,
+    resolved_urdf: Path,
+    fix_base: bool,
+    workpiece_scale: float,
+    workpiece_z_offset: float,
+    debug_workpiece_box: bool,
+):
     env_path = f"/World/envs/env_{index:03d}"
     robot_path = f"{env_path}/Robot"
     workpiece_path = f"{env_path}/Workpiece"
@@ -286,6 +353,8 @@ def spawn_job(stage: Any, job: dict[str, Any], index: int, resolved_urdf: Path, 
         stl_path=job["workpiece_asset_path"],
         prim_path=workpiece_path,
         scale=workpiece_scale,
+        z_offset=workpiece_z_offset,
+        debug_box=debug_workpiece_box,
     )
     return {
         "id": job["id"],
@@ -323,6 +392,7 @@ def add_recording_camera(rep: Any, jobs: list[dict[str, Any]], args: argparse.Na
         look_at=target,
         focal_length=28.0,
         focus_distance=5.0,
+        clipping_range=(0.01, 1000.0),
     )
     return rep.create.render_product(camera, resolution=(args.width, args.height))
 
@@ -354,6 +424,7 @@ def main() -> None:
         world.scene.add_default_ground_plane()
         stage = get_context().get_stage()
         ensure_xform(stage, "/World/envs")
+        add_scene_lighting(stage)
 
         resolved_urdf = make_resolved_urdf(args.urdf)
         spawned = []
@@ -365,6 +436,8 @@ def main() -> None:
                 resolved_urdf=resolved_urdf,
                 fix_base=not args.floating,
                 workpiece_scale=args.workpiece_scale,
+                workpiece_z_offset=args.workpiece_z_offset,
+                debug_workpiece_box=args.debug_workpiece_box,
             )
             spawned.append(spawned_job)
             print(
