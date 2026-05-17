@@ -566,6 +566,7 @@ def select_hole_side_normals(
         return []
 
     selected: list[dict[str, Any]] = []
+    selected_keys: set[tuple[float, float, float]] = set()
 
     def nearest_item_from_normals(sid: int) -> dict[str, Any] | None:
         candidates = [item for item in normals if int(item.get("solid_id", -1)) == int(sid)]
