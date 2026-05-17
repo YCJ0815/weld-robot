@@ -226,8 +226,6 @@ def set_xform_identity(prim: Any) -> None:
     xformable = UsdGeom.Xformable(prim)
     xformable.ClearXformOpOrder()
     xformable.AddTranslateOp().Set(Gf.Vec3d(0.0, 0.0, 0.0))
-    xformable.AddOrientOp().Set(Gf.Quatf(1.0, 0.0, 0.0, 0.0))
-    xformable.AddScaleOp().Set(Gf.Vec3f(1.0, 1.0, 1.0))
 
 
 def move_prim_to_path(stage: Any, source_path: str, target_path: str) -> str:
