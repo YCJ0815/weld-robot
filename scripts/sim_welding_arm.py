@@ -168,7 +168,7 @@ def set_initial_joint_positions(robot_prim_path: str) -> None:
         pass
     print(
         f"[weldRobot] Initialized joints for {robot_prim_path}: "
-        f"dofs={len(joint_names)}, missing={missing_joints}",
+        f"dofs={len(joint_names)}, missing={missing_joints}, positions={joint_positions.tolist()}",
         flush=True,
     )
 

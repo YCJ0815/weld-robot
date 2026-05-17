@@ -220,6 +220,16 @@ def set_xform_translation(prim: Any, translation: tuple[float, float, float]) ->
     xformable.AddTranslateOp().Set(Gf.Vec3d(*translation))
 
 
+def set_xform_identity(prim: Any) -> None:
+    from pxr import Gf, UsdGeom
+
+    xformable = UsdGeom.Xformable(prim)
+    xformable.ClearXformOpOrder()
+    xformable.AddTranslateOp().Set(Gf.Vec3d(0.0, 0.0, 0.0))
+    xformable.AddOrientOp().Set(Gf.Quatf(1.0, 0.0, 0.0, 0.0))
+    xformable.AddScaleOp().Set(Gf.Vec3f(1.0, 1.0, 1.0))
+
+
 def move_prim_to_path(stage: Any, source_path: str, target_path: str) -> str:
     """Move an imported prim to the requested target path.
 
@@ -260,6 +270,7 @@ def move_prim_to_path(stage: Any, source_path: str, target_path: str) -> str:
 
     if not stage.GetPrimAtPath(target_path).IsValid():
         raise RuntimeError(f"Imported prim was not moved to expected path: {target_path}")
+    set_xform_identity(stage.GetPrimAtPath(target_path))
     return target_path
 
 
@@ -452,6 +463,7 @@ def spawn_job(
     return {
         "id": job["id"],
         "env_path": env_path,
+        "origin": origin_tuple,
         "robot_prim_path": robot_prim_path,
         "workpiece_prim_path": workpiece_prim_path,
         "workpiece_offset": local_offset,
@@ -549,6 +561,7 @@ def main() -> None:
             spawned.append(spawned_job)
             log(
                 f"[weldRobot] {spawned_job['id']}: "
+                f"origin={spawned_job['origin']} "
                 f"robot={spawned_job['robot_prim_path']} "
                 f"workpiece={spawned_job['workpiece_prim_path']} "
                 f"workpiece_offset={spawned_job['workpiece_offset']} "
