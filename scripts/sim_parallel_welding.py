@@ -230,8 +230,6 @@ def move_prim_to_path(stage: Any, source_path: str, target_path: str) -> str:
     if source_path == target_path:
         return target_path
 
-    from pxr import Sdf
-
     source_prim = stage.GetPrimAtPath(source_path)
     if not source_prim.IsValid():
         raise RuntimeError(f"Cannot move missing imported prim: {source_path}")
@@ -243,11 +241,25 @@ def move_prim_to_path(stage: Any, source_path: str, target_path: str) -> str:
     if stage.GetPrimAtPath(target_path).IsValid():
         stage.RemovePrim(target_path)
 
-    root_layer = stage.GetRootLayer()
-    copied = Sdf.CopySpec(root_layer, source_path, root_layer, target_path)
-    if not copied:
-        raise RuntimeError(f"Failed to move imported prim from {source_path} to {target_path}")
-    stage.RemovePrim(source_path)
+    try:
+        import omni.kit.commands
+
+        moved = omni.kit.commands.execute("MovePrim", path_from=source_path, path_to=target_path)
+        if isinstance(moved, tuple):
+            moved = moved[0]
+        if moved is False:
+            raise RuntimeError("MovePrim command returned False")
+    except Exception:
+        from pxr import Sdf
+
+        root_layer = stage.GetRootLayer()
+        copied = Sdf.CopySpec(root_layer, source_path, root_layer, target_path)
+        if not copied:
+            raise RuntimeError(f"Failed to move imported prim from {source_path} to {target_path}")
+        stage.RemovePrim(source_path)
+
+    if not stage.GetPrimAtPath(target_path).IsValid():
+        raise RuntimeError(f"Imported prim was not moved to expected path: {target_path}")
     return target_path
 
 
@@ -544,6 +556,9 @@ def main() -> None:
             )
 
         world.reset()
+        for spawned_job in spawned:
+            set_initial_joint_positions(spawned_job["robot_prim_path"])
+        world.step(render=False)
         for spawned_job in spawned:
             set_initial_joint_positions(spawned_job["robot_prim_path"])
 

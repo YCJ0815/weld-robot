@@ -153,10 +153,24 @@ def set_initial_joint_positions(robot_prim_path: str) -> None:
 
     joint_names = list(robot.dof_names)
     joint_positions = robot.get_joint_positions()
+    missing_joints = []
     for joint_name, target_pos in DEFAULT_INITIAL_JOINT_POS.items():
         if joint_name in joint_names:
             joint_positions[joint_names.index(joint_name)] = target_pos
+        else:
+            missing_joints.append(joint_name)
     robot.set_joint_positions(joint_positions)
+    try:
+        joint_velocities = robot.get_joint_velocities()
+        joint_velocities[:] = 0.0
+        robot.set_joint_velocities(joint_velocities)
+    except Exception:
+        pass
+    print(
+        f"[weldRobot] Initialized joints for {robot_prim_path}: "
+        f"dofs={len(joint_names)}, missing={missing_joints}",
+        flush=True,
+    )
 
 
 def add_camera_view() -> None:
