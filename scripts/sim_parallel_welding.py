@@ -220,6 +220,37 @@ def set_xform_translation(prim: Any, translation: tuple[float, float, float]) ->
     xformable.AddTranslateOp().Set(Gf.Vec3d(*translation))
 
 
+def move_prim_to_path(stage: Any, source_path: str, target_path: str) -> str:
+    """Move an imported prim to the requested target path.
+
+    Some Isaac Sim URDF importer versions ignore the requested destination and
+    import the robot at ``/<robot_name>``.  We normalize the result here so each
+    job owns a robot under its own env namespace.
+    """
+    if source_path == target_path:
+        return target_path
+
+    from pxr import Sdf
+
+    source_prim = stage.GetPrimAtPath(source_path)
+    if not source_prim.IsValid():
+        raise RuntimeError(f"Cannot move missing imported prim: {source_path}")
+
+    target_parent = str(Path(target_path).parent).replace("\\", "/")
+    if target_parent != ".":
+        ensure_xform(stage, target_parent)
+
+    if stage.GetPrimAtPath(target_path).IsValid():
+        stage.RemovePrim(target_path)
+
+    root_layer = stage.GetRootLayer()
+    copied = Sdf.CopySpec(root_layer, source_path, root_layer, target_path)
+    if not copied:
+        raise RuntimeError(f"Failed to move imported prim from {source_path} to {target_path}")
+    stage.RemovePrim(source_path)
+    return target_path
+
+
 def add_scene_lighting(stage: Any) -> None:
     from pxr import Gf, UsdLux
 
@@ -392,7 +423,10 @@ def spawn_job(
     env_prim = ensure_xform(stage, env_path)
     set_xform_translation(env_prim, origin_tuple)
 
-    robot_prim_path = import_robot_from_urdf(resolved_urdf, robot_path, fix_base=fix_base)
+    imported_robot_path = import_robot_from_urdf(resolved_urdf, robot_path, fix_base=fix_base)
+    if not stage.GetPrimAtPath(imported_robot_path).IsValid() and stage.GetPrimAtPath("/ur5e_pen").IsValid():
+        imported_robot_path = "/ur5e_pen"
+    robot_prim_path = move_prim_to_path(stage, imported_robot_path, robot_path)
     local_offset = workpiece_local_offset(job, default_workpiece_offset)
     workpiece_prim_path = import_stl_as_mesh(
         stage,
