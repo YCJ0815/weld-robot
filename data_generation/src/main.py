@@ -597,6 +597,8 @@ def build_simulation_jobs(
     jobs_dir: Path,
     manifest_name: str,
     spacing: float,
+    layout: str,
+    grid_cols: int,
 ) -> Path:
     jobs_dir.mkdir(parents=True, exist_ok=True)
     jobs: list[dict[str, Any]] = []
@@ -624,12 +626,23 @@ def build_simulation_jobs(
         if path_json is None:
             raise RuntimeError(f"No path JSON was produced for {job_id}: {sequence_output}")
 
+        if layout == "line":
+            origin = [float(index) * float(spacing), 0.0, 0.0]
+        elif layout == "grid":
+            if grid_cols <= 0:
+                raise RuntimeError("--grid-cols must be greater than 0 for grid layout.")
+            row = index // grid_cols
+            col = index % grid_cols
+            origin = [float(col) * float(spacing), float(row) * float(spacing), 0.0]
+        else:
+            raise RuntimeError(f"Unsupported layout: {layout}")
+
         job: dict[str, Any] = {
             "id": job_id,
             "source_stem": stem,
             "workpiece_asset": relative_to_directory(workpiece_asset, jobs_dir),
             "path_json": relative_to_directory(path_json, jobs_dir),
-            "origin": [float(index) * float(spacing), 0.0, 0.0],
+            "origin": origin,
             "workpiece_offset": [0.45, 0.0, 0.0],
             "frame": "workpiece",
             "units": "mm",
@@ -650,6 +663,9 @@ def build_simulation_jobs(
         "path_resolution": "relative_to_manifest_directory",
         "jobs_dir": ".",
         "job_count": len(jobs),
+        "layout": layout,
+        "spacing": float(spacing),
+        "grid_cols": int(grid_cols) if layout == "grid" else None,
         "default_frame": "workpiece",
         "default_units": "mm",
         "jobs": jobs,
@@ -670,6 +686,8 @@ def run_pipeline(
     jobs_dir: Path,
     manifest_name: str,
     spacing: float,
+    layout: str,
+    grid_cols: int,
     compute_pose_normals: bool,
     pose_normal_tol: float,
 ) -> tuple[list[Path], Path]:
@@ -707,6 +725,8 @@ def run_pipeline(
         jobs_dir=jobs_dir,
         manifest_name=manifest_name,
         spacing=spacing,
+        layout=layout,
+        grid_cols=grid_cols,
     )
     return outputs, manifest_path
 
@@ -773,6 +793,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--jobs-dir", type=Path, default=JOBS_OUTPUT_DIR, help="Isaac Sim job package output directory.")
     parser.add_argument("--manifest-name", default="manifest.json", help="Manifest filename written inside --jobs-dir.")
     parser.add_argument("--spacing", type=float, default=2.0, help="Default X spacing between jobs in Isaac Sim scene units.")
+    parser.add_argument("--layout", choices=("line", "grid"), default="line", help="Placement layout for generated Isaac Sim jobs.")
+    parser.add_argument("--grid-cols", type=int, default=5, help="Number of columns when --layout=grid.")
     parser.add_argument("--skip-pose-normals", action="store_true", help="Skip point pose normal computation.")
     parser.add_argument("--pose-normal-tol", type=float, default=1e-2, help="Point-to-face/arc tolerance for pose normals.")
     parser.add_argument("--extract-worker", action="store_true", help=argparse.SUPPRESS)
@@ -805,6 +827,8 @@ def main() -> None:
             jobs_dir=args.jobs_dir,
             manifest_name=args.manifest_name,
             spacing=args.spacing,
+            layout=args.layout,
+            grid_cols=args.grid_cols,
             compute_pose_normals=not args.skip_pose_normals,
             pose_normal_tol=args.pose_normal_tol,
         )

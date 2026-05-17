@@ -39,6 +39,17 @@ Generate workpiece/path jobs:
 python data_generation/src/main.py --count 4 --jobs-dir data_generation/data/generated_jobs --spacing 2.0
 ```
 
+Generate a 5x5 set of 25 workstations:
+
+```bash
+python data_generation/src/main.py \
+  --count 25 \
+  --jobs-dir data_generation/data/generated_jobs \
+  --layout grid \
+  --grid-cols 5 \
+  --spacing 2.0
+```
+
 Import the generated STL workpieces and spawn one UR5e welding arm per job:
 
 ```bash
@@ -55,6 +66,22 @@ python scripts/sim_parallel_welding.py \
 ```
 
 `origin` in the manifest moves the whole robot-workpiece cell. `workpiece_offset` moves only the STL workpiece inside that cell, in meters.
+
+Record a top-down view of the 5x5 scene:
+
+```bash
+python scripts/sim_parallel_welding.py \
+  --manifest data_generation/data/generated_jobs/manifest.json \
+  --headless \
+  --record \
+  --num-steps 10 \
+  --keep-frames \
+  --camera-eye 4.0 4.0 14.0 \
+  --camera-target 4.0 4.0 0.0 \
+  --frames-dir outputs/top_25_frames \
+  --output outputs/top_25.mp4 \
+  --overwrite
+```
 
 For server/headless runs:
 
