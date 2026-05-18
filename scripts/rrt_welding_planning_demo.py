@@ -69,6 +69,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="MP4 output path.")
     parser.add_argument("--frames-dir", type=Path, default=None, help="Temporary RGB frame directory.")
     parser.add_argument("--failure-screenshot-dir", type=Path, default=None, help="Directory for a planning-failure PNG screenshot.")
+    parser.add_argument("--ik-screenshot-dir", type=Path, default=None, help="Directory for pre-RRT start/goal IK PNG screenshots.")
+    parser.add_argument(
+        "--save-ik-screenshots",
+        dest="save_ik_screenshots",
+        action="store_true",
+        default=True,
+        help="Save start/goal IK static screenshots before RRT. Enabled by default.",
+    )
+    parser.add_argument(
+        "--no-ik-screenshots",
+        dest="save_ik_screenshots",
+        action="store_false",
+        help="Do not save pre-RRT start/goal IK screenshots.",
+    )
     parser.add_argument("--encode-only", action="store_true", help="Only encode an existing frames directory to MP4.")
     parser.add_argument("--keep-frames", action="store_true", help="Keep RGB frames after encoding.")
     parser.add_argument(
@@ -83,6 +97,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rt-subframes", type=int, default=8, help="Replicator render subframes per captured frame.")
     parser.add_argument("--visual-ground-size", type=float, default=2.0, help="Size of the collidable visual ground plane.")
     parser.add_argument("--visual-ground-z", type=float, default=-0.002, help="Z height of the collidable visual ground plane.")
+    parser.add_argument("--visual-ground-opacity", type=float, default=0.18, help="Visual opacity for the collidable ground plane.")
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="STL and weld xyz scale, mm to m.")
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
@@ -489,7 +504,7 @@ def enable_contact_report(prim: Any, threshold: float = 0.0) -> None:
             pass
 
 
-def add_visual_ground(stage: Any, size: float, z: float) -> str:
+def add_visual_ground(stage: Any, size: float, z: float, opacity: float) -> str:
     from pxr import Gf, Sdf, UsdGeom, UsdPhysics, UsdShade
 
     half = float(size) * 0.5
@@ -507,6 +522,7 @@ def add_visual_ground(stage: Any, size: float, z: float) -> str:
     mesh.CreateSubdivisionSchemeAttr("none")
     mesh.CreateDoubleSidedAttr(True)
     mesh.CreateDisplayColorAttr([Gf.Vec3f(0.18, 0.18, 0.18)])
+    mesh.CreateDisplayOpacityAttr([float(opacity)])
     UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
     mesh_collision = UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim())
     mesh_collision.CreateApproximationAttr("none")
@@ -517,10 +533,11 @@ def add_visual_ground(stage: Any, size: float, z: float) -> str:
     shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
     shader.CreateIdAttr("UsdPreviewSurface")
     shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.18, 0.18, 0.18))
+    shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(float(opacity))
     shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.8)
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
-    log(f"[demo] Added collidable visual ground: {prim_path}, size={size}, z={z}")
+    log(f"[demo] Added collidable transparent ground: {prim_path}, size={size}, z={z}, opacity={opacity}")
     return prim_path
 
 
@@ -1377,6 +1394,67 @@ def add_recording_camera(rep: Any, workpiece_info: dict[str, Any], args: argpars
     return rep.create.render_product(camera, resolution=(args.width, args.height))
 
 
+def zero_robot_velocities(robot: Any) -> None:
+    try:
+        velocities = np.zeros_like(np.array(robot.get_joint_velocities(), dtype=float))
+        robot.set_joint_velocities(velocities)
+    except Exception:
+        pass
+
+
+def write_ik_endpoint_screenshots(
+    rep: Any,
+    world: Any,
+    robot: Any,
+    dof_indices: list[int],
+    q_start: np.ndarray,
+    q_goal: np.ndarray,
+    workpiece_info: dict[str, Any],
+    args: argparse.Namespace,
+) -> list[Path]:
+    screenshot_dir = (
+        args.ik_screenshot_dir
+        if args.ik_screenshot_dir is not None
+        else args.output.resolve().parent / f"{args.output.resolve().stem}_ik_endpoints"
+    )
+    screenshot_dir = screenshot_dir.resolve()
+    if screenshot_dir.exists():
+        shutil.rmtree(screenshot_dir)
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        rep.orchestrator.set_capture_on_play(False)
+    except Exception:
+        pass
+
+    saved_paths: list[Path] = []
+    for label, q in (("start_ik", q_start), ("goal_ik", q_goal)):
+        label_dir = screenshot_dir / label
+        label_dir.mkdir(parents=True, exist_ok=True)
+        set_robot_q(robot, dof_indices, q)
+        zero_robot_velocities(robot)
+        world.step(render=True)
+
+        render_product = add_recording_camera(rep, workpiece_info, args)
+        writer = rep.WriterRegistry.get("BasicWriter")
+        writer.initialize(output_dir=str(label_dir), rgb=True)
+        writer.attach([render_product])
+        world.step(render=True)
+        step_replicator(rep, args)
+        rep.orchestrator.wait_until_complete()
+        writer.detach()
+
+        pngs = sorted(label_dir.glob("*.png")) or sorted(label_dir.glob("**/*.png"))
+        if not pngs:
+            raise RuntimeError(f"Failed to write {label} IK screenshot under {label_dir}")
+        saved_paths.append(pngs[0])
+
+    log("[demo] Pre-RRT IK endpoint screenshots saved:")
+    for path in saved_paths:
+        log(f"  {path}")
+    return saved_paths
+
+
 def failure_camera_poses(workpiece_info: dict[str, Any]) -> list[tuple[str, tuple[float, float, float], tuple[float, float, float]]]:
     bmin = np.array(workpiece_info["world_min"], dtype=float)
     bmax = np.array(workpiece_info["world_max"], dtype=float)
@@ -1464,13 +1542,14 @@ def main() -> None:
             "[demo] WARNING: ffmpeg is not installed. Isaac will still record PNG frames; "
             "install ffmpeg on the server to encode MP4 automatically."
         )
+    needs_replicator = args.record or args.save_ik_screenshots
 
     try:
         from isaacsim import SimulationApp
     except ImportError:
         from omni.isaac.kit import SimulationApp
 
-    simulation_app = SimulationApp({"headless": args.headless, "enable_cameras": args.record})
+    simulation_app = SimulationApp({"headless": args.headless, "enable_cameras": needs_replicator})
     try:
         try:
             from isaacsim.core.api import World
@@ -1478,13 +1557,18 @@ def main() -> None:
             from omni.isaac.core import World
 
         from omni.usd import get_context
-        if args.record:
+        if needs_replicator:
             import omni.replicator.core as rep
 
         world = World(physics_dt=1.0 / 60.0, rendering_dt=1.0 / args.fps, stage_units_in_meters=1.0)
         stage = get_context().get_stage()
         ensure_xform(stage, "/World/Debug")
-        ground_prim_path = add_visual_ground(stage, size=args.visual_ground_size, z=args.visual_ground_z)
+        ground_prim_path = add_visual_ground(
+            stage,
+            size=args.visual_ground_size,
+            z=args.visual_ground_z,
+            opacity=args.visual_ground_opacity,
+        )
         add_scene_lighting(stage)
 
         resolved_urdf = make_resolved_urdf(args.urdf)
@@ -1589,6 +1673,20 @@ def main() -> None:
             tcp_goal=targets["goal_tf"][:3, 3],
             path_points=np.array([targets["start_tf"][:3, 3], targets["goal_tf"][:3, 3]]),
         )
+        if args.save_ik_screenshots:
+            write_ik_endpoint_screenshots(
+                rep=rep,
+                world=world,
+                robot=robot,
+                dof_indices=dof_indices,
+                q_start=q_start,
+                q_goal=q_goal,
+                workpiece_info=workpiece_info,
+                args=args,
+            )
+            set_robot_q(robot, dof_indices, q_start)
+            zero_robot_velocities(robot)
+            world.step(render=True)
 
         def is_edge_valid(qa: np.ndarray, qb: np.ndarray) -> bool:
             for q in interpolate_edge(qa, qb, args.edge_resolution)[1:]:
@@ -1612,7 +1710,7 @@ def main() -> None:
                 rng=rng,
             )
         except RuntimeError:
-            if args.record:
+            if needs_replicator:
                 try:
                     write_failure_screenshots(rep, world, workpiece_info, args)
                 except Exception as screenshot_exc:
