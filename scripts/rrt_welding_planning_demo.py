@@ -58,6 +58,23 @@ def log(message: str) -> None:
     print(message, flush=True)
 
 
+def configure_log_filters(args: argparse.Namespace) -> None:
+    if not args.suppress_physx_warnings:
+        return
+    try:
+        import carb
+        import carb.logging
+        import carb.settings
+
+        settings = carb.settings.get_settings()
+        settings.set("/log/channels/omni.physx.plugin", "error")
+        settings.set("/log/channels/isaacsim.core.prims.impl.articulation", "error")
+        carb.logging.refresh_logging_settings()
+        log("[demo] Suppressed noisy PhysX/articulation warnings in console output.")
+    except Exception as exc:
+        log(f"[demo] Failed to configure log filters: {exc}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run an Isaac Sim RRT welding path-planning demo.")
     parser.add_argument("--job-dir", type=Path, default=DEFAULT_JOB_DIR, help="Generated job directory.")
@@ -102,7 +119,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="STL and weld xyz scale, mm to m.")
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
-    parser.add_argument("--workpiece-opacity", type=float, default=1.0, help="Visual opacity for the workpiece mesh.")
+    parser.add_argument("--workpiece-opacity", type=float, default=0.0, help="Visual opacity for the workpiece mesh.")
     parser.add_argument("--tcp-normal-offset", type=float, default=0.035, help="Retreat distance along weld normal in m.")
     parser.add_argument("--endpoint-retreat-step", type=float, default=0.01, help="Additional endpoint retreat step along weld normal in m.")
     parser.add_argument("--endpoint-retreat-max-steps", type=int, default=8, help="Maximum endpoint retreat attempts if IK state collides.")
@@ -156,6 +173,19 @@ def parse_args() -> argparse.Namespace:
         help="Display generated URDF collision STL proxies in the render.",
     )
     parser.add_argument("--num-idle-frames", type=int, default=30, help="Initial/final hold frames in recordings.")
+    parser.add_argument(
+        "--suppress-physx-warnings",
+        dest="suppress_physx_warnings",
+        action="store_true",
+        default=True,
+        help="Suppress noisy omni.physx.plugin warnings so demo logs stay readable. Enabled by default.",
+    )
+    parser.add_argument(
+        "--show-physx-warnings",
+        dest="suppress_physx_warnings",
+        action="store_false",
+        help="Do not suppress omni.physx.plugin warnings.",
+    )
     return parser.parse_args()
 
 
@@ -1698,6 +1728,7 @@ def main() -> None:
 
     simulation_app = SimulationApp({"headless": args.headless, "enable_cameras": needs_replicator})
     try:
+        configure_log_filters(args)
         try:
             from isaacsim.core.api import World
         except ImportError:
