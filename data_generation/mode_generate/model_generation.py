@@ -1,8 +1,10 @@
 import cadquery as cq
 import random
 import os
+from copy import deepcopy
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MODEL_SCALE_FACTOR = 2.0
 
 # 统一参数配置区：仅需在这里调整即可影响模型生成行为。
 MODEL_GEN_PARAMS = {
@@ -50,6 +52,39 @@ MODEL_GEN_PARAMS = {
         "output_dir": "data/model",  # 导出目录（相对当前 data_generation 项目根目录）
     },
 }
+
+
+_SCALABLE_PARAM_KEYS = {
+    "length",
+    "width",
+    "height",
+    "thickness_min",
+    "thickness_max",
+    "height_min",
+    "height_max",
+    "min_spacing",
+    "min_space_for_rib",
+    "length_min",
+    "corner_hole_radius",
+    "min_connector_gap",
+    "min_clearance_from_main",
+    "open_rib_min_extension",
+    "open_rib_max_extension",
+}
+
+
+def _scaled_model_params(params, scale_factor):
+    scaled = deepcopy(params)
+    for section in scaled.values():
+        if not isinstance(section, dict):
+            continue
+        for key, value in section.items():
+            if key in _SCALABLE_PARAM_KEYS:
+                section[key] = value * scale_factor
+    return scaled
+
+
+MODEL_GEN_PARAMS = _scaled_model_params(MODEL_GEN_PARAMS, MODEL_SCALE_FACTOR)
 
 def _box_on_plate(parts, width, depth, height, center_x, center_y, plate_top_z):
     part = (

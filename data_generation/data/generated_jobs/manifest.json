@@ -5,14 +5,14 @@
   "jobs_dir": ".",
   "job_count": 9,
   "layout": "grid",
-  "spacing": 2.0,
+  "spacing": 4.0,
   "grid_cols": 3,
   "default_frame": "workpiece",
   "default_units": "mm",
   "jobs": [
     {
       "id": "job_000",
-      "source_stem": "random_plate_0",
+      "source_stem": "random_plate_0_double_side_ribs",
       "workpiece_asset": "job_000/workpiece.stl",
       "path_json": "job_000/path.json",
       "origin": [
@@ -38,7 +38,7 @@
       "workpiece_asset": "job_001/workpiece.stl",
       "path_json": "job_001/path.json",
       "origin": [
-        2.0,
+        4.0,
         0.0,
         0.0
       ],
@@ -60,7 +60,7 @@
       "workpiece_asset": "job_002/workpiece.stl",
       "path_json": "job_002/path.json",
       "origin": [
-        4.0,
+        8.0,
         0.0,
         0.0
       ],
@@ -78,12 +78,12 @@
     },
     {
       "id": "job_003",
-      "source_stem": "random_plate_3_double_side_ribs",
+      "source_stem": "random_plate_3",
       "workpiece_asset": "job_003/workpiece.stl",
       "path_json": "job_003/path.json",
       "origin": [
         0.0,
-        2.0,
+        4.0,
         0.0
       ],
       "workpiece_offset": [
@@ -100,12 +100,12 @@
     },
     {
       "id": "job_004",
-      "source_stem": "random_plate_4_double_side_ribs",
+      "source_stem": "random_plate_4",
       "workpiece_asset": "job_004/workpiece.stl",
       "path_json": "job_004/path.json",
       "origin": [
-        2.0,
-        2.0,
+        4.0,
+        4.0,
         0.0
       ],
       "workpiece_offset": [
@@ -126,8 +126,8 @@
       "workpiece_asset": "job_005/workpiece.stl",
       "path_json": "job_005/path.json",
       "origin": [
+        8.0,
         4.0,
-        2.0,
         0.0
       ],
       "workpiece_offset": [
@@ -149,7 +149,7 @@
       "path_json": "job_006/path.json",
       "origin": [
         0.0,
-        4.0,
+        8.0,
         0.0
       ],
       "workpiece_offset": [
@@ -166,12 +166,12 @@
     },
     {
       "id": "job_007",
-      "source_stem": "random_plate_7",
+      "source_stem": "random_plate_7_double_side_ribs",
       "workpiece_asset": "job_007/workpiece.stl",
       "path_json": "job_007/path.json",
       "origin": [
-        2.0,
         4.0,
+        8.0,
         0.0
       ],
       "workpiece_offset": [
@@ -192,8 +192,8 @@
       "workpiece_asset": "job_008/workpiece.stl",
       "path_json": "job_008/path.json",
       "origin": [
-        4.0,
-        4.0,
+        8.0,
+        8.0,
         0.0
       ],
       "workpiece_offset": [
