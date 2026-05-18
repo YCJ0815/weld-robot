@@ -932,7 +932,7 @@ def load_weld_targets(
     }
 
 
-def resolve_transition_targets(
+def iter_transition_targets(
     job_dir: Path,
     weld_index: int,
     scale: float,
@@ -942,12 +942,8 @@ def resolve_transition_targets(
     transition_xyz_tol: float,
     auto_first_transition: bool,
 ) -> dict[str, Any]:
-    vector_path = job_dir / "weld_vectors.json"
-    with vector_path.open("r", encoding="utf-8") as f:
-        weld_count = len(json.load(f)["welds"])
-
     if not auto_first_transition:
-        return load_weld_targets(
+        yield load_weld_targets(
             job_dir,
             weld_index,
             scale,
@@ -956,6 +952,11 @@ def resolve_transition_targets(
             tcp_offset,
             transition_xyz_tol,
         )
+        return
+
+    vector_path = job_dir / "weld_vectors.json"
+    with vector_path.open("r", encoding="utf-8") as f:
+        weld_count = len(json.load(f)["welds"])
 
     for candidate_index in range(max(0, weld_index), max(0, weld_count - 1)):
         targets = load_weld_targets(
@@ -967,15 +968,7 @@ def resolve_transition_targets(
             tcp_offset,
             transition_xyz_tol,
         )
-        if not targets.get("skip_planning", False):
-            if candidate_index != weld_index:
-                log(f"[demo] Auto-selected first non-coincident transition at weld pair {candidate_index} -> {candidate_index + 1}.")
-            return targets
-
-    raise RuntimeError(
-        "No transition requires planning: all consecutive weld endpoint/startpoint pairs "
-        f"coincide within tolerance {transition_xyz_tol:.2e} m."
-    )
+        yield targets
 
 
 def retreated_target_tf(
@@ -1907,31 +1900,6 @@ def main() -> None:
             opacity=args.workpiece_opacity,
         )
 
-        targets = resolve_transition_targets(
-            args.job_dir,
-            args.weld_index,
-            args.workpiece_scale,
-            args.workpiece_offset,
-            args.workpiece_z_offset,
-            args.tcp_normal_offset,
-            args.transition_xyz_tol,
-            args.auto_first_transition,
-        )
-        log(
-            f"[demo] Loaded weld transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
-            f"from {targets['vector_path']}"
-        )
-        log(
-            f"[demo] Transition world xyz: {targets['start_xyz']} -> {targets['end_xyz']} "
-            f"(distance={targets['transition_distance']:.6f} m)"
-        )
-        if targets.get("skip_planning", False):
-            log(
-                f"[demo] Consecutive weld endpoint/startpoint already coincide within "
-                f"{args.transition_xyz_tol:.2e} m; skipping path planning."
-            )
-            return
-
         log("[demo] Resetting world and initializing articulation.")
         world.reset()
         ensure_physics_sim_view(world, warmup_steps=2)
@@ -1961,41 +1929,94 @@ def main() -> None:
             contact_settle_steps=args.contact_settle_steps,
             use_bbox_collision=args.use_bbox_collision,
         )
-        log("[demo] Solving collision-free IK endpoints.")
-        start_tf, q_start, start_retreat_steps = solve_valid_endpoint(
-            label="start",
-            kinematics=kinematics,
-            checker=checker,
-            base_xyz=targets["start_xyz"],
-            normal=targets["start_normal"],
-            tangent=targets["tangent"],
-            seeds=seeds,
-            tcp_offset=args.tcp_normal_offset,
-            retreat_step=args.endpoint_retreat_step,
-            max_retreat_steps=args.endpoint_retreat_max_steps,
-            yaw_samples=args.endpoint_yaw_samples,
-            random_seeds=args.endpoint_random_seeds,
-            ik_rot_weight=args.endpoint_ik_rot_weight,
-            ik_max_iters=args.endpoint_ik_max_iters,
-            rng=rng,
-        )
-        goal_tf, q_goal, goal_retreat_steps = solve_valid_endpoint(
-            label="goal",
-            kinematics=kinematics,
-            checker=checker,
-            base_xyz=targets["end_xyz"],
-            normal=targets["end_normal"],
-            tangent=targets["tangent"],
-            seeds=[q_start, q_home, np.zeros(6)],
-            tcp_offset=args.tcp_normal_offset,
-            retreat_step=args.endpoint_retreat_step,
-            max_retreat_steps=args.endpoint_retreat_max_steps,
-            yaw_samples=args.endpoint_yaw_samples,
-            random_seeds=args.endpoint_random_seeds,
-            ik_rot_weight=args.endpoint_ik_rot_weight,
-            ik_max_iters=args.endpoint_ik_max_iters,
-            rng=rng,
-        )
+        selected_targets = None
+        start_tf = q_start = goal_tf = q_goal = None
+        start_retreat_steps = goal_retreat_steps = 0
+        found_noncoincident_transition = False
+        for targets in iter_transition_targets(
+            args.job_dir,
+            args.weld_index,
+            args.workpiece_scale,
+            args.workpiece_offset,
+            args.workpiece_z_offset,
+            args.tcp_normal_offset,
+            args.transition_xyz_tol,
+            args.auto_first_transition,
+        ):
+            log(
+                f"[demo] Loaded weld transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+                f"from {targets['vector_path']}"
+            )
+            log(
+                f"[demo] Transition world xyz: {targets['start_xyz']} -> {targets['end_xyz']} "
+                f"(distance={targets['transition_distance']:.6f} m)"
+            )
+            if targets.get("skip_planning", False):
+                log(
+                    f"[demo] Consecutive weld endpoint/startpoint already coincide within "
+                    f"{args.transition_xyz_tol:.2e} m; continuing to next transition."
+                )
+                continue
+
+            found_noncoincident_transition = True
+            log("[demo] Solving collision-free IK endpoints.")
+            try:
+                start_tf, q_start, start_retreat_steps = solve_valid_endpoint(
+                    label="start",
+                    kinematics=kinematics,
+                    checker=checker,
+                    base_xyz=targets["start_xyz"],
+                    normal=targets["start_normal"],
+                    tangent=targets["tangent"],
+                    seeds=seeds,
+                    tcp_offset=args.tcp_normal_offset,
+                    retreat_step=args.endpoint_retreat_step,
+                    max_retreat_steps=args.endpoint_retreat_max_steps,
+                    yaw_samples=args.endpoint_yaw_samples,
+                    random_seeds=args.endpoint_random_seeds,
+                    ik_rot_weight=args.endpoint_ik_rot_weight,
+                    ik_max_iters=args.endpoint_ik_max_iters,
+                    rng=rng,
+                )
+                goal_tf, q_goal, goal_retreat_steps = solve_valid_endpoint(
+                    label="goal",
+                    kinematics=kinematics,
+                    checker=checker,
+                    base_xyz=targets["end_xyz"],
+                    normal=targets["end_normal"],
+                    tangent=targets["tangent"],
+                    seeds=[q_start, q_home, np.zeros(6)],
+                    tcp_offset=args.tcp_normal_offset,
+                    retreat_step=args.endpoint_retreat_step,
+                    max_retreat_steps=args.endpoint_retreat_max_steps,
+                    yaw_samples=args.endpoint_yaw_samples,
+                    random_seeds=args.endpoint_random_seeds,
+                    ik_rot_weight=args.endpoint_ik_rot_weight,
+                    ik_max_iters=args.endpoint_ik_max_iters,
+                    rng=rng,
+                )
+            except RuntimeError as exc:
+                log(
+                    f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+                    f"has no collision-free IK endpoints; trying next transition. Last error: {exc}"
+                )
+                continue
+
+            selected_targets = targets
+            break
+
+        if selected_targets is None:
+            if not found_noncoincident_transition:
+                raise RuntimeError(
+                    "No transition requires planning: all consecutive weld endpoint/startpoint pairs "
+                    f"coincide within tolerance {args.transition_xyz_tol:.2e} m."
+                )
+            raise RuntimeError(
+                "Reached the end of weld transitions without finding a transition "
+                "that admits collision-free IK endpoints."
+            )
+
+        targets = selected_targets
         targets["start_tf"] = start_tf
         targets["goal_tf"] = goal_tf
         log(f"[IK] q_start shape={np.asarray(q_start).shape}, q_goal shape={np.asarray(q_goal).shape}")
