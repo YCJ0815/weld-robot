@@ -88,6 +88,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--tcp-normal-offset", type=float, default=0.035, help="Retreat distance along weld normal in m.")
     parser.add_argument("--endpoint-retreat-step", type=float, default=0.01, help="Additional endpoint retreat step along weld normal in m.")
     parser.add_argument("--endpoint-retreat-max-steps", type=int, default=8, help="Maximum endpoint retreat attempts if IK state collides.")
+    parser.add_argument("--endpoint-random-seeds", type=int, default=80, help="Random IK seeds per endpoint retreat attempt.")
+    parser.add_argument("--endpoint-yaw-samples", type=int, default=12, help="TCP rotations around weld normal per endpoint retreat attempt.")
+    parser.add_argument("--endpoint-ik-rot-weight", type=float, default=0.12, help="IK orientation weight for endpoint solving.")
     parser.add_argument("--rrt-step-size", type=float, default=0.35, help="RRT joint-space step size.")
     parser.add_argument("--edge-resolution", type=float, default=0.08, help="Joint-space edge collision resolution.")
     parser.add_argument("--playback-resolution", type=float, default=0.025, help="Joint-space playback interpolation resolution.")
@@ -672,7 +675,13 @@ def normalize(v: np.ndarray) -> np.ndarray:
     return v / max(float(np.linalg.norm(v)), 1e-12)
 
 
-def target_frame_from_weld(point: np.ndarray, normal: np.ndarray, tangent_hint: np.ndarray, tcp_offset: float) -> np.ndarray:
+def target_frame_from_weld(
+    point: np.ndarray,
+    normal: np.ndarray,
+    tangent_hint: np.ndarray,
+    tcp_offset: float,
+    yaw_about_normal: float = 0.0,
+) -> np.ndarray:
     normal = normalize(normal)
     z_axis = normalize(-normal)
     tangent = tangent_hint - np.dot(tangent_hint, z_axis) * z_axis
@@ -681,6 +690,13 @@ def target_frame_from_weld(point: np.ndarray, normal: np.ndarray, tangent_hint: 
     x_axis = normalize(tangent)
     y_axis = normalize(np.cross(z_axis, x_axis))
     x_axis = normalize(np.cross(y_axis, z_axis))
+    if abs(yaw_about_normal) > 1e-12:
+        c = math.cos(yaw_about_normal)
+        s = math.sin(yaw_about_normal)
+        x_rot = c * x_axis + s * y_axis
+        y_rot = -s * x_axis + c * y_axis
+        x_axis = normalize(x_rot)
+        y_axis = normalize(y_rot)
     tf = np.eye(4)
     tf[:3, 0] = x_axis
     tf[:3, 1] = y_axis
@@ -738,8 +754,15 @@ def retreated_target_tf(
     tcp_offset: float,
     retreat_step: float,
     retreat_index: int,
+    yaw_about_normal: float = 0.0,
 ) -> np.ndarray:
-    return target_frame_from_weld(base_xyz, normal, tangent, tcp_offset + retreat_step * retreat_index)
+    return target_frame_from_weld(
+        base_xyz,
+        normal,
+        tangent,
+        tcp_offset + retreat_step * retreat_index,
+        yaw_about_normal=yaw_about_normal,
+    )
 
 
 def interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
@@ -1103,6 +1126,31 @@ def set_robot_q(robot: Any, dof_indices: list[int], q: np.ndarray) -> None:
     robot.set_joint_positions(full)
 
 
+def endpoint_yaw_angles(sample_count: int) -> list[float]:
+    if sample_count <= 1:
+        return [0.0]
+    angles = [0.0]
+    for k in range(1, sample_count):
+        magnitude = 2.0 * math.pi * ((k + 1) // 2) / sample_count
+        angles.append(magnitude if k % 2 else -magnitude)
+    return angles
+
+
+def build_endpoint_seed_pool(
+    base_seeds: list[np.ndarray],
+    lower: np.ndarray,
+    upper: np.ndarray,
+    rng: np.random.Generator,
+    random_count: int,
+) -> list[np.ndarray]:
+    seeds = [np.clip(seed.astype(float), lower, upper) for seed in base_seeds]
+    midpoint = 0.5 * (lower + upper)
+    seeds.append(np.clip(midpoint, lower, upper))
+    for _ in range(max(0, random_count)):
+        seeds.append(rng.uniform(lower, upper))
+    return seeds
+
+
 def solve_valid_endpoint(
     label: str,
     kinematics: URDFKinematics,
@@ -1114,27 +1162,53 @@ def solve_valid_endpoint(
     tcp_offset: float,
     retreat_step: float,
     max_retreat_steps: int,
+    yaw_samples: int,
+    random_seeds: int,
+    ik_rot_weight: float,
+    rng: np.random.Generator,
 ) -> tuple[np.ndarray, np.ndarray, int]:
     last_error: Exception | None = None
+    yaw_angles = endpoint_yaw_angles(yaw_samples)
     for retreat_index in range(max_retreat_steps + 1):
-        target_tf = retreated_target_tf(base_xyz, normal, tangent, tcp_offset, retreat_step, retreat_index)
-        try:
-            q = kinematics.solve_ik(target_tf, seeds)
-        except RuntimeError as exc:
-            last_error = exc
-            continue
-        if checker.is_state_valid(q):
-            if retreat_index > 0:
-                log(
-                    f"[endpoint] {label} retreated by {retreat_step * retreat_index:.3f} m "
-                    f"along weld normal to avoid collision."
-                )
-            return target_tf, q, retreat_index
-        last_error = RuntimeError(
-            f"{label} IK state collides at retreat_index={retreat_index}, "
-            f"prim={checker.last_collision_prim_path}, contact={checker.last_contact_pair}, "
-            f"bbox={checker.last_collision_bbox}"
+        seed_pool = build_endpoint_seed_pool(
+            seeds,
+            kinematics.lower,
+            kinematics.upper,
+            rng,
+            random_count=random_seeds,
         )
+        for yaw_index, yaw in enumerate(yaw_angles):
+            target_tf = retreated_target_tf(
+                base_xyz,
+                normal,
+                tangent,
+                tcp_offset,
+                retreat_step,
+                retreat_index,
+                yaw_about_normal=yaw,
+            )
+            try:
+                q = kinematics.solve_ik(
+                    target_tf,
+                    seed_pool,
+                    max_iters=360,
+                    rot_weight=ik_rot_weight,
+                )
+            except RuntimeError as exc:
+                last_error = exc
+                continue
+            if checker.is_state_valid(q):
+                if retreat_index > 0 or abs(yaw) > 1e-12:
+                    log(
+                        f"[endpoint] {label} retreated={retreat_step * retreat_index:.3f} m "
+                        f"yaw_sample={yaw_index}/{len(yaw_angles)} yaw={yaw:.3f} rad."
+                    )
+                return target_tf, q, retreat_index
+            last_error = RuntimeError(
+                f"{label} IK state collides at retreat_index={retreat_index}, yaw={yaw:.3f}, "
+                f"prim={checker.last_collision_prim_path}, contact={checker.last_contact_pair}, "
+                f"bbox={checker.last_collision_bbox}"
+            )
     raise RuntimeError(
         f"Could not find a collision-free {label} endpoint after {max_retreat_steps} retreat steps. "
         f"Last error: {last_error}"
@@ -1337,6 +1411,10 @@ def main() -> None:
             tcp_offset=args.tcp_normal_offset,
             retreat_step=args.endpoint_retreat_step,
             max_retreat_steps=args.endpoint_retreat_max_steps,
+            yaw_samples=args.endpoint_yaw_samples,
+            random_seeds=args.endpoint_random_seeds,
+            ik_rot_weight=args.endpoint_ik_rot_weight,
+            rng=rng,
         )
         goal_tf, q_goal, goal_retreat_steps = solve_valid_endpoint(
             label="goal",
@@ -1349,6 +1427,10 @@ def main() -> None:
             tcp_offset=args.tcp_normal_offset,
             retreat_step=args.endpoint_retreat_step,
             max_retreat_steps=args.endpoint_retreat_max_steps,
+            yaw_samples=args.endpoint_yaw_samples,
+            random_seeds=args.endpoint_random_seeds,
+            ik_rot_weight=args.endpoint_ik_rot_weight,
+            rng=rng,
         )
         targets["start_tf"] = start_tf
         targets["goal_tf"] = goal_tf
