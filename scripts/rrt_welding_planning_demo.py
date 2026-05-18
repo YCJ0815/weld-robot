@@ -1377,12 +1377,27 @@ def add_recording_camera(rep: Any, workpiece_info: dict[str, Any], args: argpars
     return rep.create.render_product(camera, resolution=(args.width, args.height))
 
 
-def write_failure_screenshot(
+def failure_camera_poses(workpiece_info: dict[str, Any]) -> list[tuple[str, tuple[float, float, float], tuple[float, float, float]]]:
+    bmin = np.array(workpiece_info["world_min"], dtype=float)
+    bmax = np.array(workpiece_info["world_max"], dtype=float)
+    center = (bmin + bmax) * 0.5
+    span = float(max(*(bmax - bmin), 0.35))
+    distance = max(1.1, span * 4.0)
+    target = (float(center[0]), float(center[1]), float(center[2] + 0.12))
+    return [
+        ("front", (float(center[0] + distance), float(center[1] - distance), float(center[2] + 0.75)), target),
+        ("back", (float(center[0] - distance), float(center[1] + distance), float(center[2] + 0.75)), target),
+        ("left", (float(center[0] - distance), float(center[1] - distance), float(center[2] + 0.75)), target),
+        ("right", (float(center[0] + distance), float(center[1] + distance), float(center[2] + 0.75)), target),
+    ]
+
+
+def write_failure_screenshots(
     rep: Any,
     world: Any,
     workpiece_info: dict[str, Any],
     args: argparse.Namespace,
-) -> Path:
+) -> list[Path]:
     screenshot_dir = (
         args.failure_screenshot_dir
         if args.failure_screenshot_dir is not None
@@ -1397,19 +1412,26 @@ def write_failure_screenshot(
         rep.orchestrator.set_capture_on_play(False)
     except Exception:
         pass
-    render_product = add_recording_camera(rep, workpiece_info, args)
+    render_products = []
+    for view_name, eye, target in failure_camera_poses(workpiece_info):
+        log(f"[demo] Failure screenshot camera {view_name}: eye={eye}, look_at={target}")
+        camera = rep.create.camera(position=eye, look_at=target, focal_length=32.0, focus_distance=2.5)
+        render_products.append(rep.create.render_product(camera, resolution=(args.width, args.height)))
+
     writer = rep.WriterRegistry.get("BasicWriter")
     writer.initialize(output_dir=str(screenshot_dir), rgb=True)
-    writer.attach([render_product])
+    writer.attach(render_products)
     world.step(render=True)
     step_replicator(rep, args)
     rep.orchestrator.wait_until_complete()
     writer.detach()
     pngs = sorted(screenshot_dir.glob("*.png")) or sorted(screenshot_dir.glob("**/*.png"))
     if not pngs:
-        raise RuntimeError(f"Failed to write planning-failure screenshot under {screenshot_dir}")
-    log(f"[demo] Planning-failure screenshot saved: {pngs[0]}")
-    return pngs[0]
+        raise RuntimeError(f"Failed to write planning-failure screenshots under {screenshot_dir}")
+    log("[demo] Planning-failure screenshots saved:")
+    for path in pngs:
+        log(f"  {path}")
+    return pngs
 
 
 def import_single_robot(stage: Any, resolved_urdf: Path) -> str:
@@ -1592,7 +1614,7 @@ def main() -> None:
         except RuntimeError:
             if args.record:
                 try:
-                    write_failure_screenshot(rep, world, workpiece_info, args)
+                    write_failure_screenshots(rep, world, workpiece_info, args)
                 except Exception as screenshot_exc:
                     log(f"[demo] Failed to write planning-failure screenshot: {screenshot_exc}")
             raise
