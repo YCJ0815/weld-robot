@@ -1341,6 +1341,16 @@ def draw_pose_vector(stage: Any, prim_path: str, origin: np.ndarray, vector: np.
     draw_curve(stage, prim_path, [start, end], color, width=0.006)
 
 
+def set_translate_op(xformable: Any, translation: np.ndarray) -> None:
+    from pxr import Gf, UsdGeom
+
+    for op in xformable.GetOrderedXformOps():
+        if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
+            op.Set(Gf.Vec3d(*translation))
+            return
+    xformable.AddTranslateOp().Set(Gf.Vec3d(*translation))
+
+
 def draw_target_markers(
     stage: Any,
     weld_start: np.ndarray,
@@ -1362,7 +1372,7 @@ def draw_target_markers(
         sphere = UsdGeom.Sphere.Define(stage, f"/World/Debug/{name}")
         sphere.CreateRadiusAttr(0.007 if name.startswith("Weld") else 0.005)
         sphere.CreateDisplayColorAttr([color])
-        UsdGeom.Xformable(sphere.GetPrim()).AddTranslateOp().Set(Gf.Vec3d(*point))
+        set_translate_op(UsdGeom.Xformable(sphere.GetPrim()), point)
 
     draw_pose_vector(
         stage,
@@ -1383,15 +1393,154 @@ def draw_target_markers(
     draw_curve(stage, "/World/Debug/TcpPath", list(path_points), Gf.Vec3f(0.05, 0.8, 1.0), width=0.006)
 
 
-def add_recording_camera(rep: Any, workpiece_info: dict[str, Any], args: argparse.Namespace):
+@dataclass(frozen=True)
+class OrbitCameraRig:
+    center: np.ndarray
+    target: tuple[float, float, float]
+    radius: float
+    height: float
+    start_angle: float
+    focal_length: float = 32.0
+    focus_distance: float = 2.5
+
+
+@dataclass
+class RecordingSession:
+    rep: Any
+    world: Any
+    stage: Any
+    args: argparse.Namespace
+    writer: Any
+    camera_prim_path: str
+    rig: OrbitCameraRig
+    total_frames: int
+    frame_index: int = 0
+
+
+def workpiece_bounds(workpiece_info: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
     bmin = np.array(workpiece_info["world_min"], dtype=float)
     bmax = np.array(workpiece_info["world_max"], dtype=float)
+    return bmin, bmax
+
+
+def workpiece_center_and_span(workpiece_info: dict[str, Any]) -> tuple[np.ndarray, float]:
+    bmin, bmax = workpiece_bounds(workpiece_info)
     center = (bmin + bmax) * 0.5
-    target = (float(center[0]), float(center[1]), float(center[2] + 0.18))
-    eye = (float(center[0] + 1.15), float(center[1] - 1.35), float(center[2] + 0.82))
-    log(f"[demo] Recording camera eye={eye}, look_at={target}")
-    camera = rep.create.camera(position=eye, look_at=target, focal_length=32.0, focus_distance=2.5)
-    return rep.create.render_product(camera, resolution=(args.width, args.height))
+    span = float(max(np.max(bmax - bmin), 0.35))
+    return center, span
+
+
+def recording_camera_rig(workpiece_info: dict[str, Any]) -> OrbitCameraRig:
+    center, span = workpiece_center_and_span(workpiece_info)
+    return OrbitCameraRig(
+        center=center,
+        target=(float(center[0]), float(center[1]), float(center[2] + max(0.14, span * 0.22))),
+        radius=max(1.6, span * 4.8),
+        height=float(center[2] + max(0.75, span * 1.7)),
+        start_angle=-math.pi / 4.0,
+    )
+
+
+def orbit_camera_pose(rig: OrbitCameraRig, frame_index: int, total_frames: int) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    denom = max(total_frames - 1, 1)
+    angle = rig.start_angle + (2.0 * math.pi * frame_index) / denom
+    eye = (
+        float(rig.center[0] + rig.radius * math.cos(angle)),
+        float(rig.center[1] + rig.radius * math.sin(angle)),
+        rig.height,
+    )
+    return eye, rig.target
+
+
+def ensure_recording_camera(stage: Any, rig: OrbitCameraRig, prim_path: str = "/World/RecordingCamera") -> str:
+    from pxr import UsdGeom
+
+    camera = UsdGeom.Camera.Define(stage, prim_path)
+    camera.CreateFocalLengthAttr(float(rig.focal_length))
+    camera.CreateFocusDistanceAttr(float(rig.focus_distance))
+    return prim_path
+
+
+def set_transform_matrix(xformable: Any, matrix: Any) -> None:
+    from pxr import UsdGeom
+
+    for op in xformable.GetOrderedXformOps():
+        if op.GetOpType() == UsdGeom.XformOp.TypeTransform:
+            op.Set(matrix)
+            return
+    xformable.MakeMatrixXform().Set(matrix)
+
+
+def set_camera_pose(stage: Any, camera_prim_path: str, eye: tuple[float, float, float], target: tuple[float, float, float]) -> None:
+    from pxr import Gf, UsdGeom
+
+    camera_prim = stage.GetPrimAtPath(camera_prim_path)
+    if not camera_prim.IsValid():
+        raise RuntimeError(f"Camera prim does not exist: {camera_prim_path}")
+
+    view = Gf.Matrix4d(1.0)
+    view.SetLookAt(Gf.Vec3d(*eye), Gf.Vec3d(*target), Gf.Vec3d(0.0, 0.0, 1.0))
+    set_transform_matrix(UsdGeom.Xformable(camera_prim), view.GetInverse())
+
+
+def create_basic_writer(rep: Any, output_dir: Path | str, render_products: list[Any]) -> Any:
+    writer = rep.WriterRegistry.get("BasicWriter")
+    writer.initialize(output_dir=str(output_dir), rgb=True)
+    writer.attach(render_products)
+    return writer
+
+
+def start_recording_session(
+    rep: Any,
+    world: Any,
+    stage: Any,
+    workpiece_info: dict[str, Any],
+    frames_dir: Path,
+    args: argparse.Namespace,
+    total_frames: int,
+) -> RecordingSession:
+    try:
+        rep.orchestrator.set_capture_on_play(False)
+    except Exception:
+        pass
+
+    rig = recording_camera_rig(workpiece_info)
+    camera_prim_path = ensure_recording_camera(stage, rig)
+    eye, target = orbit_camera_pose(rig, frame_index=0, total_frames=total_frames)
+    log(f"[demo] Recording orbit camera start eye={eye}, look_at={target}, total_frames={total_frames}")
+    set_camera_pose(stage, camera_prim_path, eye, target)
+    render_product = rep.create.render_product(camera_prim_path, resolution=(args.width, args.height))
+    writer = create_basic_writer(rep, frames_dir, [render_product])
+    return RecordingSession(
+        rep=rep,
+        world=world,
+        stage=stage,
+        args=args,
+        writer=writer,
+        camera_prim_path=camera_prim_path,
+        rig=rig,
+        total_frames=total_frames,
+    )
+
+
+def capture_recording_frame(session: RecordingSession) -> None:
+    eye, target = orbit_camera_pose(session.rig, session.frame_index, session.total_frames)
+    set_camera_pose(session.stage, session.camera_prim_path, eye, target)
+    session.world.step(render=True)
+    step_replicator(session.rep, session.args)
+    session.frame_index += 1
+
+
+def finish_recording_session(session: RecordingSession, frames_dir: Path) -> None:
+    session.rep.orchestrator.wait_until_complete()
+    session.writer.detach()
+    png_count = len(list(frames_dir.glob("*.png"))) + len(list(frames_dir.glob("**/*.png")))
+    log(f"[demo] PNG files written under {frames_dir}: {png_count}")
+    if png_count == 0:
+        raise RuntimeError(
+            "Replicator did not write any PNG frames. Check that the script was run with "
+            "Isaac Sim's python.sh, --headless was used on the cloud server, and cameras are enabled."
+        )
 
 
 def zero_robot_velocities(robot: Any) -> None:
@@ -1405,6 +1554,7 @@ def zero_robot_velocities(robot: Any) -> None:
 def write_ik_endpoint_screenshots(
     rep: Any,
     world: Any,
+    stage: Any,
     robot: Any,
     dof_indices: list[int],
     q_start: np.ndarray,
@@ -1422,23 +1572,21 @@ def write_ik_endpoint_screenshots(
         shutil.rmtree(screenshot_dir)
     screenshot_dir.mkdir(parents=True, exist_ok=True)
 
-    try:
-        rep.orchestrator.set_capture_on_play(False)
-    except Exception:
-        pass
+    rig = recording_camera_rig(workpiece_info)
+    camera_prim_path = ensure_recording_camera(stage, rig, prim_path="/World/IkScreenshotCamera")
 
     saved_paths: list[Path] = []
-    for label, q in (("start_ik", q_start), ("goal_ik", q_goal)):
+    for index, (label, q) in enumerate((("start_ik", q_start), ("goal_ik", q_goal))):
         label_dir = screenshot_dir / label
         label_dir.mkdir(parents=True, exist_ok=True)
         set_robot_q(robot, dof_indices, q)
         zero_robot_velocities(robot)
         world.step(render=True)
 
-        render_product = add_recording_camera(rep, workpiece_info, args)
-        writer = rep.WriterRegistry.get("BasicWriter")
-        writer.initialize(output_dir=str(label_dir), rgb=True)
-        writer.attach([render_product])
+        eye, target = orbit_camera_pose(rig, frame_index=index, total_frames=4)
+        set_camera_pose(stage, camera_prim_path, eye, target)
+        render_product = rep.create.render_product(camera_prim_path, resolution=(args.width, args.height))
+        writer = create_basic_writer(rep, label_dir, [render_product])
         world.step(render=True)
         step_replicator(rep, args)
         rep.orchestrator.wait_until_complete()
@@ -1456,10 +1604,7 @@ def write_ik_endpoint_screenshots(
 
 
 def failure_camera_poses(workpiece_info: dict[str, Any]) -> list[tuple[str, tuple[float, float, float], tuple[float, float, float]]]:
-    bmin = np.array(workpiece_info["world_min"], dtype=float)
-    bmax = np.array(workpiece_info["world_max"], dtype=float)
-    center = (bmin + bmax) * 0.5
-    span = float(max(*(bmax - bmin), 0.35))
+    center, span = workpiece_center_and_span(workpiece_info)
     distance = max(1.1, span * 4.0)
     target = (float(center[0]), float(center[1]), float(center[2] + 0.12))
     return [
@@ -1473,6 +1618,7 @@ def failure_camera_poses(workpiece_info: dict[str, Any]) -> list[tuple[str, tupl
 def write_failure_screenshots(
     rep: Any,
     world: Any,
+    stage: Any,
     workpiece_info: dict[str, Any],
     args: argparse.Namespace,
 ) -> list[Path]:
@@ -1490,15 +1636,15 @@ def write_failure_screenshots(
         rep.orchestrator.set_capture_on_play(False)
     except Exception:
         pass
+    rig = recording_camera_rig(workpiece_info)
     render_products = []
-    for view_name, eye, target in failure_camera_poses(workpiece_info):
+    for index, (view_name, eye, target) in enumerate(failure_camera_poses(workpiece_info)):
         log(f"[demo] Failure screenshot camera {view_name}: eye={eye}, look_at={target}")
-        camera = rep.create.camera(position=eye, look_at=target, focal_length=32.0, focus_distance=2.5)
-        render_products.append(rep.create.render_product(camera, resolution=(args.width, args.height)))
+        camera_prim_path = ensure_recording_camera(stage, rig, f"/World/FailureCamera_{index}")
+        set_camera_pose(stage, camera_prim_path, eye, target)
+        render_products.append(rep.create.render_product(camera_prim_path, resolution=(args.width, args.height)))
 
-    writer = rep.WriterRegistry.get("BasicWriter")
-    writer.initialize(output_dir=str(screenshot_dir), rgb=True)
-    writer.attach(render_products)
+    writer = create_basic_writer(rep, screenshot_dir, render_products)
     world.step(render=True)
     step_replicator(rep, args)
     rep.orchestrator.wait_until_complete()
@@ -1521,6 +1667,38 @@ def import_single_robot(stage: Any, resolved_urdf: Path) -> str:
     robot_path = move_prim_to_path(stage, imported_path, target_path)
     log(f"[demo] Imported robot prim: {robot_path}")
     return robot_path
+
+
+def step_scene(world: Any, rep: Any | None, args: argparse.Namespace | None) -> None:
+    world.step(render=True)
+    if rep is not None and args is not None:
+        step_replicator(rep, args)
+
+
+def run_playback(
+    world: Any,
+    robot: Any,
+    dof_indices: list[int],
+    q_playback: np.ndarray,
+    args: argparse.Namespace,
+    recording_session: RecordingSession | None,
+) -> None:
+    def capture_step() -> None:
+        if recording_session is None:
+            step_scene(world, rep=None, args=None)
+            return
+        capture_recording_frame(recording_session)
+
+    set_robot_q(robot, dof_indices, q_playback[0])
+    for _ in range(args.num_idle_frames):
+        capture_step()
+    for idx, q in enumerate(q_playback):
+        set_robot_q(robot, dof_indices, q)
+        capture_step()
+        if recording_session is not None and (idx + 1) % max(args.fps, 1) == 0:
+            log(f"[demo] Recorded playback frame {idx + 1}/{len(q_playback)}")
+    for _ in range(args.num_idle_frames):
+        capture_step()
 
 
 def main() -> None:
@@ -1677,6 +1855,7 @@ def main() -> None:
             write_ik_endpoint_screenshots(
                 rep=rep,
                 world=world,
+                stage=stage,
                 robot=robot,
                 dof_indices=dof_indices,
                 q_start=q_start,
@@ -1712,7 +1891,7 @@ def main() -> None:
         except RuntimeError:
             if needs_replicator:
                 try:
-                    write_failure_screenshots(rep, world, workpiece_info, args)
+                    write_failure_screenshots(rep, world, stage, workpiece_info, args)
                 except Exception as screenshot_exc:
                     log(f"[demo] Failed to write planning-failure screenshot: {screenshot_exc}")
             raise
@@ -1731,44 +1910,23 @@ def main() -> None:
         )
         log(f"[demo] Planned {len(q_path)} RRT waypoints, {len(q_playback)} playback points in {plan_time:.2f}s")
 
-        writer = None
-        if args.record:
-            try:
-                rep.orchestrator.set_capture_on_play(False)
-            except Exception:
-                pass
-            render_product = add_recording_camera(rep, workpiece_info, args)
-            writer = rep.WriterRegistry.get("BasicWriter")
-            writer.initialize(output_dir=str(frames_dir), rgb=True)
-            writer.attach([render_product])
+        recording_session = None
+        if args.record and frames_dir is not None:
+            recording_session = start_recording_session(
+                rep=rep,
+                world=world,
+                stage=stage,
+                workpiece_info=workpiece_info,
+                frames_dir=frames_dir,
+                args=args,
+                total_frames=len(q_playback) + 2 * args.num_idle_frames,
+            )
             log(f"[demo] Recording frames to: {frames_dir}")
 
-        def capture_step() -> None:
-            world.step(render=True)
-            if args.record:
-                step_replicator(rep, args)
+        run_playback(world, robot, dof_indices, q_playback, args, recording_session)
 
-        set_robot_q(robot, dof_indices, q_playback[0])
-        for _ in range(args.num_idle_frames):
-            capture_step()
-        for idx, q in enumerate(q_playback):
-            set_robot_q(robot, dof_indices, q)
-            capture_step()
-            if args.record and (idx + 1) % max(args.fps, 1) == 0:
-                log(f"[demo] Recorded playback frame {idx + 1}/{len(q_playback)}")
-        for _ in range(args.num_idle_frames):
-            capture_step()
-
-        if args.record and writer is not None:
-            rep.orchestrator.wait_until_complete()
-            writer.detach()
-            png_count = len(list(frames_dir.glob("*.png"))) + len(list(frames_dir.glob("**/*.png")))
-            log(f"[demo] PNG files written under {frames_dir}: {png_count}")
-            if png_count == 0:
-                raise RuntimeError(
-                    "Replicator did not write any PNG frames. Check that the script was run with "
-                    "Isaac Sim's python.sh, --headless was used on the cloud server, and cameras are enabled."
-                )
+        if recording_session is not None and frames_dir is not None:
+            finish_recording_session(recording_session, frames_dir)
 
         if not args.record and not args.headless:
             log("[demo] Replay complete. Close Isaac Sim or press Ctrl+C to stop.")
