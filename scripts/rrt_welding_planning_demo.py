@@ -79,7 +79,18 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run an Isaac Sim RRT welding path-planning demo.")
     parser.add_argument("--job-dir", type=Path, default=DEFAULT_JOB_DIR, help="Generated job directory.")
     parser.add_argument("--urdf", type=Path, default=DEFAULT_URDF, help="UR5e welding-arm URDF.")
-    parser.add_argument("--weld-index", type=int, default=0, help="Weld segment index from weld_vectors.json.")
+    parser.add_argument(
+        "--weld-index",
+        type=int,
+        default=0,
+        help="Transition start weld index: plan from weld_index end to weld_index+1 start.",
+    )
+    parser.add_argument(
+        "--transition-xyz-tol",
+        type=float,
+        default=1e-6,
+        help="Skip planning when consecutive weld endpoint/startpoint xyz are already coincident within this tolerance.",
+    )
     parser.add_argument("--seed", type=int, default=7, help="RRT random seed.")
     parser.add_argument("--headless", action="store_true", help="Run Isaac Sim headless.")
     parser.add_argument("--record", dest="record", action="store_true", default=True, help="Record replay to MP4. Enabled by default.")
@@ -851,29 +862,67 @@ def matrix_to_quat_xyzw(rot: np.ndarray) -> tuple[float, float, float, float]:
     return ((rot[0, 2] + rot[2, 0]) / s, (rot[1, 2] + rot[2, 1]) / s, 0.25 * s, (rot[1, 0] - rot[0, 1]) / s)
 
 
-def load_weld_targets(job_dir: Path, weld_index: int, scale: float, offset: list[float], z_offset: float, tcp_offset: float):
+def _world_xyz(xyz: list[float], scale: float, offset: list[float], z_offset: float) -> np.ndarray:
+    point = np.array(xyz, dtype=float) * scale + np.array(offset, dtype=float)
+    point[2] += z_offset
+    return point
+
+
+def load_weld_targets(
+    job_dir: Path,
+    weld_index: int,
+    scale: float,
+    offset: list[float],
+    z_offset: float,
+    tcp_offset: float,
+    transition_xyz_tol: float,
+):
     vector_path = job_dir / "weld_vectors.json"
     with vector_path.open("r", encoding="utf-8") as f:
         welds = json.load(f)["welds"]
-    if weld_index < 0 or weld_index >= len(welds):
-        raise IndexError(f"--weld-index {weld_index} out of range 0..{len(welds) - 1}")
-    weld = welds[weld_index]
-    start_xyz = np.array(weld["start"]["xyz"], dtype=float) * scale + np.array(offset, dtype=float)
-    end_xyz = np.array(weld["end"]["xyz"], dtype=float) * scale + np.array(offset, dtype=float)
-    start_xyz[2] += z_offset
-    end_xyz[2] += z_offset
-    tangent = normalize(end_xyz - start_xyz)
-    end_normal = resolve_pose_normal(weld["end"].get("pose"), "end", tangent)
-    start_normal = resolve_pose_normal(weld["start"].get("pose"), "start", tangent, fallback_normal=end_normal)
+    if weld_index < 0 or weld_index + 1 >= len(welds):
+        raise IndexError(f"--weld-index {weld_index} out of range 0..{len(welds) - 2} for consecutive-weld transition planning")
+
+    prev_weld = welds[weld_index]
+    next_weld = welds[weld_index + 1]
+
+    prev_start_xyz = _world_xyz(prev_weld["start"]["xyz"], scale, offset, z_offset)
+    prev_end_xyz = _world_xyz(prev_weld["end"]["xyz"], scale, offset, z_offset)
+    next_start_xyz = _world_xyz(next_weld["start"]["xyz"], scale, offset, z_offset)
+    next_end_xyz = _world_xyz(next_weld["end"]["xyz"], scale, offset, z_offset)
+
+    prev_tangent = normalize(prev_end_xyz - prev_start_xyz)
+    next_tangent = normalize(next_end_xyz - next_start_xyz)
+
+    start_xyz = prev_end_xyz
+    goal_xyz = next_start_xyz
+    transition_distance = float(np.linalg.norm(goal_xyz - start_xyz))
+    if transition_distance <= transition_xyz_tol:
+        return {
+            "vector_path": vector_path,
+            "skip_planning": True,
+            "transition_distance": transition_distance,
+            "start_xyz": start_xyz,
+            "end_xyz": goal_xyz,
+            "prev_weld_index": weld_index,
+            "next_weld_index": weld_index + 1,
+        }
+
+    start_normal = resolve_pose_normal(prev_weld["end"].get("pose"), "previous weld end", prev_tangent)
+    goal_normal = resolve_pose_normal(next_weld["start"].get("pose"), "next weld start", next_tangent)
     return {
         "vector_path": vector_path,
-        "start_tf": target_frame_from_weld(start_xyz, start_normal, tangent, tcp_offset),
-        "goal_tf": target_frame_from_weld(end_xyz, end_normal, tangent, tcp_offset),
+        "skip_planning": False,
+        "transition_distance": transition_distance,
+        "prev_weld_index": weld_index,
+        "next_weld_index": weld_index + 1,
+        "start_tf": target_frame_from_weld(start_xyz, start_normal, prev_tangent, tcp_offset),
+        "goal_tf": target_frame_from_weld(goal_xyz, goal_normal, next_tangent, tcp_offset),
         "start_xyz": start_xyz,
-        "end_xyz": end_xyz,
+        "end_xyz": goal_xyz,
         "start_normal": start_normal,
-        "end_normal": end_normal,
-        "tangent": tangent,
+        "end_normal": goal_normal,
+        "tangent": normalize(goal_xyz - start_xyz),
     }
 
 
@@ -1808,9 +1857,22 @@ def main() -> None:
             args.workpiece_offset,
             args.workpiece_z_offset,
             args.tcp_normal_offset,
+            args.transition_xyz_tol,
         )
-        log(f"[demo] Loaded weld segment {args.weld_index} from {targets['vector_path']}")
-        log(f"[demo] Raw weld start/end in world: {targets['start_xyz']} -> {targets['end_xyz']}")
+        log(
+            f"[demo] Loaded weld transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+            f"from {targets['vector_path']}"
+        )
+        log(
+            f"[demo] Transition world xyz: {targets['start_xyz']} -> {targets['end_xyz']} "
+            f"(distance={targets['transition_distance']:.6f} m)"
+        )
+        if targets.get("skip_planning", False):
+            log(
+                f"[demo] Consecutive weld endpoint/startpoint already coincide within "
+                f"{args.transition_xyz_tol:.2e} m; skipping path planning."
+            )
+            return
 
         log("[demo] Resetting world and initializing articulation.")
         world.reset()
