@@ -1188,16 +1188,6 @@ def set_robot_q(robot: Any, dof_indices: list[int], q: np.ndarray) -> None:
     robot.set_joint_positions(full)
 
 
-def endpoint_yaw_angles(sample_count: int) -> list[float]:
-    if sample_count <= 1:
-        return [0.0]
-    angles = [0.0]
-    for k in range(1, sample_count):
-        magnitude = 2.0 * math.pi * ((k + 1) // 2) / sample_count
-        angles.append(magnitude if k % 2 else -magnitude)
-    return angles
-
-
 def build_endpoint_seed_pool(
     base_seeds: list[np.ndarray],
     lower: np.ndarray,
@@ -1230,7 +1220,6 @@ def solve_valid_endpoint(
     rng: np.random.Generator,
 ) -> tuple[np.ndarray, np.ndarray, int]:
     last_error: Exception | None = None
-    yaw_angles = endpoint_yaw_angles(yaw_samples)
     for retreat_index in range(max_retreat_steps + 1):
         seed_pool = build_endpoint_seed_pool(
             seeds,
@@ -1239,38 +1228,34 @@ def solve_valid_endpoint(
             rng,
             random_count=random_seeds,
         )
-        for yaw_index, yaw in enumerate(yaw_angles):
-            target_tf = retreated_target_tf(
-                base_xyz,
-                normal,
-                tangent,
-                tcp_offset,
-                retreat_step,
-                retreat_index,
-                yaw_about_normal=yaw,
+        target_tf = retreated_target_tf(
+            base_xyz,
+            normal,
+            tangent,
+            tcp_offset,
+            retreat_step,
+            retreat_index,
+            yaw_about_normal=0.0,
+        )
+        try:
+            q = kinematics.solve_ik(
+                target_tf,
+                seed_pool,
+                max_iters=360,
+                rot_weight=ik_rot_weight,
             )
-            try:
-                q = kinematics.solve_ik(
-                    target_tf,
-                    seed_pool,
-                    max_iters=360,
-                    rot_weight=ik_rot_weight,
-                )
-            except RuntimeError as exc:
-                last_error = exc
-                continue
-            if checker.is_state_valid(q):
-                if retreat_index > 0 or abs(yaw) > 1e-12:
-                    log(
-                        f"[endpoint] {label} retreated={retreat_step * retreat_index:.3f} m "
-                        f"yaw_sample={yaw_index}/{len(yaw_angles)} yaw={yaw:.3f} rad."
-                    )
-                return target_tf, q, retreat_index
-            last_error = RuntimeError(
-                f"{label} IK state collides at retreat_index={retreat_index}, yaw={yaw:.3f}, "
-                f"prim={checker.last_collision_prim_path}, contact={checker.last_contact_pair}, "
-                f"bbox={checker.last_collision_bbox}"
-            )
+        except RuntimeError as exc:
+            last_error = exc
+            continue
+        if checker.is_state_valid(q):
+            if retreat_index > 0:
+                log(f"[endpoint] {label} retreated={retreat_step * retreat_index:.3f} m along pose_normal.")
+            return target_tf, q, retreat_index
+        last_error = RuntimeError(
+            f"{label} IK state collides at retreat_index={retreat_index}, "
+            f"prim={checker.last_collision_prim_path}, contact={checker.last_contact_pair}, "
+            f"bbox={checker.last_collision_bbox}"
+        )
     raise RuntimeError(
         f"Could not find a collision-free {label} endpoint after {max_retreat_steps} retreat steps. "
         f"Last error: {last_error}"
@@ -1359,9 +1344,11 @@ def draw_target_markers(
 
 
 @dataclass(frozen=True)
-class FixedCameraRig:
-    eye: tuple[float, float, float]
+class OrbitCameraRig:
     target: tuple[float, float, float]
+    radius_xy: float
+    eye_z: float
+    start_angle_rad: float
     focal_length: float = 32.0
     focus_distance: float = 2.5
 
@@ -1373,6 +1360,9 @@ class RecordingSession:
     args: argparse.Namespace
     writer: Any
     camera_prim_path: str
+    rig: OrbitCameraRig
+    frame_index: int
+    total_frames: int
 
 
 def workpiece_bounds(workpiece_info: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
@@ -1388,20 +1378,34 @@ def workpiece_center_and_span(workpiece_info: dict[str, Any]) -> tuple[np.ndarra
     return center, span
 
 
-def recording_camera_rig(workpiece_info: dict[str, Any]) -> FixedCameraRig:
+def recording_camera_rig(workpiece_info: dict[str, Any]) -> OrbitCameraRig:
     center, span = workpiece_center_and_span(workpiece_info)
     target = (float(center[0]), float(center[1]), float(center[2] + max(0.14, span * 0.22)))
-    return FixedCameraRig(
-        eye=(
+    eye = np.array(
+        [
             float(center[0] + max(1.15, span * 3.3)),
             float(center[1] - max(1.35, span * 3.8)),
             float(center[2] + max(0.82, span * 1.9)),
-        ),
-        target=(float(center[0]), float(center[1]), float(center[2] + max(0.14, span * 0.22))),
+        ],
+        dtype=float,
+    )
+    offset_xy = eye[:2] - center[:2]
+    return OrbitCameraRig(
+        target=target,
+        radius_xy=float(np.linalg.norm(offset_xy)),
+        eye_z=float(eye[2]),
+        start_angle_rad=float(math.atan2(offset_xy[1], offset_xy[0])),
     )
 
 
-def ensure_recording_camera(stage: Any, rig: FixedCameraRig, prim_path: str = "/World/RecordingCamera") -> str:
+def orbit_camera_eye(rig: OrbitCameraRig, progress: float) -> tuple[float, float, float]:
+    angle = rig.start_angle_rad + math.pi * float(np.clip(progress, 0.0, 1.0))
+    target_xy = np.array(rig.target[:2], dtype=float)
+    eye_xy = target_xy + rig.radius_xy * np.array([math.cos(angle), math.sin(angle)], dtype=float)
+    return (float(eye_xy[0]), float(eye_xy[1]), float(rig.eye_z))
+
+
+def ensure_recording_camera(stage: Any, rig: OrbitCameraRig, prim_path: str = "/World/RecordingCamera") -> str:
     from pxr import UsdGeom
 
     camera = UsdGeom.Camera.Define(stage, prim_path)
@@ -1446,6 +1450,7 @@ def start_recording_session(
     workpiece_info: dict[str, Any],
     frames_dir: Path,
     args: argparse.Namespace,
+    total_frames: int,
 ) -> RecordingSession:
     try:
         rep.orchestrator.set_capture_on_play(False)
@@ -1454,8 +1459,9 @@ def start_recording_session(
 
     rig = recording_camera_rig(workpiece_info)
     camera_prim_path = ensure_recording_camera(stage, rig)
-    log(f"[demo] Recording camera eye={rig.eye}, look_at={rig.target}")
-    set_camera_pose(stage, camera_prim_path, rig.eye, rig.target)
+    initial_eye = orbit_camera_eye(rig, progress=0.0)
+    log(f"[demo] Recording camera start_eye={initial_eye}, look_at={rig.target}, sweep=180deg")
+    set_camera_pose(stage, camera_prim_path, initial_eye, rig.target)
     render_product = rep.create.render_product(camera_prim_path, resolution=(args.width, args.height))
     writer = create_basic_writer(rep, frames_dir, [render_product])
     return RecordingSession(
@@ -1464,12 +1470,18 @@ def start_recording_session(
         args=args,
         writer=writer,
         camera_prim_path=camera_prim_path,
+        rig=rig,
+        frame_index=0,
+        total_frames=max(1, int(total_frames)),
     )
 
 
-def capture_recording_frame(session: RecordingSession) -> None:
+def capture_recording_frame(session: RecordingSession, stage: Any) -> None:
+    progress = 1.0 if session.total_frames <= 1 else session.frame_index / float(session.total_frames - 1)
+    set_camera_pose(stage, session.camera_prim_path, orbit_camera_eye(session.rig, progress), session.rig.target)
     session.world.step(render=True)
     step_replicator(session.rep, session.args)
+    session.frame_index += 1
 
 
 def finish_recording_session(session: RecordingSession, frames_dir: Path) -> None:
@@ -1525,7 +1537,7 @@ def write_ik_endpoint_screenshots(
         zero_robot_velocities(robot)
         world.step(render=True)
 
-        set_camera_pose(stage, camera_prim_path, rig.eye, rig.target)
+        set_camera_pose(stage, camera_prim_path, orbit_camera_eye(rig, progress=0.0), rig.target)
         render_product = rep.create.render_product(camera_prim_path, resolution=(args.width, args.height))
         writer = create_basic_writer(rep, label_dir, [render_product])
         world.step(render=True)
@@ -1618,6 +1630,7 @@ def step_scene(world: Any, rep: Any | None, args: argparse.Namespace | None) -> 
 
 def run_playback(
     world: Any,
+    stage: Any,
     robot: Any,
     dof_indices: list[int],
     q_playback: np.ndarray,
@@ -1630,7 +1643,7 @@ def run_playback(
         if recording_session is None:
             step_scene(world, rep=None, args=None)
             return
-        capture_recording_frame(recording_session)
+        capture_recording_frame(recording_session, stage)
 
     set_robot_q(robot, dof_indices, q_playback[0])
     for _ in range(args.num_idle_frames):
@@ -1901,6 +1914,7 @@ def main() -> None:
 
         recording_session = None
         if args.record and frames_dir is not None:
+            total_recording_frames = len(q_playback) + 2 * args.num_idle_frames
             recording_session = start_recording_session(
                 rep=rep,
                 world=world,
@@ -1908,11 +1922,12 @@ def main() -> None:
                 workpiece_info=workpiece_info,
                 frames_dir=frames_dir,
                 args=args,
+                total_frames=total_recording_frames,
             )
             refresh_articulation_view(world, robot, warmup_steps=1)
             log(f"[demo] Recording frames to: {frames_dir}")
 
-        run_playback(world, robot, dof_indices, q_playback, args, recording_session)
+        run_playback(world, stage, robot, dof_indices, q_playback, args, recording_session)
 
         if recording_session is not None and frames_dir is not None:
             finish_recording_session(recording_session, frames_dir)
