@@ -6,9 +6,9 @@ This is a single-robot/single-workpiece demo that mirrors the structure of
 1. Read one weld segment from ``weld_vectors.json``.
 2. Convert the start/end xyz and pose normal into world-frame TCP targets.
 3. Solve six-axis UR5e IK for the start and goal.
-4. Run joint-space RRT-Connect.
-5. Validate states/edges with Isaac Sim/PhysX scene collision queries.
-6. Replay and record the planned trajectory by default.
+4. Run joint-space RRT-Connect to find a collision-free seed path.
+5. Run TrajOpt-style smoothing on the seed path while preserving collision validity.
+6. Replay and record the optimized trajectory by default.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ import traceback
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -51,6 +51,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from sim_welding_arm import import_robot_from_urdf, make_resolved_urdf  # noqa: E402
 from sim_parallel_welding import add_scene_lighting, ensure_xform, move_prim_to_path, step_replicator  # noqa: E402
+from planning_core import TrajOptConfig, densify_path, interpolate_edge, rrt_connect_plan_with_restarts, run_trajopt  # noqa: E402
 
 
 def log(message: str) -> None:
@@ -114,6 +115,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-iter", type=int, default=50000, help="Maximum RRT-Connect iterations per restart.")
     parser.add_argument("--rrt-restarts", type=int, default=4, help="Number of RRT-Connect restarts.")
     parser.add_argument("--goal-bias", type=float, default=0.35, help="Probability of sampling q_goal.")
+    parser.add_argument("--trajopt", dest="trajopt", action="store_true", default=True, help="Run TrajOpt-style smoothing after RRT. Enabled by default.")
+    parser.add_argument("--no-trajopt", dest="trajopt", action="store_false", help="Skip TrajOpt smoothing and replay the raw RRT path.")
+    parser.add_argument("--trajopt-waypoints", type=int, default=20, help="Number of waypoints used by TrajOpt resampling.")
+    parser.add_argument("--trajopt-maxiter", type=int, default=200, help="Maximum SLSQP iterations for TrajOpt.")
+    parser.add_argument("--trajopt-smoothness-weight", type=float, default=5.0, help="Smoothness weight for TrajOpt.")
+    parser.add_argument("--trajopt-path-length-weight", type=float, default=1.0, help="Path-length weight for TrajOpt.")
+    parser.add_argument("--trajopt-seed-weight", type=float, default=0.15, help="Seed-adherence weight for TrajOpt.")
     parser.add_argument("--collision-padding", type=float, default=0.015, help="AABB padding for PhysX overlap queries.")
     parser.add_argument("--include-tool-collision", dest="include_tool_collision", action="store_true", default=True, help="Use ee/pen collision geometry. Enabled by default.")
     parser.add_argument("--no-tool-collision", dest="include_tool_collision", action="store_false", help="Do not use ee/pen collision geometry.")
@@ -791,142 +799,6 @@ def retreated_target_tf(
         tcp_offset + retreat_step * retreat_index,
         yaw_about_normal=yaw_about_normal,
     )
-
-
-def interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
-    dist = float(np.linalg.norm(q_to - q_from))
-    steps = max(1, int(math.ceil(dist / resolution)))
-    return np.linspace(q_from, q_to, steps + 1)
-
-
-def densify_path(path: np.ndarray, resolution: float) -> np.ndarray:
-    dense = [path[0]]
-    for i in range(len(path) - 1):
-        dense.extend(interpolate_edge(path[i], path[i + 1], resolution)[1:])
-    return np.array(dense)
-
-
-def nearest_node_index(nodes: list[np.ndarray], q: np.ndarray) -> int:
-    arr = np.array(nodes)
-    return int(np.argmin(np.linalg.norm(arr - q, axis=1)))
-
-
-def extend_tree(
-    nodes: list[np.ndarray],
-    parents: list[int],
-    q_target: np.ndarray,
-    step_size: float,
-    is_state_valid: Callable[[np.ndarray], bool],
-    is_edge_valid: Callable[[np.ndarray, np.ndarray], bool],
-) -> tuple[int | None, str]:
-    nearest = nearest_node_index(nodes, q_target)
-    q_near = nodes[nearest]
-    delta = q_target - q_near
-    dist = float(np.linalg.norm(delta))
-    if dist < 1e-10:
-        return None, "trapped"
-    q_new = q_near + min(step_size, dist) * delta / dist
-    if not is_state_valid(q_new) or not is_edge_valid(q_near, q_new):
-        return None, "trapped"
-    nodes.append(q_new)
-    parents.append(nearest)
-    return len(nodes) - 1, "reached" if dist <= step_size else "advanced"
-
-
-def connect_tree(*args: Any) -> tuple[int | None, str]:
-    last_idx = None
-    while True:
-        new_idx, status = extend_tree(*args)
-        if new_idx is None:
-            return last_idx, "trapped"
-        last_idx = new_idx
-        if status == "reached":
-            return last_idx, "reached"
-
-
-def reconstruct(nodes: list[np.ndarray], parents: list[int], idx: int) -> np.ndarray:
-    path = []
-    while idx != -1:
-        path.append(nodes[idx])
-        idx = parents[idx]
-    return np.array(path[::-1])
-
-
-def rrt_connect_plan(
-    q_start: np.ndarray,
-    q_goal: np.ndarray,
-    lower: np.ndarray,
-    upper: np.ndarray,
-    is_state_valid: Callable[[np.ndarray], bool],
-    is_edge_valid: Callable[[np.ndarray, np.ndarray], bool],
-    step_size: float,
-    max_iter: int,
-    goal_bias: float,
-    rng: np.random.Generator,
-) -> np.ndarray:
-    if is_edge_valid(q_start, q_goal):
-        log("[RRT-Connect] Direct start-goal edge is valid.")
-        return np.vstack([q_start, q_goal])
-
-    start_nodes, goal_nodes = [q_start.copy()], [q_goal.copy()]
-    start_parents, goal_parents = [-1], [-1]
-    best_goal_distance = float(np.linalg.norm(q_goal - q_start))
-    for iteration in range(max_iter):
-        q_rand = q_goal if rng.random() < goal_bias else rng.uniform(lower, upper)
-        new_idx, _ = extend_tree(start_nodes, start_parents, q_rand, step_size, is_state_valid, is_edge_valid)
-        if new_idx is not None:
-            best_goal_distance = min(best_goal_distance, float(np.linalg.norm(start_nodes[new_idx] - q_goal)))
-            connect_idx, status = connect_tree(
-                goal_nodes, goal_parents, start_nodes[new_idx], step_size, is_state_valid, is_edge_valid
-            )
-            if status == "reached" and connect_idx is not None:
-                path_a = reconstruct(start_nodes, start_parents, new_idx)
-                path_b = reconstruct(goal_nodes, goal_parents, connect_idx)
-                path = np.vstack([path_a, path_b[::-1][1:]])
-                log(f"[RRT-Connect] Found path at iter={iteration}, waypoints={len(path)}")
-                return path
-        start_nodes, goal_nodes = goal_nodes, start_nodes
-        start_parents, goal_parents = goal_parents, start_parents
-    raise RuntimeError(
-        f"RRT-Connect failed after {max_iter} iterations; "
-        f"best_goal_distance={best_goal_distance:.4f}, "
-        f"tree_sizes=({len(start_nodes)}, {len(goal_nodes)})"
-    )
-
-
-def rrt_connect_plan_with_restarts(
-    q_start: np.ndarray,
-    q_goal: np.ndarray,
-    lower: np.ndarray,
-    upper: np.ndarray,
-    is_state_valid: Callable[[np.ndarray], bool],
-    is_edge_valid: Callable[[np.ndarray, np.ndarray], bool],
-    step_size: float,
-    max_iter: int,
-    restarts: int,
-    goal_bias: float,
-    rng: np.random.Generator,
-) -> np.ndarray:
-    last_error: Exception | None = None
-    for attempt in range(1, max(1, restarts) + 1):
-        log(f"[RRT-Connect] Planning attempt {attempt}/{max(1, restarts)}")
-        try:
-            return rrt_connect_plan(
-                q_start=q_start,
-                q_goal=q_goal,
-                lower=lower,
-                upper=upper,
-                is_state_valid=is_state_valid,
-                is_edge_valid=is_edge_valid,
-                step_size=step_size,
-                max_iter=max_iter,
-                goal_bias=goal_bias,
-                rng=rng,
-            )
-        except RuntimeError as exc:
-            last_error = exc
-            log(f"[RRT-Connect] Attempt {attempt} failed: {exc}")
-    raise RuntimeError(f"RRT-Connect failed after {max(1, restarts)} restarts. Last error: {last_error}")
 
 
 class IsaacCollisionChecker:
@@ -1949,7 +1821,7 @@ def main() -> None:
 
         t0 = time.perf_counter()
         try:
-            q_path = rrt_connect_plan_with_restarts(
+            q_seed_path = rrt_connect_plan_with_restarts(
                 q_start=q_start,
                 q_goal=q_goal,
                 lower=kinematics.lower,
@@ -1961,6 +1833,7 @@ def main() -> None:
                 restarts=args.rrt_restarts,
                 goal_bias=args.goal_bias,
                 rng=rng,
+                logger=log,
             )
         except RuntimeError:
             if needs_replicator:
@@ -1970,7 +1843,28 @@ def main() -> None:
                     log(f"[demo] Failed to write planning-failure screenshot: {screenshot_exc}")
             raise
         plan_time = time.perf_counter() - t0
-        q_playback = densify_path(q_path, args.playback_resolution)
+        q_plan = q_seed_path
+        trajopt_success = False
+        if args.trajopt:
+            q_trajopt, trajopt_success = run_trajopt(
+                q_seed=q_seed_path,
+                lower=kinematics.lower,
+                upper=kinematics.upper,
+                is_state_valid=checker.is_state_valid,
+                is_edge_valid=is_edge_valid,
+                config=TrajOptConfig(
+                    num_waypoints=args.trajopt_waypoints,
+                    maxiter=args.trajopt_maxiter,
+                    smoothness_weight=args.trajopt_smoothness_weight,
+                    path_length_weight=args.trajopt_path_length_weight,
+                    seed_weight=args.trajopt_seed_weight,
+                    constraint_edge_resolution=args.edge_resolution,
+                ),
+                logger=log,
+            )
+            if trajopt_success:
+                q_plan = q_trajopt
+        q_playback = densify_path(q_plan, args.playback_resolution)
         tcp_points = np.array([kinematics.forward(q)[:3, 3] for q in q_playback])
         draw_target_markers(
             stage=stage,
@@ -1982,7 +1876,11 @@ def main() -> None:
             tcp_goal=targets["goal_tf"][:3, 3],
             path_points=tcp_points,
         )
-        log(f"[demo] Planned {len(q_path)} RRT waypoints, {len(q_playback)} playback points in {plan_time:.2f}s")
+        log(
+            f"[demo] Planned {len(q_seed_path)} RRT waypoints, "
+            f"{len(q_plan)} optimized waypoints, {len(q_playback)} playback points in {plan_time:.2f}s "
+            f"(trajopt={'accepted' if trajopt_success else 'skipped'})"
+        )
 
         recording_session = None
         if args.record and frames_dir is not None:

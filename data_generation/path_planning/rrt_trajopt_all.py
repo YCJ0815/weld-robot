@@ -3,13 +3,14 @@ import os
 import sys
 import select
 import argparse
+import json
 import numpy as np
 import pybullet as p
 import pybullet_data
 import trimesh
 from scipy.spatial.transform import Rotation
 from scipy.ndimage import map_coordinates
-from scipy.optimize import minimize
+from weld_path_parser import load_weld_path_transitions
 
 # ======================= 配置参数 =======================
 urdf_path = "./config/urdf/zj-robot.urdf"
@@ -20,43 +21,45 @@ STL_OBSTACLE_ORIENTATION_XYZW = [0.0, 0.0, 0.0, 1.0]
 
 END_EFFECTOR_LINK_NAME = "Circle_link"
 TORCH_STL_PATH = "./config/meshes/stl/welding_torch.stl"
+WELD_POSES_JSON_PATH = "./zj_all_weld_poses_scaled_0075.json"
 
 # Circle_link_joint 变换（welding_torch_link → Circle_link）
 TORCH_TO_EE_XYZ = [-0.01115, 0.08448, -0.71562]
 TORCH_TO_EE_RPY = [2.5410, -0.0338, -2.9778]
 
 INITIAL_EE_POSITION_XYZ = [
-    -0.49325298846854247+ 0.5,
-    1.68375 - 3.3,
-    0.13499999999999997 + 0.5,
+    -0.4850029884685424+ 0.5,
+    1.9413121908323476 - 3.3,
+    0.1316106889627408 + 0.5,
 ]
 USE_INITIAL_EE_ORIENTATION = True
 INITIAL_EE_ORIENTATION_XYZW = [
-          0.9951847266721969,
-          9.223923426318931e-17,
-          9.084771627171746e-18,
-          0.09801714032956063
+          -0.3460026116421203,
+          0.9260879050786919,
+          0.1409601513513542,
+          -0.05266517383238341
 ]
 
 TARGET_POSITION_XYZ = [
-    -0.4850029884685424 + 0.50,
-    1.9604870775526838 - 3.3,
-    0.032107413417383185 + 0.5,
+    -0.183749999999999977 + 0.50,
+    1.679625 - 3.3,
+    0.07499999999999989 + 0.5,
 ]
 USE_TARGET_ORIENTATION = True
 TARGET_ORIENTATION_XYZW = [
-          -0.18025869941887057,
-          0.8839867635521106,
-          0.42266514893798623,
-          -0.08618802133540464
+          -0.3981126085090628,
+          0.7690945006604258,
+          0.4440369169885576,
+          -0.2298504216904915
 ]
 
-PLAYBACK_DT = 0.05
+PLAYBACK_DT = 0.15
 PLAYBACK_EDGE_RESOLUTION = 0.02
+PLAYBACK_PATH_RESOLUTION = 0.005
+PLAYBACK_LOOP_PAUSE = 0.2
 GOAL_RETREAT_STEP = 0.001
 GOAL_RETREAT_MAX_STEPS = 2
 
-OPT_ARM_STEP_SIZE = 0.02
 CHECK_ARM_STEP_SIZE = 0.02
 
 D_SAFE_ARM = 0.05
@@ -65,17 +68,13 @@ SDF_PENETRATION_TOL = -0.001
 
 RRT_STEP_SIZE = 0.30
 RRT_EDGE_CHECK_RESOLUTION = 0.01
-RRT_MAX_ITER = 10000
+RRT_MAX_ITER = 5000
 RRT_GOAL_BIAS = 0.20
 RRT_INFORMED_BIAS = 0.85
 RRT_GOAL_THRESHOLD = 0.20
 RRT_IMPROVEMENT_PATIENCE = 50
 TRAJECTORY_EDGE_CHECK_RESOLUTION = 0.01
-TRAJOPT_NUM_WAYPOINTS = 20
-TRAJOPT_MAXITER = 500
-TRAJOPT_COLLISION_WEIGHT = 20000000.0
-TRAJOPT_SMOOTHNESS_WEIGHT = 5.0
-TRAJOPT_CONSTRAINT_POINT_STRIDE = 8
+DEFAULT_REPLAY_SAVE_PATH = "./outputs/rrt_replay_segments.npz"
 
 
 class FastNumPyFK:
@@ -88,8 +87,7 @@ class FastNumPyFK:
         self.local_T = {}
         self.joint_axes = {}
         self.joint_types = {}
-        self.arm_alphas_opt = {}
-        self.arm_alphas_check = {}
+        self.arm_alphas = {}
 
         base_pos, base_orn = p.getBasePositionAndOrientation(robot_id)
         self.base_T = np.eye(4)
@@ -110,10 +108,8 @@ class FastNumPyFK:
             self.local_T[i] = T
 
             seg_len = float(np.linalg.norm(origin_xyz))
-            n_opt = max(1, int(np.ceil(seg_len / OPT_ARM_STEP_SIZE)))
             n_chk = max(1, int(np.ceil(seg_len / CHECK_ARM_STEP_SIZE)))
-            self.arm_alphas_opt[i] = np.linspace(0.0, 1.0, n_opt + 1)[:, None]
-            self.arm_alphas_check[i] = np.linspace(0.0, 1.0, n_chk + 1)[:, None]
+            self.arm_alphas[i] = np.linspace(0.0, 1.0, n_chk + 1)[:, None]
 
     def _rodrigues_rotation(self, axis, angle):
         K = np.array([
@@ -183,14 +179,13 @@ class SDFCollisionLayer:
         )
 
 
-def get_tool_points_two_level(
+def get_tool_points(
     stl_path,
     scale=1.0,
     torch_to_ee_xyz=None,
     torch_to_ee_rpy=None,
     ring_points=30,
-    ring_spacing_opt=0.005,
-    ring_spacing_check=0.001,
+    ring_spacing=0.001,
 ):
     def _build_rings(verts, centroid_global, axis, spacing):
         proj = (verts - centroid_global) @ axis
@@ -280,12 +275,10 @@ def get_tool_points_two_level(
         centroid_global = verts.mean(axis=0)
         _, _, vt = np.linalg.svd(verts - centroid_global, full_matrices=False)
         axis = vt[0]
-        pts_opt = _build_rings(verts, centroid_global, axis, ring_spacing_opt)
-        pts_check = _build_rings(verts, centroid_global, axis, ring_spacing_check)
+        pts = _build_rings(verts, centroid_global, axis, ring_spacing)
     except Exception as exc:
         print(f"[Tool] 焊枪 STL 加载失败，退化为线段采样: {exc}")
-        pts_opt = np.array([[0, 0, z] for z in np.linspace(0, 0.25, ring_points)])
-        pts_check = np.array([[0, 0, z] for z in np.linspace(0, 0.25, ring_points * 2)])
+        pts = np.array([[0, 0, z] for z in np.linspace(0, 0.25, ring_points * 2)])
 
     if torch_to_ee_xyz is not None and torch_to_ee_rpy is not None:
         t_vec = np.array(torch_to_ee_xyz, dtype=np.float64)
@@ -294,14 +287,13 @@ def get_tool_points_two_level(
         def _to_ee(pts):
             return (R.T @ (pts - t_vec).T).T
 
-        pts_opt = _to_ee(pts_opt)
-        pts_check = _to_ee(pts_check)
+        pts = _to_ee(pts)
 
-    print(f"[Tool] 焊枪采样点: opt={len(pts_opt)} check={len(pts_check)}")
-    return pts_opt, pts_check
+    print(f"[Tool] 焊枪采样点: check={len(pts)}")
+    return pts
 
 
-def get_dense_robot_points(robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points, step_size=0.05):
+def get_dense_robot_points(robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points):
     set_joint_positions(robot_id, joint_indices, q)
 
     base_pos, _ = p.getBasePositionAndOrientation(robot_id)
@@ -317,18 +309,13 @@ def get_dense_robot_points(robot_id, joint_indices, fk_solver, q, ee_link, local
     ee_rot = np.array(p.getMatrixFromQuaternion(ee_orn), dtype=np.float64).reshape(3, 3)
     ee_points = (ee_rot @ local_tool_points.T).T + ee_pos
 
-    alphas_dict = (
-        fk_solver.arm_alphas_opt
-        if step_size >= OPT_ARM_STEP_SIZE
-        else fk_solver.arm_alphas_check
-    )
     arm_segments = []
     for i in range(fk_solver.num_joints):
         if i == ee_link:
             continue
         p_start = link_world_pos[fk_solver.parents[i]]
         p_end = link_world_pos[i]
-        alphas = alphas_dict[i]
+        alphas = fk_solver.arm_alphas[i]
         arm_segments.append((1 - alphas) * p_start + alphas * p_end)
 
     arm_points = np.vstack(arm_segments) if arm_segments else np.empty((0, 3))
@@ -343,7 +330,7 @@ def summarize_trajectory_collision(robot_id, joint_indices, fk_solver, Q, sdf_la
 
     for q in Q:
         arm_pts, ee_pts = get_dense_robot_points(
-            robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points, step_size=CHECK_ARM_STEP_SIZE
+            robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points
         )
         dist_arm_min = float(sdf_layer.get_distances(arm_pts).min()) if len(arm_pts) > 0 else 999.0
         dist_ee_min = float(sdf_layer.get_distances(ee_pts).min()) if len(ee_pts) > 0 else 999.0
@@ -371,7 +358,7 @@ def summarize_trajectory_collision(robot_id, joint_indices, fk_solver, Q, sdf_la
 
 def evaluate_state_sdf(robot_id, joint_indices, fk_solver, sdf_layer, ee_link, local_tool_points, q):
     arm_pts, ee_pts = get_dense_robot_points(
-        robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points, step_size=CHECK_ARM_STEP_SIZE
+        robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points
     )
     dist_arm = sdf_layer.get_distances(arm_pts) if len(arm_pts) > 0 else np.array([999.0])
     dist_ee = sdf_layer.get_distances(ee_pts) if len(ee_pts) > 0 else np.array([999.0])
@@ -402,208 +389,6 @@ def densify_trajectory_for_collision_check(Q, resolution=TRAJECTORY_EDGE_CHECK_R
         edge = interpolate_edge(Q[i], Q[i + 1], resolution)
         dense.extend(edge[1:])
     return np.array(dense)
-
-
-def resample_trajectory(Q, num_points):
-    if len(Q) <= 1 or num_points <= 1:
-        return Q.copy()
-    if len(Q) == num_points:
-        return Q.copy()
-
-    seg_len = np.linalg.norm(np.diff(Q, axis=0), axis=1)
-    cum_len = np.concatenate([[0.0], np.cumsum(seg_len)])
-    total_len = float(cum_len[-1])
-    if total_len < 1e-12:
-        return np.repeat(Q[:1], num_points, axis=0)
-
-    target_s = np.linspace(0.0, total_len, num_points)
-    Q_resampled = np.column_stack(
-        [np.interp(target_s, cum_len, Q[:, j]) for j in range(Q.shape[1])]
-    )
-    return Q_resampled
-
-
-def collision_penalty_from_distances(dist_arr, d_safe):
-    if len(dist_arr) == 0:
-        return 0.0
-    return float(np.sum(np.square(np.maximum(0.0, d_safe - dist_arr))))
-
-
-def reconstruct_trajopt_path(x, q_start, q_goal, n_dof):
-    if len(x) == 0:
-        return np.vstack([q_start, q_goal])
-    Q_mid = x.reshape(-1, n_dof)
-    return np.vstack([q_start, Q_mid, q_goal])
-
-
-def trajopt_objective(
-    x,
-    q_start,
-    q_goal,
-    n_dof,
-    robot_id,
-    joint_indices,
-    fk_solver,
-    sdf_layer,
-    ee_link,
-    local_tool_points,
-    collision_step_size,
-):
-    if len(x) == 0:
-        return 0.0
-
-    Q = reconstruct_trajopt_path(x, q_start, q_goal, n_dof)
-
-    smoothness_cost = 0.0
-    if len(Q) >= 3:
-        q_dd = Q[2:] - 2.0 * Q[1:-1] + Q[:-2]
-        smoothness_cost = float(np.sum(np.square(q_dd)))
-
-    collision_cost = 0.0
-    for q in Q:
-        arm_pts, ee_pts = get_dense_robot_points(
-            robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points, step_size=collision_step_size
-        )
-        collision_cost += collision_penalty_from_distances(
-            sdf_layer.get_distances(arm_pts), D_SAFE_ARM
-        )
-        collision_cost += collision_penalty_from_distances(
-            sdf_layer.get_distances(ee_pts), D_SAFE_EE
-        )
-
-    return (
-        TRAJOPT_COLLISION_WEIGHT * collision_cost
-        + TRAJOPT_SMOOTHNESS_WEIGHT * smoothness_cost
-    )
-
-
-def trajopt_non_penetration_constraint(
-    x,
-    q_start,
-    q_goal,
-    n_dof,
-    robot_id,
-    joint_indices,
-    fk_solver,
-    sdf_layer,
-    ee_link,
-    local_tool_points,
-    collision_step_size,
-):
-    Q = reconstruct_trajopt_path(x, q_start, q_goal, n_dof)
-    margins = []
-    # 约束只施加在中间路点上，端点已在规划前单独保证可行。
-    for q in Q[1:-1]:
-        arm_pts, ee_pts = get_dense_robot_points(
-            robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points, step_size=collision_step_size
-        )
-        if len(arm_pts) > 0:
-            margins.append(sdf_layer.get_distances(arm_pts[::TRAJOPT_CONSTRAINT_POINT_STRIDE]))
-        if len(ee_pts) > 0:
-            margins.append(sdf_layer.get_distances(ee_pts[::TRAJOPT_CONSTRAINT_POINT_STRIDE]))
-    if not margins:
-        return np.array([1.0], dtype=np.float64)
-    return np.concatenate(margins)
-
-
-def run_trajopt(
-    Q_seed,
-    lower_limits,
-    upper_limits,
-    robot_id,
-    joint_indices,
-    fk_solver,
-    sdf_layer,
-    ee_link,
-    local_tool_points_opt,
-    local_tool_points_check,
-):
-    if len(Q_seed) <= 2:
-        print("[TrajOpt] 轨迹点过少，跳过优化。")
-        return Q_seed, False
-
-    num_waypoints = max(15, min(TRAJOPT_NUM_WAYPOINTS, len(Q_seed)))
-    Q_init = resample_trajectory(Q_seed, num_waypoints)
-    q_start = Q_init[0]
-    q_goal = Q_init[-1]
-    x0 = Q_init[1:-1].reshape(-1)
-
-    if len(x0) == 0:
-        print("[TrajOpt] 无中间路点，跳过优化。")
-        return Q_seed, False
-
-    bounds = []
-    for _ in range(len(Q_init) - 2):
-        for low, high in zip(lower_limits, upper_limits):
-            bounds.append((float(low), float(high)))
-
-    print(
-        f"[TrajOpt] 开始优化: seed_points={len(Q_seed)} opt_points={len(Q_init)} "
-        f"maxiter={TRAJOPT_MAXITER} constraint_stride={TRAJOPT_CONSTRAINT_POINT_STRIDE}"
-    )
-    constraints = [
-        {
-            "type": "ineq",
-            "fun": lambda x: trajopt_non_penetration_constraint(
-                x,
-                q_start,
-                q_goal,
-                len(joint_indices),
-                robot_id,
-                joint_indices,
-                fk_solver,
-                sdf_layer,
-                ee_link,
-                local_tool_points_check,
-                CHECK_ARM_STEP_SIZE,
-            ),
-        }
-    ]
-    result = minimize(
-        trajopt_objective,
-        x0,
-        args=(
-            q_start,
-            q_goal,
-            len(joint_indices),
-            robot_id,
-            joint_indices,
-            fk_solver,
-            sdf_layer,
-            ee_link,
-            local_tool_points_check,
-            CHECK_ARM_STEP_SIZE,
-        ),
-        method="SLSQP",
-        bounds=bounds,
-        constraints=constraints,
-        options={"maxiter": TRAJOPT_MAXITER, "disp": False, "ftol": 1e-4},
-    )
-
-    Q_opt = np.vstack([q_start, result.x.reshape(-1, len(joint_indices)), q_goal])
-    Q_opt_dense_check = densify_trajectory_for_collision_check(Q_opt)
-    opt_summary = summarize_trajectory_collision(
-        robot_id,
-        joint_indices,
-        fk_solver,
-        Q_opt_dense_check,
-        sdf_layer,
-        ee_link,
-        local_tool_points_check,
-    )
-    print(
-        f"[TrajOpt] 结束: success={result.success} status={result.status} "
-        f"nit={getattr(result, 'nit', -1)} fun={result.fun:.4f} "
-        f"message={result.message} "
-        f"穿透={opt_summary['penetration_count']} 近距={opt_summary['near_count']}"
-    )
-    non_penetrating = (
-        opt_summary["arm_min_global"] >= 0.0 and opt_summary["ee_min_global"] >= SDF_PENETRATION_TOL
-    )
-    accepted_success = bool(result.success) and non_penetrating
-    if result.success and not non_penetrating:
-        print("[TrajOpt] 数值优化虽收敛，但优化轨迹仍有真实穿透，判定为失败并回退。")
-    return Q_opt, accepted_success
 
 
 def get_movable_joints(robot_id):
@@ -795,16 +580,21 @@ def draw_ee_trajectory_lines(robot_id, joint_indices, Q, ee_link, color_rgb, lin
             lineWidth=line_width,
         )
 
-
-def show_debug_label(text, position_xyz, color_rgb, text_size=1.4, replace_uid=-1):
-    return p.addUserDebugText(
-        text=text,
-        textPosition=list(position_xyz),
-        textColorRGB=list(color_rgb),
-        textSize=text_size,
-        lifeTime=0,
-        replaceItemUniqueId=replace_uid,
-    )
+def draw_world_trajectory_lines(points, color_rgb, line_width=2.5):
+    if len(points) < 2:
+        return []
+    ids = []
+    for i in range(len(points) - 1):
+        ids.append(
+            p.addUserDebugLine(
+                points[i].tolist(),
+                points[i + 1].tolist(),
+                lineColorRGB=list(color_rgb),
+                lineWidth=line_width,
+                lifeTime=0,
+            )
+        )
+    return ids
 
 
 def wait_for_start_signal():
@@ -858,6 +648,115 @@ def setup_pybullet(gui=True):
     return client, robot_id, [obstacle_id]
 
 
+def transform_json_xyz(xyz):
+    p_xyz = np.asarray(xyz, dtype=np.float64) * 0.001
+    p_xyz[0] += 0.5
+    p_xyz[1] -= 3.3
+    p_xyz[2] += 0.5
+    return p_xyz.tolist()
+
+
+def draw_replay_debug_visual(seg):
+    s = seg["start_pos"]
+    g = seg["goal_pos"]
+    ee_path = np.asarray(seg["ee_path"], dtype=np.float64)
+    ids = []
+
+    ids.extend(draw_world_trajectory_lines(ee_path, [0.12, 0.9, 0.75], line_width=2.8))
+
+    d = 0.02
+    ids.append(p.addUserDebugLine([s[0] - d, s[1], s[2]], [s[0] + d, s[1], s[2]], [0.0, 0.0, 0.0], 6.0, 0))
+    ids.append(p.addUserDebugLine([s[0], s[1] - d, s[2]], [s[0], s[1] + d, s[2]], [0.0, 0.0, 0.0], 6.0, 0))
+    ids.append(p.addUserDebugLine([s[0], s[1], s[2] - d], [s[0], s[1], s[2] + d], [0.0, 0.0, 0.0], 6.0, 0))
+    ids.append(p.addUserDebugLine([s[0] - d, s[1], s[2]], [s[0] + d, s[1], s[2]], [1.0, 0.2, 0.2], 4.0, 0))
+    ids.append(p.addUserDebugLine([s[0], s[1] - d, s[2]], [s[0], s[1] + d, s[2]], [1.0, 0.2, 0.2], 4.0, 0))
+    ids.append(p.addUserDebugLine([s[0], s[1], s[2] - d], [s[0], s[1], s[2] + d], [1.0, 0.2, 0.2], 4.0, 0))
+
+    start_shape = p.createVisualShape(shapeType=p.GEOM_SPHERE, radius=0.009, rgbaColor=[0.1, 1.0, 0.1, 0.95])
+    end_shape = p.createVisualShape(shapeType=p.GEOM_SPHERE, radius=0.009, rgbaColor=[1.0, 0.1, 0.1, 0.95])
+    start_body = p.createMultiBody(baseMass=0.0, baseVisualShapeIndex=start_shape, basePosition=s)
+    end_body = p.createMultiBody(baseMass=0.0, baseVisualShapeIndex=end_shape, basePosition=g)
+    return {"debug_ids": ids, "body_ids": [start_body, end_body]}
+
+
+def clear_debug_visuals(vis_handles):
+    for item_id in vis_handles.get("debug_ids", []):
+        p.removeUserDebugItem(item_id)
+    for body_id in vis_handles.get("body_ids", []):
+        if body_id >= 0:
+            p.removeBody(body_id)
+
+
+def pack_segments(segments):
+    if not segments:
+        return np.empty((0, 0), dtype=np.float64), np.array([], dtype=np.int32)
+    lengths = np.array([len(seg) for seg in segments], dtype=np.int32)
+    packed = np.vstack(segments)
+    return packed, lengths
+
+
+def unpack_segments(packed, lengths):
+    segments = []
+    offset = 0
+    for seg_len in lengths:
+        next_offset = offset + int(seg_len)
+        segments.append(np.array(packed[offset:next_offset], dtype=np.float64))
+        offset = next_offset
+    return segments
+
+
+def save_replay_bundle(save_path, segments, segment_visual_data, metadata):
+    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+    q_packed, q_lengths = pack_segments([seg["q_path"] for seg in segments])
+    playback_packed, playback_lengths = pack_segments([seg["q_playback"] for seg in segments])
+    ee_packed, ee_lengths = pack_segments([seg["ee_path"] for seg in segment_visual_data])
+    start_positions = np.array([seg["start_pos"] for seg in segment_visual_data], dtype=np.float64)
+    goal_positions = np.array([seg["goal_pos"] for seg in segment_visual_data], dtype=np.float64)
+    labels = np.array([seg["label"] for seg in segment_visual_data], dtype="<U16")
+    np.savez_compressed(
+        save_path,
+        q_packed=q_packed,
+        q_lengths=q_lengths,
+        playback_packed=playback_packed,
+        playback_lengths=playback_lengths,
+        ee_packed=ee_packed,
+        ee_lengths=ee_lengths,
+        start_positions=start_positions,
+        goal_positions=goal_positions,
+        labels=labels,
+        metadata=np.array(json.dumps(metadata), dtype="<U4096"),
+    )
+    print(f"[保存] 规划结果已写入: {save_path}")
+
+
+def load_replay_bundle(save_path):
+    if not os.path.exists(save_path):
+        raise FileNotFoundError(f"未找到回放文件: {save_path}")
+    data = np.load(save_path, allow_pickle=False)
+    q_segments = unpack_segments(data["q_packed"], data["q_lengths"])
+    playback_segments = unpack_segments(data["playback_packed"], data["playback_lengths"])
+    ee_segments = unpack_segments(data["ee_packed"], data["ee_lengths"])
+    metadata = json.loads(str(data["metadata"]))
+    segment_visual_data = []
+    for idx, (start_pos, goal_pos, ee_path, label) in enumerate(
+        zip(data["start_positions"], data["goal_positions"], ee_segments, data["labels"]),
+        start=1,
+    ):
+        segment_visual_data.append(
+            {
+                "start_pos": np.array(start_pos, dtype=np.float64),
+                "goal_pos": np.array(goal_pos, dtype=np.float64),
+                "ee_path": np.array(ee_path, dtype=np.float64),
+                "label": str(label) if str(label) else f"{idx:02d}",
+            }
+        )
+    segments = []
+    for q_path, q_playback in zip(q_segments, playback_segments):
+        segments.append({"q_path": q_path, "q_playback": q_playback})
+    print(f"[加载] 已读取回放文件: {save_path}")
+    return segments, segment_visual_data, metadata
+
+
 def check_state_valid_sdf(
     robot_id,
     joint_indices,
@@ -866,9 +765,7 @@ def check_state_valid_sdf(
     ee_link,
     local_tool_points,
     q,
-    step_size=CHECK_ARM_STEP_SIZE,
 ):
-    _ = step_size
     state_eval = evaluate_state_sdf(
         robot_id, joint_indices, fk_solver, sdf_layer, ee_link, local_tool_points, q
     )
@@ -1083,7 +980,7 @@ def check_trajectory_collisions_sdf(
     print(f"\n{'=' * 56}\n[SDF 碰撞检查] {label}，共 {len(Q)} 个路径点")
     for i, q in enumerate(Q):
         arm_pts, ee_pts = get_dense_robot_points(
-            robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points, step_size=CHECK_ARM_STEP_SIZE
+            robot_id, joint_indices, fk_solver, q, ee_link, local_tool_points
         )
         dist_arm_min = float(sdf_layer.get_distances(arm_pts).min()) if len(arm_pts) > 0 else 999.0
         dist_ee_min = float(sdf_layer.get_distances(ee_pts).min()) if len(ee_pts) > 0 else 999.0
@@ -1114,14 +1011,29 @@ def check_trajectory_collisions_sdf(
     return penetration_count, near_count
 
 
-def main(gui=True, seed=0):
+def replay_saved_segments(robot_id, joint_indices, segments, segment_visual_data):
+    q_wait = segments[0]["q_playback"][0]
+    set_joint_positions(robot_id, joint_indices, q_wait)
+    p.stepSimulation()
+    if not wait_for_start_signal():
+        return
+
+    replay_dt = max(1.0 / 240.0, PLAYBACK_DT)
+    current_vis_handles = {"debug_ids": [], "body_ids": []}
+    while p.isConnected():
+        for seg_vis, seg in zip(segment_visual_data, segments):
+            clear_debug_visuals(current_vis_handles)
+            current_vis_handles = draw_replay_debug_visual(seg_vis)
+            set_joint_positions(robot_id, joint_indices, seg["q_playback"][0])
+            play_trajectory(robot_id, joint_indices, seg["q_playback"], dt=replay_dt)
+        clear_debug_visuals(current_vis_handles)
+        time.sleep(PLAYBACK_LOOP_PAUSE)
+
+
+def main(gui=True, seed=0, play_index=0, save_path=DEFAULT_REPLAY_SAVE_PATH, replay_file=None):
     rng = np.random.default_rng(seed)
     client, robot_id, _ = setup_pybullet(gui=gui)
-
-    sdf_layer = SDFCollisionLayer("workpiece_sdf2.npz")
     joint_indices, _, lower_limits, upper_limits = get_movable_joints(robot_id)
-    n_dof = len(joint_indices)
-    fk_solver = FastNumPyFK(robot_id, joint_indices)
 
     ee_link = -1
     for j in range(p.getNumJoints(robot_id)):
@@ -1131,249 +1043,234 @@ def main(gui=True, seed=0):
     if ee_link < 0:
         raise RuntimeError(f"未找到末端连杆: {END_EFFECTOR_LINK_NAME}")
 
-    local_tool_points_opt, local_tool_points_check = get_tool_points_two_level(
+    if replay_file is not None:
+        segments, segment_visual_data, metadata = load_replay_bundle(replay_file)
+        print(f"[回放] 文件内成功段数: {metadata.get('planned_total', len(segments))}")
+        if gui:
+            replay_saved_segments(robot_id, joint_indices, segments, segment_visual_data)
+        if p.isConnected():
+            p.disconnect()
+        return
+
+    transitions = load_weld_path_transitions(WELD_POSES_JSON_PATH)
+    print(f"[JSON] 解析到 {len(transitions)} 条相邻 weld_path 过渡记录（非闭环）。")
+    if not transitions:
+        print("[规划] 没有可规划的过渡段。")
+        return
+    if play_index < 0 or play_index > len(transitions):
+        print(f"[错误] play_index 超出范围: {play_index}，应在 0..{len(transitions)}")
+        return
+    if play_index > 0:
+        print(f"[回放] 仅规划并回放第 {play_index} 条过渡路径。")
+    else:
+        print("[回放] 规划并回放全部过渡路径。")
+
+    t0 = transitions[0]
+    print("[JSON] 示例过渡:")
+    print(
+        f"  {t0['current_weld_path']}:{t0['current_last_edge']} end -> "
+        f"{t0['next_weld_path']}:{t0['next_first_edge']} start"
+    )
+    print(f"  end_pose={t0['current_end_pose']}  end_xyz(raw)={t0['current_end_xyz']}")
+    print(f"  start_pose={t0['next_start_pose']}  start_xyz(raw)={t0['next_start_xyz']}")
+
+    sdf_layer = SDFCollisionLayer("workpiece_sdf2.npz")
+    fk_solver = FastNumPyFK(robot_id, joint_indices)
+
+    local_tool_points = get_tool_points(
         TORCH_STL_PATH,
         torch_to_ee_xyz=TORCH_TO_EE_XYZ,
         torch_to_ee_rpy=TORCH_TO_EE_RPY,
     )
 
-    initial_orn = np.array(INITIAL_EE_ORIENTATION_XYZW) if USE_INITIAL_EE_ORIENTATION else None
-    target_orn = np.array(TARGET_ORIENTATION_XYZW) if USE_TARGET_ORIENTATION else None
+    print("\n[规划] 开始按过渡段进行 RRT-Connect 规划（仅 current_end -> next_start）...")
+    total_planning_time = 0.0
+    successful_segments = []
+    successful_segment_visual_data = []
+    planned_total = 0
 
-    start_pos_adjusted, q_start, start_eval_after_adjust, start_retreat_steps, start_eval_before_adjust = adjust_pose_out_of_collision(
-        robot_id,
-        joint_indices,
-        lower_limits,
-        upper_limits,
-        fk_solver,
-        sdf_layer,
-        ee_link,
-        local_tool_points_check,
-        INITIAL_EE_POSITION_XYZ,
-        initial_orn,
-        label="start",
-    )
-    target_pos_adjusted, q_goal, goal_eval_after_adjust, goal_retreat_steps, goal_eval_before_adjust = adjust_pose_out_of_collision(
-        robot_id,
-        joint_indices,
-        lower_limits,
-        upper_limits,
-        fk_solver,
-        sdf_layer,
-        ee_link,
-        local_tool_points_check,
-        TARGET_POSITION_XYZ,
-        target_orn,
-        label="goal",
-    )
-
-    if gui:
-        set_joint_positions(robot_id, joint_indices, q_start)
-        p.stepSimulation()
-
-    start_eval = start_eval_after_adjust
-    goal_eval = goal_eval_after_adjust
-    start_in_collision = (
-        start_eval["arm_min"] < SDF_PENETRATION_TOL
-        or start_eval["ee_min"] < SDF_PENETRATION_TOL
-    )
-    goal_in_collision = (
-        goal_eval["arm_min"] < SDF_PENETRATION_TOL
-        or goal_eval["ee_min"] < SDF_PENETRATION_TOL
-    )
-    if start_retreat_steps > 0:
-        retreat_dist = start_retreat_steps * GOAL_RETREAT_STEP
-        print(
-            "[起点退让] "
-            f"steps={start_retreat_steps} retreat_dist={retreat_dist:.4f}m "
-            f"adjusted_start={np.round(start_pos_adjusted, 6)}"
-        )
-    print(
-        "[起点检查] "
-        f"arm_min={start_eval['arm_min']:+.4f}m ee_min={start_eval['ee_min']:+.4f}m "
-        f"collision={start_in_collision}"
-    )
-    if goal_retreat_steps > 0:
-        retreat_dist = goal_retreat_steps * GOAL_RETREAT_STEP
-        print(
-            "[终点退让] "
-            f"steps={goal_retreat_steps} retreat_dist={retreat_dist:.4f}m "
-            f"adjusted_target={np.round(target_pos_adjusted, 6)}"
-        )
-    print(
-        "[终点检查] "
-        f"arm_min={goal_eval['arm_min']:+.4f}m ee_min={goal_eval['ee_min']:+.4f}m "
-        f"collision={goal_in_collision}"
-    )
-    if start_in_collision:
-        raise RuntimeError(
-            "起点处于碰撞状态，无法开始规划。"
-            f" arm_min={start_eval['arm_min']:+.4f}m"
-            f" ee_min={start_eval['ee_min']:+.4f}m"
-            f" arm_pen={start_eval['arm_pen']}"
-            f" ee_pen={start_eval['ee_pen']}"
-        )
-    if goal_in_collision:
-        print(
-            "[终点诊断] "
-            f"arm_pen={goal_eval['arm_pen']} arm_near={goal_eval['arm_near']} "
-            f"ee_pen={goal_eval['ee_pen']} ee_near={goal_eval['ee_near']}"
-        )
-        raise RuntimeError(
-            "终点处于碰撞状态，无法开始规划。"
-            f" arm_min={goal_eval['arm_min']:+.4f}m"
-            f" ee_min={goal_eval['ee_min']:+.4f}m"
-            f" arm_pen={goal_eval['arm_pen']}"
-            f" ee_pen={goal_eval['ee_pen']}"
-        )
-
-    is_state_valid = lambda q: check_state_valid_sdf(
-        robot_id,
-        joint_indices,
-        fk_solver,
-        sdf_layer,
-        ee_link,
-        local_tool_points_opt,
-        q,
-    )
-    is_edge_valid = lambda qa, qb: check_edge_valid_sdf(
-        robot_id,
-        joint_indices,
-        fk_solver,
-        sdf_layer,
-        ee_link,
-        local_tool_points_opt,
-        qa,
-        qb,
-        resolution=RRT_EDGE_CHECK_RESOLUTION,
-    )
-
-    print("[规划] 阶段 1: RRT-Connect 搜索无碰撞初始轨迹")
-    print(f"[RRT-Connect] 固定扩展步长={RRT_STEP_SIZE:.4f}")
-    t_rrt = time.perf_counter()
-    rrt_path_raw, rrt_cost = rrt_connect_plan(
-        q_start,
-        q_goal,
-        lower_limits,
-        upper_limits,
-        is_state_valid,
-        is_edge_valid,
-        step_size=RRT_STEP_SIZE,
-        max_iter=RRT_MAX_ITER,
-        goal_bias=RRT_GOAL_BIAS,
-        goal_threshold=RRT_GOAL_THRESHOLD,
-        informed_bias=RRT_INFORMED_BIAS,
-        rng=rng,
-    )
-    Q_seed = rrt_path_raw
-    t_rrt_elapsed = time.perf_counter() - t_rrt
-
-    print(
-        f"[RRT-Connect] 完成: 原始节点={len(rrt_path_raw)} 最终轨迹点数={len(Q_seed)} "
-        f"路径长度={rrt_cost:.4f} 用时={t_rrt_elapsed:.3f}s"
-    )
-
-    Q_seed_dense_check = densify_trajectory_for_collision_check(Q_seed)
-    seed_summary = summarize_trajectory_collision(
-        robot_id, joint_indices, fk_solver, Q_seed_dense_check, sdf_layer, ee_link, local_tool_points_check
-    )
-    trajopt_t0 = time.perf_counter()
     if gui:
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
-    Q_trajopt, trajopt_success = run_trajopt(
-        Q_seed,
-        lower_limits,
-        upper_limits,
-        robot_id,
-        joint_indices,
-        fk_solver,
-        sdf_layer,
-        ee_link,
-        local_tool_points_opt,
-        local_tool_points_check,
-    )
-    if gui:
-        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
-    trajopt_elapsed = time.perf_counter() - trajopt_t0
-    print(f"[TrajOpt] 优化耗时={trajopt_elapsed:.3f}s")
-    Q_trajopt_dense_check = densify_trajectory_for_collision_check(Q_trajopt)
-    trajopt_summary = summarize_trajectory_collision(
-        robot_id,
-        joint_indices,
-        fk_solver,
-        Q_trajopt_dense_check,
-        sdf_layer,
-        ee_link,
-        local_tool_points_check,
-    )
+    try:
+        for i, tr in enumerate(transitions, start=1):
+            if play_index > 0 and i != play_index:
+                continue
 
-    use_trajopt = (
-        trajopt_success
-        and trajopt_summary["arm_min_global"] >= 0.0
-        and trajopt_summary["ee_min_global"] >= SDF_PENETRATION_TOL
-        and trajopt_summary["penetration_count"] <= seed_summary["penetration_count"]
-    )
-    if use_trajopt:
-        Q_final = Q_trajopt
-        Q_final_dense_check = Q_trajopt_dense_check
-        final_source = "TrajOpt"
-        final_summary = trajopt_summary
-    else:
-        Q_final = Q_seed
-        Q_final_dense_check = Q_seed_dense_check
-        final_source = "RRT-Connect"
-        final_summary = seed_summary
-        print("[TrajOpt] 优化结果未优于种子路径，回退到 RRT-Connect 轨迹。")
+            start_pos = transform_json_xyz(tr["current_end_xyz"])
+            goal_pos = transform_json_xyz(tr["next_start_xyz"])
+            start_orn = np.array(tr["current_end_pose"], dtype=np.float64)
+            goal_orn = np.array(tr["next_start_pose"], dtype=np.float64)
 
-    print(
-        f"[{final_source}] 采用轨迹: "
-        f"穿透={final_summary['penetration_count']} 近距={final_summary['near_count']} "
-        f"arm_min={final_summary['arm_min_global']:+.4f} ee_min={final_summary['ee_min_global']:+.4f}"
-    )
+            start_pos_adjusted, q_start, start_eval, start_retreat_steps, _ = adjust_pose_out_of_collision(
+                robot_id,
+                joint_indices,
+                lower_limits,
+                upper_limits,
+                fk_solver,
+                sdf_layer,
+                ee_link,
+                local_tool_points,
+                start_pos,
+                start_orn,
+                label=f"start-{i}",
+            )
+            goal_pos_adjusted, q_goal, goal_eval, goal_retreat_steps, _ = adjust_pose_out_of_collision(
+                robot_id,
+                joint_indices,
+                lower_limits,
+                upper_limits,
+                fk_solver,
+                sdf_layer,
+                ee_link,
+                local_tool_points,
+                goal_pos,
+                goal_orn,
+                label=f"goal-{i}",
+            )
 
-    check_trajectory_collisions_sdf(
-        robot_id, joint_indices, fk_solver, Q_seed_dense_check, sdf_layer, ee_link, local_tool_points_check,
-        label="RRT-Connect 初始轨迹(连续加密检查)"
-    )
-    check_trajectory_collisions_sdf(
-        robot_id, joint_indices, fk_solver, Q_trajopt_dense_check, sdf_layer, ee_link, local_tool_points_check,
-        label="TrajOpt 优化轨迹(连续加密检查)"
-    )
-    check_trajectory_collisions_sdf(
-        robot_id, joint_indices, fk_solver, Q_final_dense_check, sdf_layer, ee_link, local_tool_points_check,
-        label="最终采用轨迹(连续加密检查)"
-    )
+            start_in_collision = (
+                start_eval["arm_min"] < SDF_PENETRATION_TOL or start_eval["ee_min"] < SDF_PENETRATION_TOL
+            )
+            goal_in_collision = (
+                goal_eval["arm_min"] < SDF_PENETRATION_TOL or goal_eval["ee_min"] < SDF_PENETRATION_TOL
+            )
+            if start_retreat_steps > 0:
+                print(
+                    f"[起点退让][{i:02d}] steps={start_retreat_steps} "
+                    f"retreat_dist={start_retreat_steps * GOAL_RETREAT_STEP:.4f}m "
+                    f"adjusted_start={np.round(start_pos_adjusted, 6)}"
+                )
+            if goal_retreat_steps > 0:
+                print(
+                    f"[终点退让][{i:02d}] steps={goal_retreat_steps} "
+                    f"retreat_dist={goal_retreat_steps * GOAL_RETREAT_STEP:.4f}m "
+                    f"adjusted_target={np.round(goal_pos_adjusted, 6)}"
+                )
+            if start_in_collision or goal_in_collision:
+                print(
+                    f"[规划][{i:02d}/{len(transitions)}] "
+                    f"{tr['current_weld_path']}:{tr['current_last_edge']} -> "
+                    f"{tr['next_weld_path']}:{tr['next_first_edge']} | "
+                    f"跳过，端点碰撞 start=({start_eval['arm_min']:+.4f},{start_eval['ee_min']:+.4f}) "
+                    f"goal=({goal_eval['arm_min']:+.4f},{goal_eval['ee_min']:+.4f})"
+                )
+                continue
 
-    Q_playback = densify_trajectory_for_collision_check(
-        Q_final, resolution=PLAYBACK_EDGE_RESOLUTION
-    )
-    Q_seed_playback = densify_trajectory_for_collision_check(
-        Q_seed, resolution=PLAYBACK_EDGE_RESOLUTION
-    )
-    Q_trajopt_playback = densify_trajectory_for_collision_check(
-        Q_trajopt, resolution=PLAYBACK_EDGE_RESOLUTION
-    )
-    set_joint_positions(robot_id, joint_indices, Q_final[0])
-    p.stepSimulation()
-    if gui and not wait_for_start_signal():
+            is_state_valid = lambda q: check_state_valid_sdf(
+                robot_id, joint_indices, fk_solver, sdf_layer, ee_link, local_tool_points, q
+            )
+            is_edge_valid = lambda qa, qb: check_edge_valid_sdf(
+                robot_id,
+                joint_indices,
+                fk_solver,
+                sdf_layer,
+                ee_link,
+                local_tool_points,
+                qa,
+                qb,
+                resolution=RRT_EDGE_CHECK_RESOLUTION,
+            )
+
+            t_rrt = time.perf_counter()
+            try:
+                q_path, rrt_cost = rrt_connect_plan(
+                    q_start,
+                    q_goal,
+                    lower_limits,
+                    upper_limits,
+                    is_state_valid,
+                    is_edge_valid,
+                    step_size=RRT_STEP_SIZE,
+                    max_iter=RRT_MAX_ITER,
+                    goal_bias=RRT_GOAL_BIAS,
+                    goal_threshold=RRT_GOAL_THRESHOLD,
+                    informed_bias=RRT_INFORMED_BIAS,
+                    rng=rng,
+                )
+            except RuntimeError as exc:
+                print(
+                    f"[规划][{i:02d}/{len(transitions)}] "
+                    f"{tr['current_weld_path']}:{tr['current_last_edge']} -> "
+                    f"{tr['next_weld_path']}:{tr['next_first_edge']} | 失败: {exc}"
+                )
+                continue
+
+            seg_time = time.perf_counter() - t_rrt
+            total_planning_time += seg_time
+            planned_total += 1
+
+            q_dense = densify_trajectory_for_collision_check(q_path)
+            seg_summary = summarize_trajectory_collision(
+                robot_id, joint_indices, fk_solver, q_dense, sdf_layer, ee_link, local_tool_points
+            )
+            print(
+                f"[规划][{i:02d}/{len(transitions)}] "
+                f"{tr['current_weld_path']}:{tr['current_last_edge']} -> "
+                f"{tr['next_weld_path']}:{tr['next_first_edge']} | "
+                f"耗时={seg_time:.3f}s 路径长度={rrt_cost:.4f} "
+                f"穿透={seg_summary['penetration_count']} 近距={seg_summary['near_count']}"
+            )
+
+            q_playback = densify_trajectory_for_collision_check(
+                q_path, resolution=PLAYBACK_PATH_RESOLUTION
+            )
+            ee_playback = get_ee_path_world_positions(robot_id, joint_indices, q_playback, ee_link)
+            successful_segment_visual_data.append({
+                "start_pos": start_pos_adjusted,
+                "goal_pos": goal_pos_adjusted,
+                "ee_path": ee_playback,
+                "label": f"{i:02d}",
+            })
+            successful_segments.append({
+                "q_path": q_path,
+                "q_playback": q_playback,
+            })
+    finally:
+        if gui:
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
+
+    print(f"[规划] 成功段数: {planned_total}/{1 if play_index > 0 else len(transitions)}")
+    if not successful_segments:
+        print("[规划] 无可回放轨迹，结束。")
         if p.isConnected():
             p.disconnect()
         return
 
+    merged_segments = []
+    for i, seg in enumerate(successful_segments):
+        q_seg = seg["q_path"]
+        merged_segments.append(q_seg if i == 0 else q_seg[1:])
+    Q_all = np.vstack(merged_segments)
+    Q_all_dense = densify_trajectory_for_collision_check(Q_all)
+    final_summary = summarize_trajectory_collision(
+        robot_id, joint_indices, fk_solver, Q_all_dense, sdf_layer, ee_link, local_tool_points
+    )
+
+    print(
+        f"[RRT-Connect] 拼接轨迹: "
+        f"穿透={final_summary['penetration_count']} 近距={final_summary['near_count']} "
+        f"arm_min={final_summary['arm_min_global']:+.4f} ee_min={final_summary['ee_min_global']:+.4f} "
+        f"累计规划时间={total_planning_time:.3f}s"
+    )
+    check_trajectory_collisions_sdf(
+        robot_id, joint_indices, fk_solver, Q_all_dense, sdf_layer, ee_link, local_tool_points,
+        label="全段拼接轨迹(连续加密检查)"
+    )
+
+    save_replay_bundle(
+        save_path,
+        successful_segments,
+        successful_segment_visual_data,
+        metadata={
+            "planned_total": planned_total,
+            "requested_play_index": play_index,
+            "playback_dt": PLAYBACK_DT,
+            "playback_path_resolution": PLAYBACK_PATH_RESOLUTION,
+        },
+    )
+
     if gui:
-        draw_ee_trajectory_lines(robot_id, joint_indices, Q_seed_playback, ee_link, [1.0, 0.25, 0.25], line_width=2.0)
-        draw_ee_trajectory_lines(robot_id, joint_indices, Q_trajopt_playback, ee_link, [0.2, 0.9, 0.2], line_width=2.5)
-        replay_dt = max(1.0 / 240.0, PLAYBACK_DT)
-        label_uid = -1
-        while p.isConnected():
-            state = p.getLinkState(robot_id, ee_link, computeForwardKinematics=True)
-            label_pos = np.array(state[4], dtype=np.float64) + np.array([0.0, 0.0, 0.12])
-            label_uid = show_debug_label("RRT-Connect Seed", label_pos, [1.0, 0.25, 0.25], replace_uid=label_uid)
-            play_trajectory(robot_id, joint_indices, Q_seed_playback, dt=replay_dt)
-            state = p.getLinkState(robot_id, ee_link, computeForwardKinematics=True)
-            label_pos = np.array(state[4], dtype=np.float64) + np.array([0.0, 0.0, 0.12])
-            label_uid = show_debug_label(final_source, label_pos, [0.2, 0.9, 0.2], replace_uid=label_uid)
-            play_trajectory(robot_id, joint_indices, Q_playback, dt=replay_dt)
+        replay_saved_segments(robot_id, joint_indices, successful_segments, successful_segment_visual_data)
 
     if p.isConnected():
         p.disconnect()
@@ -1383,5 +1280,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--direct", action="store_true", help="使用 DIRECT 模式，不打开 GUI。")
     parser.add_argument("--seed", type=int, default=0, help="随机种子。")
+    parser.add_argument("--play-index", type=int, default=0, help="指定回放路径编号：0=全部，1..N=第N条过渡路径")
+    parser.add_argument("--save-path", type=str, default=DEFAULT_REPLAY_SAVE_PATH, help="规划结果保存路径")
+    parser.add_argument("--replay-file", type=str, default=None, help="直接读取已保存结果并回放")
     args = parser.parse_args()
-    main(gui=not args.direct, seed=args.seed)
+    main(
+        gui=not args.direct,
+        seed=args.seed,
+        play_index=args.play_index,
+        save_path=args.save_path,
+        replay_file=args.replay_file,
+    )
