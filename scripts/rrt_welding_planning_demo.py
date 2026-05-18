@@ -94,6 +94,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-iter", type=int, default=2500, help="Maximum RRT-Connect iterations.")
     parser.add_argument("--goal-bias", type=float, default=0.20, help="Probability of sampling q_goal.")
     parser.add_argument("--collision-padding", type=float, default=0.015, help="AABB padding for PhysX overlap queries.")
+    parser.add_argument(
+        "--include-tool-collision",
+        action="store_true",
+        help="Also use ee/pen collision geometry. Disabled by default because the tool is intentionally near the weld.",
+    )
+    parser.add_argument(
+        "--show-collision-proxies",
+        action="store_true",
+        help="Display generated URDF collision STL proxies in the render.",
+    )
     parser.add_argument("--num-idle-frames", type=int, default=30, help="Initial/final hold frames in recordings.")
     return parser.parse_args()
 
@@ -247,6 +257,155 @@ def load_stl_mesh(stl_path: Path) -> tuple[list[tuple[float, float, float]], lis
     except UnicodeDecodeError:
         return parse_binary_stl(data)
     return parse_ascii_stl(text) if text.lstrip().lower().startswith("solid") else parse_binary_stl(data)
+
+
+def parse_urdf_vec(value: str | None, default: tuple[float, float, float]) -> np.ndarray:
+    if value is None:
+        return np.array(default, dtype=float)
+    vec = np.fromstring(value, sep=" ", dtype=float)
+    if len(vec) != 3:
+        return np.array(default, dtype=float)
+    return vec
+
+
+def safe_prim_name(name: str) -> str:
+    cleaned = []
+    for ch in name:
+        cleaned.append(ch if ch.isalnum() or ch == "_" else "_")
+    value = "".join(cleaned).strip("_")
+    return value or "collision"
+
+
+def box_mesh(size: np.ndarray) -> tuple[list[tuple[float, float, float]], list[int], list[int]]:
+    sx, sy, sz = size * 0.5
+    points = [
+        (-sx, -sy, -sz),
+        (sx, -sy, -sz),
+        (sx, sy, -sz),
+        (-sx, sy, -sz),
+        (-sx, -sy, sz),
+        (sx, -sy, sz),
+        (sx, sy, sz),
+        (-sx, sy, sz),
+    ]
+    face_counts = [4] * 6
+    face_indices = [
+        0, 1, 2, 3,
+        4, 7, 6, 5,
+        0, 4, 5, 1,
+        1, 5, 6, 2,
+        2, 6, 7, 3,
+        3, 7, 4, 0,
+    ]
+    return points, face_counts, face_indices
+
+
+def find_descendant_by_name(stage: Any, root_path: str, name: str):
+    from pxr import Usd
+
+    root = stage.GetPrimAtPath(root_path)
+    if not root.IsValid():
+        return None
+    for prim in Usd.PrimRange(root):
+        if prim.GetName() == name:
+            return prim
+    return None
+
+
+def add_urdf_collision_stl_proxies(
+    stage: Any,
+    robot_prim_path: str,
+    resolved_urdf: Path,
+    include_tool_collision: bool,
+    show_collision_proxies: bool,
+) -> list[str]:
+    from pxr import Gf, Sdf, UsdGeom, UsdPhysics, UsdShade
+
+    excluded_links = {"world", "base"}
+    if not include_tool_collision:
+        excluded_links.update({"ee_link", "pen_link", "tool0"})
+
+    tree = ET.parse(resolved_urdf)
+    root = tree.getroot()
+    proxy_paths: list[str] = []
+
+    material_path = "/World/Debug/CollisionProxyMaterial"
+    material = UsdShade.Material.Define(stage, material_path)
+    shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
+    shader.CreateIdAttr("UsdPreviewSurface")
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.0, 0.55, 1.0))
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.35)
+    material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
+
+    for link in root.findall("link"):
+        link_name = link.attrib.get("name", "")
+        if link_name in excluded_links:
+            continue
+        link_prim = find_descendant_by_name(stage, robot_prim_path, link_name)
+        if link_prim is None or not link_prim.IsValid():
+            log(f"[collision] WARNING: cannot find imported link prim for URDF link {link_name}; skipping collision proxy.")
+            continue
+
+        proxy_root_path = f"{link_prim.GetPath()}/CollisionProxy"
+        ensure_xform(stage, proxy_root_path)
+        for index, collision in enumerate(link.findall("collision")):
+            geometry = collision.find("geometry")
+            if geometry is None:
+                continue
+
+            origin_xml = collision.find("origin")
+            origin_xyz = parse_urdf_vec(origin_xml.attrib.get("xyz") if origin_xml is not None else None, (0.0, 0.0, 0.0))
+            origin_rpy = parse_urdf_vec(origin_xml.attrib.get("rpy") if origin_xml is not None else None, (0.0, 0.0, 0.0))
+            origin_rot = rpy_matrix(origin_rpy)
+
+            mesh_xml = geometry.find("mesh")
+            box_xml = geometry.find("box")
+            source_name = f"{link_name}_{index}"
+            if mesh_xml is not None:
+                mesh_path = Path(mesh_xml.attrib["filename"]).expanduser()
+                if not mesh_path.is_absolute():
+                    mesh_path = (resolved_urdf.parent / mesh_path).resolve()
+                mesh_scale = parse_urdf_vec(mesh_xml.attrib.get("scale"), (1.0, 1.0, 1.0))
+                points, face_counts, face_indices = load_stl_mesh(mesh_path)
+                local_points = []
+                for point in points:
+                    p = np.asarray(point, dtype=float) * mesh_scale
+                    p = origin_rot @ p + origin_xyz
+                    local_points.append(tuple(float(v) for v in p))
+                source_name = mesh_path.stem
+            elif box_xml is not None:
+                size = parse_urdf_vec(box_xml.attrib.get("size"), (0.01, 0.01, 0.01))
+                points, face_counts, face_indices = box_mesh(size)
+                local_points = []
+                for point in points:
+                    p = origin_rot @ np.asarray(point, dtype=float) + origin_xyz
+                    local_points.append(tuple(float(v) for v in p))
+            else:
+                continue
+
+            proxy_path = f"{proxy_root_path}/{safe_prim_name(source_name)}_{index:02d}"
+            mesh = UsdGeom.Mesh.Define(stage, proxy_path)
+            mesh.CreatePointsAttr([Gf.Vec3f(*point) for point in local_points])
+            mesh.CreateFaceVertexCountsAttr(face_counts)
+            mesh.CreateFaceVertexIndicesAttr(face_indices)
+            mesh.CreateSubdivisionSchemeAttr("none")
+            mesh.CreateDoubleSidedAttr(True)
+            mesh.CreateDisplayColorAttr([Gf.Vec3f(0.0, 0.55, 1.0)])
+            UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
+            UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
+            mesh_collision = UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim())
+            mesh_collision.CreateApproximationAttr("convexHull")
+            if not show_collision_proxies:
+                mesh.CreatePurposeAttr("proxy")
+            proxy_paths.append(proxy_path)
+
+    log(
+        f"[collision] Added {len(proxy_paths)} URDF collision STL/box proxies "
+        f"(include_tool_collision={include_tool_collision}, visible={show_collision_proxies})."
+    )
+    if proxy_paths:
+        log("[collision] First collision proxies: " + ", ".join(proxy_paths[:5]))
+    return proxy_paths
 
 
 def import_collision_stl(
@@ -1000,6 +1159,13 @@ def main() -> None:
         resolved_urdf = make_resolved_urdf(args.urdf)
         kinematics = URDFKinematics(resolved_urdf)
         robot_prim_path = import_single_robot(stage, resolved_urdf)
+        add_urdf_collision_stl_proxies(
+            stage=stage,
+            robot_prim_path=robot_prim_path,
+            resolved_urdf=resolved_urdf,
+            include_tool_collision=args.include_tool_collision,
+            show_collision_proxies=args.show_collision_proxies,
+        )
         workpiece_info = import_collision_stl(
             stage,
             stl_path=args.job_dir / "workpiece.stl",
