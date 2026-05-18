@@ -74,14 +74,14 @@ def parse_args() -> argparse.Namespace:
         "--save-ik-screenshots",
         dest="save_ik_screenshots",
         action="store_true",
-        default=True,
-        help="Save start/goal IK static screenshots before RRT. Enabled by default.",
+        default=False,
+        help="Save start/goal IK static screenshots before RRT.",
     )
     parser.add_argument(
         "--no-ik-screenshots",
         dest="save_ik_screenshots",
         action="store_false",
-        help="Do not save pre-RRT start/goal IK screenshots.",
+        help="Do not save pre-RRT start/goal IK screenshots. Disabled by default.",
     )
     parser.add_argument("--encode-only", action="store_true", help="Only encode an existing frames directory to MP4.")
     parser.add_argument("--keep-frames", action="store_true", help="Keep RGB frames after encoding.")
@@ -1231,8 +1231,14 @@ def ensure_physics_sim_view(world: Any, warmup_steps: int = 2) -> None:
         world.step(render=True)
 
 
+def refresh_articulation_view(world: Any, robot: Any, warmup_steps: int = 2) -> None:
+    world.reset()
+    robot.initialize()
+    ensure_physics_sim_view(world, warmup_steps=warmup_steps)
+
+
 def warm_up_articulation_state(world: Any, robot: Any, steps: int = 3) -> np.ndarray:
-    ensure_physics_sim_view(world, warmup_steps=steps)
+    refresh_articulation_view(world, robot, warmup_steps=steps)
     joint_positions = read_full_joint_positions(robot)
     log(f"[robot] Warm-up joint state shape={joint_positions.shape}, dofs={robot_dof_count(robot)}")
     return joint_positions
@@ -1930,6 +1936,7 @@ def main() -> None:
                 workpiece_info=workpiece_info,
                 args=args,
             )
+            refresh_articulation_view(world, robot, warmup_steps=2)
             set_robot_q(robot, dof_indices, q_start)
             zero_robot_velocities(robot)
             world.step(render=True)
@@ -1987,6 +1994,7 @@ def main() -> None:
                 frames_dir=frames_dir,
                 args=args,
             )
+            refresh_articulation_view(world, robot, warmup_steps=1)
             log(f"[demo] Recording frames to: {frames_dir}")
 
         run_playback(world, robot, dof_indices, q_playback, args, recording_session)
