@@ -1076,6 +1076,7 @@ class IsaacCollisionChecker:
         return paths
 
     def set_q(self, q: np.ndarray) -> None:
+        q = coerce_joint_vector(q, len(self.dof_indices), label="collision-check joint vector")
         full = np.array(self.robot.get_joint_positions(), dtype=float)
         for local_idx, dof_idx in enumerate(self.dof_indices):
             full[dof_idx] = q[local_idx]
@@ -1221,7 +1222,21 @@ def dof_indices_for(robot: Any, names: list[str]) -> list[int]:
     return [dof_names.index(name) for name in names]
 
 
+def coerce_joint_vector(q: Any, expected_len: int, label: str = "joint vector") -> np.ndarray:
+    value = q
+    while isinstance(value, np.ndarray) and value.ndim == 0:
+        value = value.item()
+    arr = np.asarray(value, dtype=float).reshape(-1)
+    if arr.size != expected_len:
+        raise RuntimeError(
+            f"Expected {label} of length {expected_len}, got shape={arr.shape}, size={arr.size}, "
+            f"type={type(q).__name__}, value={q!r}"
+        )
+    return arr
+
+
 def set_robot_q(robot: Any, dof_indices: list[int], q: np.ndarray) -> None:
+    q = coerce_joint_vector(q, len(dof_indices), label="robot joint vector")
     full = np.array(robot.get_joint_positions(), dtype=float)
     for local_idx, dof_idx in enumerate(dof_indices):
         full[dof_idx] = q[local_idx]
@@ -1844,6 +1859,7 @@ def main() -> None:
         )
         targets["start_tf"] = start_tf
         targets["goal_tf"] = goal_tf
+        log(f"[IK] q_start shape={np.asarray(q_start).shape}, q_goal shape={np.asarray(q_goal).shape}")
         log(f"[IK] q_start={np.round(q_start, 4)} retreat_steps={start_retreat_steps}")
         log(f"[IK] q_goal ={np.round(q_goal, 4)} retreat_steps={goal_retreat_steps}")
         draw_target_markers(
