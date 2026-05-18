@@ -49,7 +49,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from sim_welding_arm import import_robot_from_urdf, make_resolved_urdf  # noqa: E402
-from sim_parallel_welding import add_scene_lighting, ensure_xform  # noqa: E402
+from sim_parallel_welding import add_scene_lighting, ensure_xform, step_replicator  # noqa: E402
 
 
 def log(message: str) -> None:
@@ -77,6 +77,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fps", type=int, default=30, help="Recording FPS.")
     parser.add_argument("--width", type=int, default=1280, help="Recording width.")
     parser.add_argument("--height", type=int, default=720, help="Recording height.")
+    parser.add_argument("--rt-subframes", type=int, default=8, help="Replicator render subframes per captured frame.")
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="STL and weld xyz scale, mm to m.")
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
@@ -710,13 +711,10 @@ def main() -> None:
     rng = np.random.default_rng(args.seed)
 
     if args.record and shutil.which("ffmpeg") is None:
-        message = (
-            "ffmpeg is required for MP4 output. Install it on the cloud server, for example "
-            "`sudo apt-get update && sudo apt-get install -y ffmpeg`, or rerun with --allow-frames-only."
+        log(
+            "[demo] WARNING: ffmpeg is not installed. Isaac will still record PNG frames; "
+            "install ffmpeg on the server to encode MP4 automatically."
         )
-        if not args.allow_frames_only:
-            raise RuntimeError(message)
-        log(f"[demo] WARNING: {message}")
 
     try:
         from isaacsim import SimulationApp
@@ -827,14 +825,12 @@ def main() -> None:
             writer = rep.WriterRegistry.get("BasicWriter")
             writer.initialize(output_dir=str(frames_dir), rgb=True)
             writer.attach([render_product])
+            log(f"[demo] Recording frames to: {frames_dir}")
 
         def capture_step() -> None:
             world.step(render=True)
             if args.record:
-                try:
-                    rep.orchestrator.step(rt_subframes=8, delta_time=1.0 / args.fps)
-                except TypeError:
-                    rep.orchestrator.step()
+                step_replicator(rep, args)
 
         set_robot_q(robot, dof_indices, q_playback[0])
         for _ in range(args.num_idle_frames):
@@ -850,6 +846,13 @@ def main() -> None:
         if args.record and writer is not None:
             rep.orchestrator.wait_until_complete()
             writer.detach()
+            png_count = len(list(frames_dir.glob("*.png"))) + len(list(frames_dir.glob("**/*.png")))
+            log(f"[demo] PNG files written under {frames_dir}: {png_count}")
+            if png_count == 0:
+                raise RuntimeError(
+                    "Replicator did not write any PNG frames. Check that the script was run with "
+                    "Isaac Sim's python.sh, --headless was used on the cloud server, and cameras are enabled."
+                )
 
         if not args.record and not args.headless:
             log("[demo] Replay complete. Close Isaac Sim or press Ctrl+C to stop.")
