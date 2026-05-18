@@ -776,6 +776,35 @@ def normalize(v: np.ndarray) -> np.ndarray:
     return v / max(float(np.linalg.norm(v)), 1e-12)
 
 
+def fallback_pose_normal(tangent: np.ndarray) -> np.ndarray:
+    tangent = normalize(np.asarray(tangent, dtype=float).reshape(3))
+    up = np.array([0.0, 0.0, 1.0], dtype=float)
+    if abs(float(np.dot(tangent, up))) > 0.95:
+        up = np.array([0.0, 1.0, 0.0], dtype=float)
+    normal = np.cross(tangent, up)
+    if np.linalg.norm(normal) < 1e-8:
+        normal = np.array([1.0, 0.0, 0.0], dtype=float)
+    return normalize(normal)
+
+
+def resolve_pose_normal(
+    pose_value: Any,
+    label: str,
+    tangent: np.ndarray,
+    fallback_normal: np.ndarray | None = None,
+) -> np.ndarray:
+    if pose_value is not None:
+        arr = np.asarray(pose_value, dtype=float).reshape(-1)
+        if arr.size == 3 and np.linalg.norm(arr) > 1e-8:
+            return normalize(arr)
+        log(f"[demo] Invalid {label} pose_normal={pose_value!r}; using fallback.")
+    else:
+        log(f"[demo] Missing {label} pose_normal; using fallback.")
+    if fallback_normal is not None and np.linalg.norm(fallback_normal) > 1e-8:
+        return normalize(fallback_normal)
+    return fallback_pose_normal(tangent)
+
+
 def target_frame_from_weld(
     point: np.ndarray,
     normal: np.ndarray,
@@ -833,9 +862,9 @@ def load_weld_targets(job_dir: Path, weld_index: int, scale: float, offset: list
     end_xyz = np.array(weld["end"]["xyz"], dtype=float) * scale + np.array(offset, dtype=float)
     start_xyz[2] += z_offset
     end_xyz[2] += z_offset
-    start_normal = np.array(weld["start"]["pose"], dtype=float)
-    end_normal = np.array(weld["end"]["pose"], dtype=float)
     tangent = normalize(end_xyz - start_xyz)
+    end_normal = resolve_pose_normal(weld["end"].get("pose"), "end", tangent)
+    start_normal = resolve_pose_normal(weld["start"].get("pose"), "start", tangent, fallback_normal=end_normal)
     return {
         "vector_path": vector_path,
         "start_tf": target_frame_from_weld(start_xyz, start_normal, tangent, tcp_offset),
