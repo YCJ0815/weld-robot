@@ -91,6 +91,11 @@ def parse_args() -> argparse.Namespace:
         default=1e-6,
         help="Skip planning when consecutive weld endpoint/startpoint xyz are already coincident within this tolerance.",
     )
+    parser.add_argument(
+        "--auto-first-transition",
+        action="store_true",
+        help="Scan consecutive weld pairs and plan only the first transition whose endpoint/startpoint xyz do not coincide.",
+    )
     parser.add_argument("--seed", type=int, default=7, help="RRT random seed.")
     parser.add_argument("--headless", action="store_true", help="Run Isaac Sim headless.")
     parser.add_argument("--record", dest="record", action="store_true", default=True, help="Record replay to MP4. Enabled by default.")
@@ -924,6 +929,52 @@ def load_weld_targets(
         "end_normal": goal_normal,
         "tangent": normalize(goal_xyz - start_xyz),
     }
+
+
+def resolve_transition_targets(
+    job_dir: Path,
+    weld_index: int,
+    scale: float,
+    offset: list[float],
+    z_offset: float,
+    tcp_offset: float,
+    transition_xyz_tol: float,
+    auto_first_transition: bool,
+) -> dict[str, Any]:
+    vector_path = job_dir / "weld_vectors.json"
+    with vector_path.open("r", encoding="utf-8") as f:
+        weld_count = len(json.load(f)["welds"])
+
+    if not auto_first_transition:
+        return load_weld_targets(
+            job_dir,
+            weld_index,
+            scale,
+            offset,
+            z_offset,
+            tcp_offset,
+            transition_xyz_tol,
+        )
+
+    for candidate_index in range(max(0, weld_index), max(0, weld_count - 1)):
+        targets = load_weld_targets(
+            job_dir,
+            candidate_index,
+            scale,
+            offset,
+            z_offset,
+            tcp_offset,
+            transition_xyz_tol,
+        )
+        if not targets.get("skip_planning", False):
+            if candidate_index != weld_index:
+                log(f"[demo] Auto-selected first non-coincident transition at weld pair {candidate_index} -> {candidate_index + 1}.")
+            return targets
+
+    raise RuntimeError(
+        "No transition requires planning: all consecutive weld endpoint/startpoint pairs "
+        f"coincide within tolerance {transition_xyz_tol:.2e} m."
+    )
 
 
 def retreated_target_tf(
@@ -1850,7 +1901,7 @@ def main() -> None:
             opacity=args.workpiece_opacity,
         )
 
-        targets = load_weld_targets(
+        targets = resolve_transition_targets(
             args.job_dir,
             args.weld_index,
             args.workpiece_scale,
@@ -1858,6 +1909,7 @@ def main() -> None:
             args.workpiece_z_offset,
             args.tcp_normal_offset,
             args.transition_xyz_tol,
+            args.auto_first_transition,
         )
         log(
             f"[demo] Loaded weld transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
