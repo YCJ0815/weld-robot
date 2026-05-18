@@ -1344,6 +1344,11 @@ def draw_pose_vector(stage: Any, prim_path: str, origin: np.ndarray, vector: np.
 def set_translate_op(xformable: Any, translation: np.ndarray) -> None:
     from pxr import Gf, UsdGeom
 
+    translate_attr = xformable.GetPrim().GetAttribute("xformOp:translate")
+    if translate_attr.IsValid():
+        translate_attr.Set(Gf.Vec3d(*translation))
+        return
+
     for op in xformable.GetOrderedXformOps():
         if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
             op.Set(Gf.Vec3d(*translation))
