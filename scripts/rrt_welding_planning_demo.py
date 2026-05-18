@@ -1208,14 +1208,17 @@ class IsaacCollisionChecker:
         return True
 
 
-def make_articulation(robot_prim_path: str) -> Any:
+def make_articulation(world: Any, robot_prim_path: str) -> Any:
     try:
         from isaacsim.core.prims import SingleArticulation
     except ImportError:
         from omni.isaac.core.articulations import Articulation as SingleArticulation
 
     robot = SingleArticulation(prim_path=robot_prim_path, name="rrt_demo_robot")
-    robot.initialize()
+    try:
+        world.scene.add(robot)
+    except Exception:
+        pass
     return robot
 
 
@@ -1841,7 +1844,8 @@ def main() -> None:
         log("[demo] Resetting world and initializing articulation.")
         world.reset()
         ensure_physics_sim_view(world, warmup_steps=2)
-        robot = make_articulation(robot_prim_path)
+        robot = make_articulation(world, robot_prim_path)
+        world.reset()
         warm_up_articulation_state(world, robot)
         dof_indices = dof_indices_for(robot, kinematics.planning_names)
         log(f"[demo] Articulation ready: dofs={list(robot.dof_names)} planning_indices={dof_indices}")
