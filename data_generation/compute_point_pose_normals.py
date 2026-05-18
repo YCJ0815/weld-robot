@@ -641,50 +641,114 @@ def select_hole_non_base_plane_normals(
     solid_infos: dict[int, dict[str, Any]],
     xyz: list[float],
     incident_solid_ids: set[int],
+    incident_edge_ids: list[str],
+    contact_edges: dict[str, Any],
     normals: list[dict[str, Any]],
     up_axis: np.ndarray,
     classifiers: list[Any] | None = None,
 ) -> list[dict[str, Any]]:
-    base_id = next((sid for sid, info in solid_infos.items() if info.get("role") == "base_plate"), None)
-    if base_id is None or base_id < 1 or base_id > len(solids):
-        return []
-    if base_id in incident_solid_ids:
-        return []
-
-    base = nearest_face_normal_on_solid(solids[base_id - 1], xyz, base_id, classifiers=classifiers)
-    if base is None:
-        return []
-
-    base = dict(base)
-    base_vec = np.array(base["normal"], dtype=float)
-    if float(np.dot(base_vec, up_axis)) < 0.0:
-        base_vec = -base_vec
-        base["normal"] = [float(x) for x in base_vec]
-    base["source"] = "hole_non_base_base_up"
-
-    selected = [base]
-    selected_keys = {vec_key(np.array(base["normal"], dtype=float))}
-
-    plane_candidates = [
-        item
-        for item in normals
-        if bool(item.get("is_plane")) and int(item.get("solid_id", -1)) != int(base_id)
-    ]
-    plane_candidates.sort(key=lambda item: (float(item["distance"]), int(item["solid_id"]), int(item["face_index"])))
-
-    for item in plane_candidates:
-        key = vec_key(np.array(item["normal"], dtype=float))
-        if key in selected_keys:
+    # 获取两条焊缝的方向向量
+    p = np.array(xyz, dtype=float)
+    edge_items: list[tuple[float, str, np.ndarray]] = []
+    
+    for edge_id in incident_edge_ids:
+        edge = contact_edges.get(str(edge_id))
+        if not isinstance(edge, dict):
             continue
-        item = dict(item)
-        item["source"] = "hole_non_base_point_plane"
-        item["solid_role"] = solid_infos.get(int(item["solid_id"]), {}).get("role")
-        selected.append(item)
-        selected_keys.add(key)
-        if len(selected) >= 3:
+        s_xyz = as_xyz(edge.get("start"))
+        t_xyz = as_xyz(edge.get("end"))
+        if s_xyz is None or t_xyz is None:
+            continue
+        s = np.array(s_xyz, dtype=float)
+        t = np.array(t_xyz, dtype=float)
+        raw_len = edge.get("length")
+        length = float(raw_len) if isinstance(raw_len, (int, float)) else float(np.linalg.norm(t - s))
+        # 找到离点最远的端点（作为"另一端"）
+        other = t if float(np.linalg.norm(p - s)) <= float(np.linalg.norm(p - t)) else s
+        if unit(other - p) is None:
+            continue
+        edge_items.append((length, str(edge_id), other))
+    
+    if len(edge_items) < 2:
+        return []
+    
+    # 分别标记长焊缝和短焊缝
+    longest = max(edge_items, key=lambda item: (item[0], item[1]))
+    remaining = [item for item in edge_items if item[1] != longest[1]]
+    if not remaining:
+        return []
+    shortest = min(remaining, key=lambda item: (item[0], item[1]))
+    
+    # 第1个向量：从当前点指向长焊缝的另一端
+    long_dir = unit(longest[2] - p)
+    # 第2个向量：从短焊缝的另一端指向当前点
+    short_dir = unit(p - shortest[2])
+    
+    if long_dir is None or short_dir is None:
+        return []
+    
+    # 第3个向量：获取最高优先级肋板上当前点实际接触的面的法向（从内向外）
+    # 优先级：main_rib > side_rib > bridge_rib > unknown
+    role_priority = {"main_rib": 3, "side_rib": 2, "bridge_rib": 1, "unknown": 0}
+    
+    highest_solid_id = None
+    highest_priority = -1
+    for sid in incident_solid_ids:
+        role = solid_infos.get(sid, {}).get("role", "unknown")
+        if role == "base_plate":
+            continue  # 跳过基板
+        priority = role_priority.get(role, 0)
+        if priority > highest_priority:
+            highest_priority = priority
+            highest_solid_id = sid
+    
+    if highest_solid_id is None:
+        return []
+    
+    # 从 normals 中查找当前点实际接触的最高优先级肋板的面
+    # normals 列表中的所有面都是当前点实际接触的候选面
+    plane_normal = None
+    for item in normals:
+        if int(item.get("solid_id", -1)) == int(highest_solid_id):
+            plane_normal = dict(item)
             break
-
-    return selected if len(selected) >= 3 else []
+    
+    if plane_normal is None:
+        # 当前点未接触到最高优先级肋板，无法计算
+        return []
+    
+    plane_normal["source"] = "hole_non_base_highest_rib_contact_face"
+    plane_normal["solid_role"] = solid_infos.get(highest_solid_id, {}).get("role")
+    
+    plane_vec = np.array(plane_normal["normal"], dtype=float)
+    # 确保法向指向肋板外侧：法向应该与从肋板中心指向点的方向同向
+    rib_center = np.array(solid_infos.get(highest_solid_id, {}).get("center", [0.0, 0.0, 0.0]), dtype=float)
+    rib_to_point = p - rib_center
+    if float(np.dot(plane_vec, rib_to_point)) < 0.0:
+        plane_vec = -plane_vec
+        plane_normal["normal"] = [float(x) for x in plane_vec]
+    
+    return [
+        {
+            "solid_id": None,
+            "face_index": None,
+            "normal": [float(x) for x in long_dir],
+            "distance": 0.0,
+            "source": "hole_non_base_longest_weld_current_to_other",
+            "edge_id": longest[1],
+            "edge_length": longest[0],
+        },
+        {
+            "solid_id": None,
+            "face_index": None,
+            "normal": [float(x) for x in short_dir],
+            "distance": 0.0,
+            "source": "hole_non_base_shortest_weld_other_to_current",
+            "edge_id": shortest[1],
+            "edge_length": shortest[0],
+        },
+        plane_normal,
+    ]
 
 
 def select_hole_base_weld_direction_normals(
@@ -1059,36 +1123,34 @@ def compute_pose_normals(
                 source="breakpoint_current_weld_contact_face",
                 classifiers=classifiers,
             )
-            method = "breakpoint_current_weld_two_contact_faces"
+            
+            # 添加焊缝方向向量：从当前断点指向焊缝另一端
+            other_pid = bp_info.get("other_id")
+            if other_pid:
+                other_point = points.get(str(other_pid))
+                if isinstance(other_point, dict):
+                    other_xyz = as_xyz(other_point.get("xyz"))
+                    if other_xyz is not None:
+                        p = np.array(xyz, dtype=float)
+                        other_p = np.array(other_xyz, dtype=float)
+                        weld_dir = unit(other_p - p)
+                        if weld_dir is not None:
+                            selected.append({
+                                "solid_id": None,
+                                "face_index": None,
+                                "normal": [float(x) for x in weld_dir],
+                                "distance": 0.0,
+                                "source": "breakpoint_weld_direction",
+                            })
+            
+            method = "breakpoint_two_contact_faces_plus_weld_direction"
             fallback_item = None
             summary["breakpoint"] += 1
 
         elif role == "breakpoint" and incident.get("contact_edges"):
-            contact_edges_obj = final_obj.get("contact_edges") or {}
-            current_edge = None
-            for edge_id in incident.get("contact_edges", []):
-                edge = contact_edges_obj.get(str(edge_id))
-                if isinstance(edge, dict):
-                    current_edge = edge
-                    break
-            bp_solid_ids = (
-                current_edge.get("solid_ids")
-                if isinstance(current_edge, dict) and isinstance(current_edge.get("solid_ids"), list)
-                else sorted(solid_ids)
-                if isinstance(solid_ids, set)
-                else []
-            )
-            selected = select_contact_face_normals_for_solids(
-                solids,
-                xyz,
-                bp_solid_ids,
-                normals,
-                source="breakpoint_current_weld_contact_face",
-                classifiers=classifiers,
-            )
-            method = "breakpoint_current_weld_two_contact_faces"
-            fallback_item = None
-            summary["breakpoint"] += 1
+            # 在焊缝中间的断点（不在焊缝端点），不计算向量，直接跳过
+            summary["skipped"] += 1
+            continue
 
         elif arc_hit is not None:
             base_id = next((sid for sid, info in solid_infos.items() if info.get("role") == "base_plate"), None)
@@ -1099,11 +1161,13 @@ def compute_pose_normals(
                     solid_infos,
                     xyz,
                     solid_ids,
+                    incident.get("contact_edges", []),
+                    final_obj.get("contact_edges") or {},
                     normals,
                     up_axis,
                     classifiers=classifiers,
                 )
-                method = "hole_arc_non_base_base_up_plus_two_uncovered_planes"
+                method = "hole_arc_non_base_long_short_weld_plus_highest_plane"
             else:
                 selected = select_hole_base_weld_direction_normals(
                     solids,

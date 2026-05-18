@@ -4,6 +4,9 @@
   "path_resolution": "relative_to_manifest_directory",
   "jobs_dir": ".",
   "job_count": 1,
+  "layout": "line",
+  "spacing": 2.0,
+  "grid_cols": null,
   "default_frame": "workpiece",
   "default_units": "mm",
   "jobs": [
@@ -17,17 +20,17 @@
         0.0,
         0.0
       ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
       "frame": "workpiece",
       "units": "mm",
       "step_asset": "job_000/workpiece.step",
       "stl_asset": "job_000/workpiece.stl",
       "vector_json": "job_000/weld_vectors.json",
-      "raw_topology_json": "job_000/raw_weld_topology.json",
-      "workpiece_offset": [
-        0.45,
-        0.0,
-        0.0
-      ]
+      "raw_topology_json": "job_000/raw_weld_topology.json"
     }
   ]
 }

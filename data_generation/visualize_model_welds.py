@@ -90,11 +90,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--show-pose-components",
         action="store_true",
-        help="Show the three component vectors used to compose pose_normal.",
+        default=True,
+        help="Show the three component vectors used to compose pose_normal. Enabled by default.",
     )
     parser.add_argument(
         "--no-pose-components",
-        action="store_true",
+        dest="show_pose_components",
+        action="store_false",
         help="Hide the three component vectors used to compose pose_normal.",
     )
     parser.add_argument(
@@ -206,6 +208,17 @@ def autodetect_inputs(args: argparse.Namespace) -> tuple[Path, Path]:
             raise FileNotFoundError(f"Cannot auto-detect STEP/STP model for weld JSON stem: {stem}")
         return step_path.resolve(), weld_json_path
 
+    # Check for generated_jobs/job_000 first
+    generated_jobs_dir = ROOT / "data" / "generated_jobs" / "job_000"
+    if generated_jobs_dir.exists():
+        workpiece_step = generated_jobs_dir / "workpiece.step"
+        weld_vectors = generated_jobs_dir / "weld_vectors.json"
+        if workpiece_step.exists() and weld_vectors.exists():
+            print(f"[visualize] auto-detected from generated_jobs/job_000")
+            print(f"[visualize] auto-detected model -> {workpiece_step}")
+            print(f"[visualize] auto-detected weld vectors -> {weld_vectors}")
+            return workpiece_step.resolve(), weld_vectors.resolve()
+
     pairs = find_path_json_model_pairs()
     if pairs:
         _, step_path, weld_json_path = max(pairs, key=lambda item: item[0])
@@ -265,6 +278,69 @@ def ensure_seam_extract_on_path() -> None:
 def load_json(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         return json.load(f)
+
+
+def convert_weld_vectors_to_contact_edges(weld_vectors_data: dict[str, Any]) -> dict[str, Any]:
+    """Convert weld_vectors.json format to contact_edges format for visualization."""
+    contact_edges = {}
+    welds = weld_vectors_data.get("welds", [])
+    
+    for idx, weld in enumerate(welds):
+        start = weld.get("start", {})
+        end = weld.get("end", {})
+        
+        start_xyz = start.get("xyz")
+        end_xyz = end.get("xyz")
+        start_pose = start.get("pose")
+        end_pose = end.get("pose")
+        
+        if start_xyz and end_xyz:
+            contact_edges[str(idx)] = {
+                "start": start_xyz,
+                "end": end_xyz,
+                "samples": [start_xyz, end_xyz],
+            }
+    
+    # Convert to the structure expected by the visualization code
+    return {
+        "contact_edges": contact_edges,
+        "points": convert_weld_vectors_to_points(weld_vectors_data),
+    }
+
+
+def convert_weld_vectors_to_points(weld_vectors_data: dict[str, Any]) -> dict[str, Any]:
+    """Convert weld_vectors to points format with pose_normal vectors."""
+    points = {}
+    welds = weld_vectors_data.get("welds", [])
+    
+    point_idx = 0
+    for weld_idx, weld in enumerate(welds):
+        start = weld.get("start", {})
+        end = weld.get("end", {})
+        
+        # Process start point
+        if start.get("xyz"):
+            points[str(point_idx)] = {
+                "xyz": start.get("xyz"),
+                "pose_normal": start.get("pose"),
+                "role": "endpoint",
+                "weld_index": weld_idx,
+                "point_type": "start",
+            }
+            point_idx += 1
+        
+        # Process end point
+        if end.get("xyz"):
+            points[str(point_idx)] = {
+                "xyz": end.get("xyz"),
+                "pose_normal": end.get("pose"),
+                "role": "endpoint",
+                "weld_index": weld_idx,
+                "point_type": "end",
+            }
+            point_idx += 1
+    
+    return points
 
 
 def as_xyz(value: Any) -> list[float] | None:
@@ -526,7 +602,7 @@ def visualize_with_matplotlib(args: argparse.Namespace, weld_data: dict[str, Any
     endpoint_pose_normals = collect_pose_normals(weld_data, role="endpoint") if not args.no_pose_normals else []
     breakpoint_pose_normals = collect_pose_normals(weld_data, role="breakpoint") if not args.no_pose_normals else []
     component_indices = [1, 2, 3]
-    show_pose_components = args.show_pose_components and not args.no_pose_components
+    show_pose_components = args.show_pose_components
     pose_components = (
         collect_pose_component_vectors(weld_data, component_indices)
         if show_pose_components
@@ -940,7 +1016,7 @@ def visualize_with_occ(args: argparse.Namespace, weld_data: dict[str, Any]) -> N
         if not endpoint_pose_normals and not breakpoint_pose_normals:
             print("[visualize] no points[*].pose_normal vectors found in weld JSON.")
 
-    show_pose_components = args.show_pose_components and not args.no_pose_components
+    show_pose_components = args.show_pose_components
     if show_pose_components:
         component_indices = [1, 2, 3]
         pose_components = collect_pose_component_vectors(weld_data, component_indices)
@@ -977,6 +1053,12 @@ def main() -> None:
         raise FileNotFoundError(f"Weld JSON not found: {weld_json_path}")
 
     weld_data = load_json(weld_json_path)
+    
+    # Convert weld_vectors.json format to contact_edges format if needed
+    if "welds" in weld_data and "contact_edges" not in weld_data:
+        print("[visualize] converting weld_vectors.json format to contact_edges format")
+        weld_data = convert_weld_vectors_to_contact_edges(weld_data)
+    
     if args.backend == "occ":
         visualize_with_occ(args, weld_data)
     else:
