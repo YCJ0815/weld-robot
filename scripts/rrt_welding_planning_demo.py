@@ -592,6 +592,7 @@ class IsaacCollisionChecker:
         self.query = self._get_scene_query()
         self.robot_collision_prims = self._collect_robot_collision_prims()
         self.last_collision_prim_path: str | None = None
+        self.last_collision_bbox: tuple[tuple[float, float, float], tuple[float, float, float]] | None = None
         if not self.robot_collision_prims:
             raise RuntimeError(f"No robot collision prims found under {robot_prim_path}")
         log(f"[collision] Using {len(self.robot_collision_prims)} robot collision prims with PhysX overlap queries.")
@@ -655,8 +656,6 @@ class IsaacCollisionChecker:
             "wrist_1_link",
             "wrist_2_link",
             "wrist_3_link",
-            "ee_link",
-            "pen_link",
         }
         link_prims = [prim for prim in all_prims if prim.GetName() in link_names]
         if link_prims:
@@ -717,6 +716,7 @@ class IsaacCollisionChecker:
 
         self.set_q(q)
         self.last_collision_prim_path = None
+        self.last_collision_bbox = None
         cache = UsdGeom.BBoxCache(Usd.TimeCode.Default(), ["default", "render", "proxy"], useExtentsHint=True)
         for prim in self.robot_collision_prims:
             bbox = cache.ComputeWorldBound(prim).ComputeAlignedBox()
@@ -726,6 +726,7 @@ class IsaacCollisionChecker:
             center = tuple((max_v[i] + min_v[i]) * 0.5 for i in range(3))
             if self._overlap_box_hits_workpiece(half, center):
                 self.last_collision_prim_path = str(prim.GetPath())
+                self.last_collision_bbox = (center, half)
                 return False
         return True
 
@@ -785,7 +786,7 @@ def solve_valid_endpoint(
             return target_tf, q, retreat_index
         last_error = RuntimeError(
             f"{label} IK state collides at retreat_index={retreat_index}, "
-            f"prim={checker.last_collision_prim_path}"
+            f"prim={checker.last_collision_prim_path}, bbox={checker.last_collision_bbox}"
         )
     raise RuntimeError(
         f"Could not find a collision-free {label} endpoint after {max_retreat_steps} retreat steps. "
