@@ -127,6 +127,25 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--average-passes", type=int, default=8, help="Number of local averaging smoothing passes.")
     parser.add_argument("--average-blend", type=float, default=0.4, help="Blend factor for local averaging smoothing.")
     parser.add_argument("--collision-padding", type=float, default=0.015, help="AABB padding for PhysX overlap queries.")
+    parser.add_argument(
+        "--robot-collision-approximation",
+        type=str,
+        default="sdf",
+        choices=["sdf", "convexDecomposition", "convexHull"],
+        help="Robot collision approximation for URDF collision meshes.",
+    )
+    parser.add_argument(
+        "--robot-sdf-resolution",
+        type=int,
+        default=256,
+        help="SDF resolution for robot mesh colliders when --robot-collision-approximation=sdf.",
+    )
+    parser.add_argument(
+        "--robot-sdf-subgrid-resolution",
+        type=int,
+        default=6,
+        help="Sparse SDF subgrid resolution for robot mesh colliders; 0 uses dense SDF.",
+    )
     parser.add_argument("--include-tool-collision", dest="include_tool_collision", action="store_true", default=True, help="Use ee/pen collision geometry. Enabled by default.")
     parser.add_argument("--no-tool-collision", dest="include_tool_collision", action="store_false", help="Do not use ee/pen collision geometry.")
     parser.add_argument("--contact-settle-steps", type=int, default=2, help="Physics steps after setting q before reading contact reports.")
@@ -363,8 +382,11 @@ def add_urdf_collision_stl_proxies(
     resolved_urdf: Path,
     include_tool_collision: bool,
     show_collision_proxies: bool,
+    collision_approximation: str,
+    sdf_resolution: int,
+    sdf_subgrid_resolution: int,
 ) -> list[str]:
-    from pxr import Gf, Sdf, UsdGeom, UsdPhysics, UsdShade
+    from pxr import Gf, PhysxSchema, Sdf, UsdGeom, UsdPhysics, UsdShade
 
     # The fixed base is mounted at the ground plane; excluding it avoids a
     # permanent base-ground contact from invalidating every sampled state.
@@ -439,7 +461,12 @@ def add_urdf_collision_stl_proxies(
             UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
             UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
             mesh_collision = UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim())
-            mesh_collision.CreateApproximationAttr("convexDecomposition")
+            mesh_collision.CreateApproximationAttr(collision_approximation)
+            if collision_approximation == "sdf":
+                sdf_api = PhysxSchema.PhysxSDFMeshCollisionAPI.Apply(mesh.GetPrim())
+                sdf_api.CreateSdfResolutionAttr(int(max(16, sdf_resolution)))
+                if sdf_subgrid_resolution > 0:
+                    sdf_api.CreateSdfSubgridResolutionAttr(int(sdf_subgrid_resolution))
             enable_contact_report(mesh.GetPrim())
             if not show_collision_proxies:
                 mesh.CreatePurposeAttr("proxy")
@@ -447,7 +474,8 @@ def add_urdf_collision_stl_proxies(
 
     log(
         f"[collision] Added {len(proxy_paths)} URDF collision STL/box proxies "
-        f"(include_tool_collision={include_tool_collision}, visible={show_collision_proxies})."
+        f"(include_tool_collision={include_tool_collision}, visible={show_collision_proxies}, "
+        f"approximation={collision_approximation})."
     )
     if proxy_paths:
         log("[collision] First collision proxies: " + ", ".join(proxy_paths[:5]))
@@ -498,7 +526,10 @@ def import_collision_stl(
 
     world_min = tuple(local_offset[axis] + min_point[axis] for axis in range(3))
     world_max = tuple(local_offset[axis] + max_point[axis] for axis in range(3))
-    log(f"[demo] Workpiece bounds: min={world_min}, max={world_max}, size={size}")
+    log(
+        "[demo] Workpiece bounds: "
+        f"min={world_min}, max={world_max}, size={size}, collision_approximation=none"
+    )
     return {"prim_path": prim_path, "world_min": world_min, "world_max": world_max, "size": size}
 
 
@@ -1696,6 +1727,9 @@ def main() -> None:
             resolved_urdf=resolved_urdf,
             include_tool_collision=args.include_tool_collision,
             show_collision_proxies=args.show_collision_proxies,
+            collision_approximation=args.robot_collision_approximation,
+            sdf_resolution=args.robot_sdf_resolution,
+            sdf_subgrid_resolution=args.robot_sdf_subgrid_resolution,
         )
         workpiece_info = import_collision_stl(
             stage,
