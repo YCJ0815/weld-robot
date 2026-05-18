@@ -1354,8 +1354,8 @@ def draw_target_markers(
     from pxr import Gf, UsdGeom
 
     for name, point, color in (
-        ("WeldStart", weld_start, Gf.Vec3f(0.1, 0.9, 0.2)),
-        ("WeldGoal", weld_goal, Gf.Vec3f(1.0, 0.12, 0.08)),
+        ("WeldStart", weld_start, Gf.Vec3f(1.0, 0.0, 0.0)),
+        ("WeldGoal", weld_goal, Gf.Vec3f(1.0, 0.0, 0.0)),
         ("TcpStart", tcp_start, Gf.Vec3f(0.2, 1.0, 0.8)),
         ("TcpGoal", tcp_goal, Gf.Vec3f(1.0, 0.55, 0.15)),
     ):
@@ -1369,16 +1369,16 @@ def draw_target_markers(
         "/World/Debug/StartPoseVector",
         weld_start,
         start_normal,
-        Gf.Vec3f(0.0, 1.0, 0.15),
-        length=0.06,
+        Gf.Vec3f(0.0, 1.0, 0.0),
+        length=0.12,
     )
     draw_pose_vector(
         stage,
         "/World/Debug/GoalPoseVector",
         weld_goal,
         goal_normal,
-        Gf.Vec3f(1.0, 0.2, 0.05),
-        length=0.06,
+        Gf.Vec3f(0.0, 1.0, 0.0),
+        length=0.12,
     )
     draw_curve(stage, "/World/Debug/TcpPath", list(path_points), Gf.Vec3f(0.05, 0.8, 1.0), width=0.006)
 
