@@ -138,8 +138,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-opacity", type=float, default=0.0, help="Visual opacity for the workpiece mesh.")
     parser.add_argument("--tcp-normal-offset", type=float, default=0.035, help="Retreat distance along weld normal in m.")
     parser.add_argument("--endpoint-retreat-step", type=float, default=0.01, help="Additional endpoint retreat step along weld normal in m.")
-    parser.add_argument("--endpoint-retreat-max-steps", type=int, default=8, help="Maximum endpoint retreat attempts if IK state collides.")
-    parser.add_argument("--endpoint-random-seeds", type=int, default=80, help="Random IK seeds per endpoint retreat attempt.")
+    parser.add_argument("--endpoint-retreat-max-steps", type=int, default=4, help="Maximum endpoint retreat attempts if IK state collides.")
+    parser.add_argument("--endpoint-random-seeds", type=int, default=16, help="Random IK seeds per endpoint retreat attempt.")
+    parser.add_argument("--endpoint-ik-max-iters", type=int, default=160, help="Maximum IK iterations per seed during endpoint solving.")
     parser.add_argument("--endpoint-yaw-samples", type=int, default=12, help="TCP rotations around weld normal per endpoint retreat attempt.")
     parser.add_argument("--endpoint-ik-rot-weight", type=float, default=0.12, help="IK orientation weight for endpoint solving.")
     parser.add_argument("--rrt-step-size", type=float, default=0.25, help="RRT joint-space step size.")
@@ -181,7 +182,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--include-tool-collision", dest="include_tool_collision", action="store_true", default=True, help="Use ee/pen collision geometry. Enabled by default.")
     parser.add_argument("--no-tool-collision", dest="include_tool_collision", action="store_false", help="Do not use ee/pen collision geometry.")
-    parser.add_argument("--contact-settle-steps", type=int, default=2, help="Physics steps after setting q before reading contact reports.")
+    parser.add_argument("--contact-settle-steps", type=int, default=1, help="Physics steps after setting q before reading contact reports.")
     parser.add_argument("--use-bbox-collision", action="store_true", help="Use legacy bbox overlap checks instead of PhysX contact reports.")
     parser.add_argument(
         "--show-collision-proxies",
@@ -1407,6 +1408,7 @@ def solve_valid_endpoint(
     yaw_samples: int,
     random_seeds: int,
     ik_rot_weight: float,
+    ik_max_iters: int,
     rng: np.random.Generator,
 ) -> tuple[np.ndarray, np.ndarray, int]:
     last_error: Exception | None = None
@@ -1417,6 +1419,10 @@ def solve_valid_endpoint(
             kinematics.upper,
             rng,
             random_count=random_seeds,
+        )
+        log(
+            f"[endpoint] Trying {label}: retreat_index={retreat_index}/{max_retreat_steps}, "
+            f"retreated={retreat_step * retreat_index:.3f} m, seeds={len(seed_pool)}, ik_max_iters={ik_max_iters}"
         )
         target_tf = retreated_target_tf(
             base_xyz,
@@ -1431,7 +1437,7 @@ def solve_valid_endpoint(
             q = kinematics.solve_ik(
                 target_tf,
                 seed_pool,
-                max_iters=360,
+                max_iters=ik_max_iters,
                 rot_weight=ik_rot_weight,
             )
         except RuntimeError as exc:
@@ -1970,6 +1976,7 @@ def main() -> None:
             yaw_samples=args.endpoint_yaw_samples,
             random_seeds=args.endpoint_random_seeds,
             ik_rot_weight=args.endpoint_ik_rot_weight,
+            ik_max_iters=args.endpoint_ik_max_iters,
             rng=rng,
         )
         goal_tf, q_goal, goal_retreat_steps = solve_valid_endpoint(
@@ -1986,6 +1993,7 @@ def main() -> None:
             yaw_samples=args.endpoint_yaw_samples,
             random_seeds=args.endpoint_random_seeds,
             ik_rot_weight=args.endpoint_ik_rot_weight,
+            ik_max_iters=args.endpoint_ik_max_iters,
             rng=rng,
         )
         targets["start_tf"] = start_tf
