@@ -8,7 +8,7 @@ This is a single-robot/single-workpiece demo that mirrors the structure of
 3. Solve six-axis UR5e IK for the start and goal.
 4. Run joint-space RRT-Connect.
 5. Validate states/edges with Isaac Sim/PhysX scene collision queries.
-6. Replay and optionally record the planned trajectory.
+6. Replay and record the planned trajectory by default.
 """
 
 from __future__ import annotations
@@ -63,10 +63,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--weld-index", type=int, default=0, help="Weld segment index from weld_vectors.json.")
     parser.add_argument("--seed", type=int, default=7, help="RRT random seed.")
     parser.add_argument("--headless", action="store_true", help="Run Isaac Sim headless.")
-    parser.add_argument("--record", action="store_true", help="Record replay to MP4.")
+    parser.add_argument("--record", dest="record", action="store_true", default=True, help="Record replay to MP4. Enabled by default.")
+    parser.add_argument("--no-record", dest="record", action="store_false", help="Replay without writing frames or MP4.")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="MP4 output path.")
     parser.add_argument("--frames-dir", type=Path, default=None, help="Temporary RGB frame directory.")
     parser.add_argument("--keep-frames", action="store_true", help="Keep RGB frames after encoding.")
+    parser.add_argument(
+        "--allow-frames-only",
+        action="store_true",
+        help="Do not fail early when ffmpeg is missing; keep PNG frames instead of MP4.",
+    )
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing video/frames.")
     parser.add_argument("--fps", type=int, default=30, help="Recording FPS.")
     parser.add_argument("--width", type=int, default=1280, help="Recording width.")
@@ -104,27 +110,52 @@ def prepare_recording_paths(args: argparse.Namespace) -> Path:
 def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is None:
-        raise RuntimeError(f"ffmpeg was not found. RGB frames remain in: {frames_dir}")
-    if not list(frames_dir.glob("*.png")):
-        raise RuntimeError(f"No PNG frames were written directly under: {frames_dir}")
+        raise RuntimeError(
+            "ffmpeg was not found, so MP4 encoding cannot run. "
+            f"RGB frames remain in: {frames_dir}"
+        )
+    frame_candidates = sorted(frames_dir.glob("*.png"))
+    if not frame_candidates:
+        frame_candidates = sorted(frames_dir.glob("**/*.png"))
+        if frame_candidates:
+            log(f"[demo] Replicator wrote nested PNG frames; normalizing {len(frame_candidates)} frames for ffmpeg.")
+        else:
+            raise RuntimeError(f"No PNG frames were written under: {frames_dir}")
+
+    encode_dir = frames_dir / "_encode_sequence"
+    if encode_dir.exists():
+        shutil.rmtree(encode_dir)
+    encode_dir.mkdir(parents=True)
+    for index, source in enumerate(frame_candidates):
+        target = encode_dir / f"frame_{index:06d}.png"
+        try:
+            target.symlink_to(source.resolve())
+        except OSError:
+            shutil.copy2(source, target)
+
+    if not list(encode_dir.glob("frame_*.png")):
+        raise RuntimeError(f"No PNG frames were written under: {frames_dir}")
+
     subprocess.run(
         [
             ffmpeg,
             "-y",
             "-framerate",
             str(fps),
-            "-pattern_type",
-            "glob",
             "-i",
-            str(frames_dir / "*.png"),
+            str(encode_dir / "frame_%06d.png"),
             "-c:v",
             "libx264",
             "-pix_fmt",
             "yuv420p",
+            "-movflags",
+            "+faststart",
             str(output_path),
         ],
         check=True,
     )
+    if not output_path.is_file() or output_path.stat().st_size == 0:
+        raise RuntimeError(f"ffmpeg finished but MP4 was not created: {output_path}")
 
 
 def parse_binary_stl(data: bytes) -> tuple[list[tuple[float, float, float]], list[int], list[int]]:
@@ -678,6 +709,15 @@ def main() -> None:
     frames_dir = prepare_recording_paths(args) if args.record else None
     rng = np.random.default_rng(args.seed)
 
+    if args.record and shutil.which("ffmpeg") is None:
+        message = (
+            "ffmpeg is required for MP4 output. Install it on the cloud server, for example "
+            "`sudo apt-get update && sudo apt-get install -y ffmpeg`, or rerun with --allow-frames-only."
+        )
+        if not args.allow_frames_only:
+            raise RuntimeError(message)
+        log(f"[demo] WARNING: {message}")
+
     try:
         from isaacsim import SimulationApp
     except ImportError:
@@ -821,7 +861,14 @@ def main() -> None:
         simulation_app.close()
 
     if args.record and frames_dir is not None:
-        encode_video(frames_dir, args.output, args.fps)
+        try:
+            encode_video(frames_dir, args.output, args.fps)
+        except RuntimeError as exc:
+            log(f"[demo] {exc}")
+            log(f"[demo] Keeping frames for manual encoding: {frames_dir}")
+            if not args.allow_frames_only:
+                raise
+            return
         if not args.keep_frames:
             shutil.rmtree(frames_dir)
         log(f"[demo] Video saved to: {args.output}")
