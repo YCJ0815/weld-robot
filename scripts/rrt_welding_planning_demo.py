@@ -1461,12 +1461,9 @@ def draw_target_markers(
 
 
 @dataclass(frozen=True)
-class OrbitCameraRig:
-    center: np.ndarray
+class FixedCameraRig:
+    eye: tuple[float, float, float]
     target: tuple[float, float, float]
-    radius: float
-    height: float
-    start_angle: float
     focal_length: float = 32.0
     focus_distance: float = 2.5
 
@@ -1475,13 +1472,9 @@ class OrbitCameraRig:
 class RecordingSession:
     rep: Any
     world: Any
-    stage: Any
     args: argparse.Namespace
     writer: Any
     camera_prim_path: str
-    rig: OrbitCameraRig
-    total_frames: int
-    frame_index: int = 0
 
 
 def workpiece_bounds(workpiece_info: dict[str, Any]) -> tuple[np.ndarray, np.ndarray]:
@@ -1497,29 +1490,20 @@ def workpiece_center_and_span(workpiece_info: dict[str, Any]) -> tuple[np.ndarra
     return center, span
 
 
-def recording_camera_rig(workpiece_info: dict[str, Any]) -> OrbitCameraRig:
+def recording_camera_rig(workpiece_info: dict[str, Any]) -> FixedCameraRig:
     center, span = workpiece_center_and_span(workpiece_info)
-    return OrbitCameraRig(
-        center=center,
+    target = (float(center[0]), float(center[1]), float(center[2] + max(0.14, span * 0.22)))
+    return FixedCameraRig(
+        eye=(
+            float(center[0] + max(1.15, span * 3.3)),
+            float(center[1] - max(1.35, span * 3.8)),
+            float(center[2] + max(0.82, span * 1.9)),
+        ),
         target=(float(center[0]), float(center[1]), float(center[2] + max(0.14, span * 0.22))),
-        radius=max(1.6, span * 4.8),
-        height=float(center[2] + max(0.75, span * 1.7)),
-        start_angle=-math.pi / 4.0,
     )
 
 
-def orbit_camera_pose(rig: OrbitCameraRig, frame_index: int, total_frames: int) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
-    denom = max(total_frames - 1, 1)
-    angle = rig.start_angle + (2.0 * math.pi * frame_index) / denom
-    eye = (
-        float(rig.center[0] + rig.radius * math.cos(angle)),
-        float(rig.center[1] + rig.radius * math.sin(angle)),
-        rig.height,
-    )
-    return eye, rig.target
-
-
-def ensure_recording_camera(stage: Any, rig: OrbitCameraRig, prim_path: str = "/World/RecordingCamera") -> str:
+def ensure_recording_camera(stage: Any, rig: FixedCameraRig, prim_path: str = "/World/RecordingCamera") -> str:
     from pxr import UsdGeom
 
     camera = UsdGeom.Camera.Define(stage, prim_path)
@@ -1564,7 +1548,6 @@ def start_recording_session(
     workpiece_info: dict[str, Any],
     frames_dir: Path,
     args: argparse.Namespace,
-    total_frames: int,
 ) -> RecordingSession:
     try:
         rep.orchestrator.set_capture_on_play(False)
@@ -1573,29 +1556,22 @@ def start_recording_session(
 
     rig = recording_camera_rig(workpiece_info)
     camera_prim_path = ensure_recording_camera(stage, rig)
-    eye, target = orbit_camera_pose(rig, frame_index=0, total_frames=total_frames)
-    log(f"[demo] Recording orbit camera start eye={eye}, look_at={target}, total_frames={total_frames}")
-    set_camera_pose(stage, camera_prim_path, eye, target)
+    log(f"[demo] Recording camera eye={rig.eye}, look_at={rig.target}")
+    set_camera_pose(stage, camera_prim_path, rig.eye, rig.target)
     render_product = rep.create.render_product(camera_prim_path, resolution=(args.width, args.height))
     writer = create_basic_writer(rep, frames_dir, [render_product])
     return RecordingSession(
         rep=rep,
         world=world,
-        stage=stage,
         args=args,
         writer=writer,
         camera_prim_path=camera_prim_path,
-        rig=rig,
-        total_frames=total_frames,
     )
 
 
 def capture_recording_frame(session: RecordingSession) -> None:
-    eye, target = orbit_camera_pose(session.rig, session.frame_index, session.total_frames)
-    set_camera_pose(session.stage, session.camera_prim_path, eye, target)
     session.world.step(render=True)
     step_replicator(session.rep, session.args)
-    session.frame_index += 1
 
 
 def finish_recording_session(session: RecordingSession, frames_dir: Path) -> None:
@@ -1650,8 +1626,7 @@ def write_ik_endpoint_screenshots(
         zero_robot_velocities(robot)
         world.step(render=True)
 
-        eye, target = orbit_camera_pose(rig, frame_index=index, total_frames=4)
-        set_camera_pose(stage, camera_prim_path, eye, target)
+        set_camera_pose(stage, camera_prim_path, rig.eye, rig.target)
         render_product = rep.create.render_product(camera_prim_path, resolution=(args.width, args.height))
         writer = create_basic_writer(rep, label_dir, [render_product])
         world.step(render=True)
@@ -1988,7 +1963,6 @@ def main() -> None:
                 workpiece_info=workpiece_info,
                 frames_dir=frames_dir,
                 args=args,
-                total_frames=len(q_playback) + 2 * args.num_idle_frames,
             )
             log(f"[demo] Recording frames to: {frames_dir}")
 
