@@ -26,6 +26,10 @@ class TrajOptConfig:
     seed_weight: float = 0.15
     constraint_edge_resolution: float = 0.08
     constraint_samples_per_segment: int = 0
+    shortcut_iterations: int = 120
+    shortcut_passes: int = 2
+    averaging_passes: int = 6
+    averaging_blend: float = 0.35
 
 
 def interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
@@ -197,6 +201,71 @@ def _resample_trajectory(path: np.ndarray, num_waypoints: int) -> np.ndarray:
     return np.column_stack([np.interp(target_s, cum_len, path[:, j]) for j in range(path.shape[1])])
 
 
+def _path_length(path: np.ndarray) -> float:
+    if len(path) <= 1:
+        return 0.0
+    return float(np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1)))
+
+
+def shortcut_smooth_path(
+    path: np.ndarray,
+    is_edge_valid: EdgeValidator,
+    iterations: int,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    if len(path) <= 2:
+        return path.copy()
+
+    best = path.copy()
+    for _ in range(max(0, iterations)):
+        if len(best) <= 2:
+            break
+        i = int(rng.integers(0, len(best) - 1))
+        j = int(rng.integers(i + 1, len(best)))
+        if j <= i + 1:
+            continue
+        if not is_edge_valid(best[i], best[j]):
+            continue
+        candidate = np.vstack([best[: i + 1], best[j:]])
+        if _path_length(candidate) <= _path_length(best) + 1e-9:
+            best = candidate
+    return best
+
+
+def local_average_smooth_path(
+    path: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    is_state_valid: StateValidator,
+    is_edge_valid: EdgeValidator,
+    passes: int,
+    blend: float,
+) -> np.ndarray:
+    if len(path) <= 2:
+        return path.copy()
+
+    smoothed = path.copy()
+    alpha = float(np.clip(blend, 0.0, 1.0))
+    for _ in range(max(0, passes)):
+        updated = smoothed.copy()
+        changed = False
+        for i in range(1, len(smoothed) - 1):
+            midpoint = 0.5 * (smoothed[i - 1] + smoothed[i + 1])
+            candidate = np.clip((1.0 - alpha) * smoothed[i] + alpha * midpoint, lower, upper)
+            if not is_state_valid(candidate):
+                continue
+            if not is_edge_valid(updated[i - 1], candidate):
+                continue
+            if not is_edge_valid(candidate, smoothed[i + 1]):
+                continue
+            updated[i] = candidate
+            changed = True
+        smoothed = updated
+        if not changed:
+            break
+    return smoothed
+
+
 def _reconstruct_trajopt_path(x: np.ndarray, q_start: np.ndarray, q_goal: np.ndarray, n_dof: int) -> np.ndarray:
     if len(x) == 0:
         return np.vstack([q_start, q_goal])
@@ -341,3 +410,63 @@ def run_trajopt(
             f"status={result.status} nit={getattr(result, 'nit', -1)} fun={float(result.fun):.4f}"
         )
     return q_opt, success
+
+
+def optimize_path(
+    q_seed: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    is_state_valid: StateValidator,
+    is_edge_valid: EdgeValidator,
+    config: TrajOptConfig,
+    rng: np.random.Generator,
+    logger: Logger | None = None,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    current = q_seed.copy()
+    stages: list[str] = ["rrt_seed"]
+
+    for _ in range(max(1, config.shortcut_passes)):
+        current = shortcut_smooth_path(current, is_edge_valid, config.shortcut_iterations, rng)
+    stages.append("shortcut")
+
+    current = local_average_smooth_path(
+        current,
+        lower=lower,
+        upper=upper,
+        is_state_valid=is_state_valid,
+        is_edge_valid=is_edge_valid,
+        passes=config.averaging_passes,
+        blend=config.averaging_blend,
+    )
+    stages.append("average")
+
+    q_trajopt, trajopt_success = run_trajopt(
+        q_seed=current,
+        lower=lower,
+        upper=upper,
+        is_state_valid=is_state_valid,
+        is_edge_valid=is_edge_valid,
+        config=config,
+        logger=logger,
+    )
+    if trajopt_success:
+        current = q_trajopt
+        stages.append("trajopt")
+
+    current = local_average_smooth_path(
+        current,
+        lower=lower,
+        upper=upper,
+        is_state_valid=is_state_valid,
+        is_edge_valid=is_edge_valid,
+        passes=max(1, config.averaging_passes // 2),
+        blend=min(0.5, config.averaging_blend),
+    )
+    stages.append("post_average")
+
+    if logger is not None:
+        logger(
+            f"[PathOpt] stages={'+'.join(stages)} seed_waypoints={len(q_seed)} final_waypoints={len(current)} "
+            f"seed_length={_path_length(q_seed):.4f} final_length={_path_length(current):.4f}"
+        )
+    return current, {"trajopt_success": trajopt_success, "stages": stages}

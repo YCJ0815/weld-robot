@@ -51,7 +51,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from sim_welding_arm import import_robot_from_urdf, make_resolved_urdf  # noqa: E402
 from sim_parallel_welding import add_scene_lighting, ensure_xform, move_prim_to_path, step_replicator  # noqa: E402
-from planning_core import TrajOptConfig, densify_path, interpolate_edge, rrt_connect_plan_with_restarts, run_trajopt  # noqa: E402
+from planning_core import TrajOptConfig, densify_path, interpolate_edge, optimize_path, rrt_connect_plan_with_restarts  # noqa: E402
 
 
 def log(message: str) -> None:
@@ -122,6 +122,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trajopt-smoothness-weight", type=float, default=5.0, help="Smoothness weight for TrajOpt.")
     parser.add_argument("--trajopt-path-length-weight", type=float, default=1.0, help="Path-length weight for TrajOpt.")
     parser.add_argument("--trajopt-seed-weight", type=float, default=0.15, help="Seed-adherence weight for TrajOpt.")
+    parser.add_argument("--shortcut-iterations", type=int, default=160, help="Shortcut smoothing attempts per pass.")
+    parser.add_argument("--shortcut-passes", type=int, default=3, help="Number of shortcut smoothing passes.")
+    parser.add_argument("--average-passes", type=int, default=8, help="Number of local averaging smoothing passes.")
+    parser.add_argument("--average-blend", type=float, default=0.4, help="Blend factor for local averaging smoothing.")
     parser.add_argument("--collision-padding", type=float, default=0.015, help="AABB padding for PhysX overlap queries.")
     parser.add_argument("--include-tool-collision", dest="include_tool_collision", action="store_true", default=True, help="Use ee/pen collision geometry. Enabled by default.")
     parser.add_argument("--no-tool-collision", dest="include_tool_collision", action="store_false", help="Do not use ee/pen collision geometry.")
@@ -1846,7 +1850,7 @@ def main() -> None:
         q_plan = q_seed_path
         trajopt_success = False
         if args.trajopt:
-            q_trajopt, trajopt_success = run_trajopt(
+            q_plan, optimization_info = optimize_path(
                 q_seed=q_seed_path,
                 lower=kinematics.lower,
                 upper=kinematics.upper,
@@ -1859,11 +1863,15 @@ def main() -> None:
                     path_length_weight=args.trajopt_path_length_weight,
                     seed_weight=args.trajopt_seed_weight,
                     constraint_edge_resolution=args.edge_resolution,
+                    shortcut_iterations=args.shortcut_iterations,
+                    shortcut_passes=args.shortcut_passes,
+                    averaging_passes=args.average_passes,
+                    averaging_blend=args.average_blend,
                 ),
+                rng=rng,
                 logger=log,
             )
-            if trajopt_success:
-                q_plan = q_trajopt
+            trajopt_success = bool(optimization_info.get("trajopt_success", False))
         q_playback = densify_path(q_plan, args.playback_resolution)
         tcp_points = np.array([kinematics.forward(q)[:3, 3] for q in q_playback])
         draw_target_markers(
