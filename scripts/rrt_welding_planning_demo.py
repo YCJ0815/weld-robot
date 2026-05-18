@@ -591,6 +591,7 @@ class IsaacCollisionChecker:
         self.padding = padding
         self.query = self._get_scene_query()
         self.robot_collision_prims = self._collect_robot_collision_prims()
+        self.last_collision_prim_path: str | None = None
         if not self.robot_collision_prims:
             raise RuntimeError(f"No robot collision prims found under {robot_prim_path}")
         log(f"[collision] Using {len(self.robot_collision_prims)} robot collision prims with PhysX overlap queries.")
@@ -630,6 +631,21 @@ class IsaacCollisionChecker:
                 f"using {len(collision_meshes)} collision-named geometry prims as bbox proxies."
             )
             return collision_meshes
+
+        visual_meshes = []
+        for prim in all_prims:
+            path_lower = str(prim.GetPath()).lower()
+            type_name = prim.GetTypeName()
+            if type_name in {"Mesh", "Cube", "Sphere", "Capsule"} and (
+                "/visual" in path_lower or "/visuals" in path_lower
+            ):
+                visual_meshes.append(prim)
+        if visual_meshes:
+            log(
+                "[collision] No explicit collision geometry found; "
+                f"using {len(visual_meshes)} visual mesh prims as bbox proxies."
+            )
+            return visual_meshes
 
         link_names = {
             "base_link",
@@ -700,6 +716,7 @@ class IsaacCollisionChecker:
         from pxr import Usd, UsdGeom
 
         self.set_q(q)
+        self.last_collision_prim_path = None
         cache = UsdGeom.BBoxCache(Usd.TimeCode.Default(), ["default", "render", "proxy"], useExtentsHint=True)
         for prim in self.robot_collision_prims:
             bbox = cache.ComputeWorldBound(prim).ComputeAlignedBox()
@@ -708,6 +725,7 @@ class IsaacCollisionChecker:
             half = tuple(max((max_v[i] - min_v[i]) * 0.5 + self.padding, 0.002) for i in range(3))
             center = tuple((max_v[i] + min_v[i]) * 0.5 for i in range(3))
             if self._overlap_box_hits_workpiece(half, center):
+                self.last_collision_prim_path = str(prim.GetPath())
                 return False
         return True
 
@@ -765,7 +783,10 @@ def solve_valid_endpoint(
                     f"along weld normal to avoid collision."
                 )
             return target_tf, q, retreat_index
-        last_error = RuntimeError(f"{label} IK state collides at retreat_index={retreat_index}")
+        last_error = RuntimeError(
+            f"{label} IK state collides at retreat_index={retreat_index}, "
+            f"prim={checker.last_collision_prim_path}"
+        )
     raise RuntimeError(
         f"Could not find a collision-free {label} endpoint after {max_retreat_steps} retreat steps. "
         f"Last error: {last_error}"
