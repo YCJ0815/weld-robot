@@ -1216,7 +1216,7 @@ def make_articulation(world: Any, robot_prim_path: str) -> Any:
 
     robot = SingleArticulation(prim_path=robot_prim_path, name="rrt_demo_robot")
     try:
-        world.scene.add(robot)
+        robot = world.scene.add(robot)
     except Exception:
         pass
     return robot
@@ -1846,6 +1846,8 @@ def main() -> None:
         ensure_physics_sim_view(world, warmup_steps=2)
         robot = make_articulation(world, robot_prim_path)
         world.reset()
+        robot.initialize()
+        log(f"[robot] Articulation object type={type(robot).__name__}")
         warm_up_articulation_state(world, robot)
         dof_indices = dof_indices_for(robot, kinematics.planning_names)
         log(f"[demo] Articulation ready: dofs={list(robot.dof_names)} planning_indices={dof_indices}")
