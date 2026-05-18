@@ -30,6 +30,7 @@ class TrajOptConfig:
     shortcut_passes: int = 2
     averaging_passes: int = 6
     averaging_blend: float = 0.35
+    validation_resolution: float = 0.05
 
 
 def interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
@@ -205,6 +206,19 @@ def _path_length(path: np.ndarray) -> float:
     if len(path) <= 1:
         return 0.0
     return float(np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1)))
+
+
+def validate_path(
+    path: np.ndarray,
+    is_state_valid: StateValidator,
+    resolution: float,
+) -> tuple[bool, int | None, np.ndarray | None]:
+    for segment_idx in range(len(path) - 1):
+        samples = interpolate_edge(path[segment_idx], path[segment_idx + 1], resolution)
+        for sample in samples[1:]:
+            if not is_state_valid(sample):
+                return False, segment_idx, sample
+    return True, None, None
 
 
 def shortcut_smooth_path(
@@ -424,19 +438,48 @@ def optimize_path(
 ) -> tuple[np.ndarray, dict[str, Any]]:
     current = q_seed.copy()
     stages: list[str] = ["rrt_seed"]
+    accepted_stages: list[str] = ["rrt_seed"]
+    validation_resolution = max(1e-6, float(config.validation_resolution))
+
+    seed_valid, invalid_segment, invalid_sample = validate_path(current, is_state_valid, validation_resolution)
+    if not seed_valid:
+        raise RuntimeError(
+            "RRT seed path is not collision-free under dense validation: "
+            f"segment={invalid_segment}, sample={np.round(invalid_sample, 4) if invalid_sample is not None else None}"
+        )
+
+    def accept_if_safe(candidate: np.ndarray, stage_name: str) -> np.ndarray:
+        nonlocal current
+        is_valid, bad_segment, bad_sample = validate_path(candidate, is_state_valid, validation_resolution)
+        if not is_valid:
+            if logger is not None:
+                rounded_sample = np.round(bad_sample, 4) if bad_sample is not None else None
+                logger(
+                    f"[PathOpt] Rejected {stage_name}: collision under dense validation "
+                    f"(segment={bad_segment}, sample={rounded_sample})"
+                )
+            return current
+        accepted_stages.append(stage_name)
+        return candidate
 
     for _ in range(max(1, config.shortcut_passes)):
-        current = shortcut_smooth_path(current, is_edge_valid, config.shortcut_iterations, rng)
+        current = accept_if_safe(
+            shortcut_smooth_path(current, is_edge_valid, config.shortcut_iterations, rng),
+            "shortcut",
+        )
     stages.append("shortcut")
 
-    current = local_average_smooth_path(
-        current,
-        lower=lower,
-        upper=upper,
-        is_state_valid=is_state_valid,
-        is_edge_valid=is_edge_valid,
-        passes=config.averaging_passes,
-        blend=config.averaging_blend,
+    current = accept_if_safe(
+        local_average_smooth_path(
+            current,
+            lower=lower,
+            upper=upper,
+            is_state_valid=is_state_valid,
+            is_edge_valid=is_edge_valid,
+            passes=config.averaging_passes,
+            blend=config.averaging_blend,
+        ),
+        "average",
     )
     stages.append("average")
 
@@ -450,23 +493,27 @@ def optimize_path(
         logger=logger,
     )
     if trajopt_success:
-        current = q_trajopt
+        current = accept_if_safe(q_trajopt, "trajopt")
         stages.append("trajopt")
 
-    current = local_average_smooth_path(
-        current,
-        lower=lower,
-        upper=upper,
-        is_state_valid=is_state_valid,
-        is_edge_valid=is_edge_valid,
-        passes=max(1, config.averaging_passes // 2),
-        blend=min(0.5, config.averaging_blend),
+    current = accept_if_safe(
+        local_average_smooth_path(
+            current,
+            lower=lower,
+            upper=upper,
+            is_state_valid=is_state_valid,
+            is_edge_valid=is_edge_valid,
+            passes=max(1, config.averaging_passes // 2),
+            blend=min(0.5, config.averaging_blend),
+        ),
+        "post_average",
     )
     stages.append("post_average")
 
     if logger is not None:
         logger(
-            f"[PathOpt] stages={'+'.join(stages)} seed_waypoints={len(q_seed)} final_waypoints={len(current)} "
+            f"[PathOpt] stages={'+'.join(stages)} accepted={'+'.join(accepted_stages)} "
+            f"seed_waypoints={len(q_seed)} final_waypoints={len(current)} "
             f"seed_length={_path_length(q_seed):.4f} final_length={_path_length(current):.4f}"
         )
-    return current, {"trajopt_success": trajopt_success, "stages": stages}
+    return current, {"trajopt_success": trajopt_success, "stages": stages, "accepted_stages": accepted_stages}

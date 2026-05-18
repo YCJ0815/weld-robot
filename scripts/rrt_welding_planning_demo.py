@@ -1817,8 +1817,10 @@ def main() -> None:
             zero_robot_velocities(robot)
             world.step(render=True)
 
+        collision_check_resolution = min(args.edge_resolution, args.playback_resolution)
+
         def is_edge_valid(qa: np.ndarray, qb: np.ndarray) -> bool:
-            for q in interpolate_edge(qa, qb, args.edge_resolution)[1:]:
+            for q in interpolate_edge(qa, qb, collision_check_resolution)[1:]:
                 if not checker.is_state_valid(q):
                     return False
             return True
@@ -1867,12 +1869,19 @@ def main() -> None:
                     shortcut_passes=args.shortcut_passes,
                     averaging_passes=args.average_passes,
                     averaging_blend=args.average_blend,
+                    validation_resolution=collision_check_resolution,
                 ),
                 rng=rng,
                 logger=log,
             )
             trajopt_success = bool(optimization_info.get("trajopt_success", False))
         q_playback = densify_path(q_plan, args.playback_resolution)
+        playback_collision = next((q for q in q_playback if not checker.is_state_valid(q)), None)
+        if playback_collision is not None:
+            raise RuntimeError(
+                "Playback trajectory is not collision-free after optimization: "
+                f"sample={np.round(playback_collision, 4)}"
+            )
         tcp_points = np.array([kinematics.forward(q)[:3, 3] for q in q_playback])
         draw_target_markers(
             stage=stage,
@@ -1887,7 +1896,7 @@ def main() -> None:
         log(
             f"[demo] Planned {len(q_seed_path)} RRT waypoints, "
             f"{len(q_plan)} optimized waypoints, {len(q_playback)} playback points in {plan_time:.2f}s "
-            f"(trajopt={'accepted' if trajopt_success else 'skipped'})"
+            f"(trajopt={'accepted' if trajopt_success else 'skipped'}, collision_check_resolution={collision_check_resolution:.4f})"
         )
 
         recording_session = None
