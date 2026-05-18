@@ -169,6 +169,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rebuild-workpiece-sdf", action="store_true", help="Force rebuilding the cached workpiece SDF for the current job.")
     parser.add_argument("--workpiece-sdf-pitch", type=float, default=0.004, help="Voxel pitch in meters for cached workpiece SDF generation.")
     parser.add_argument("--workpiece-sdf-margin", type=float, default=0.03, help="Extra world-space margin in meters around the workpiece SDF grid.")
+    parser.add_argument("--workpiece-sdf-voxelize-method", type=str, default="subdivide", choices=["subdivide", "ray"], help="Trimesh voxelization method for cached workpiece SDF generation.")
+    parser.add_argument("--workpiece-sdf-voxelize-max-iter", type=int, default=64, help="Maximum subdivision iterations used by trimesh voxelization for cached workpiece SDF generation.")
     parser.add_argument("--sdf-collision-weight", type=float, default=2.0e7, help="Collision penalty weight for SDF TrajOpt.")
     parser.add_argument("--sdf-arm-safe-distance", type=float, default=0.05, help="Safe distance in meters for arm sample points in SDF TrajOpt.")
     parser.add_argument("--sdf-tool-safe-distance", type=float, default=0.01, help="Safe distance in meters for tool sample points in SDF TrajOpt.")
@@ -1995,6 +1997,8 @@ def main() -> None:
                 config=SDFBuildConfig(
                     voxel_pitch=args.workpiece_sdf_pitch,
                     margin=args.workpiece_sdf_margin,
+                    voxelize_method=args.workpiece_sdf_voxelize_method,
+                    voxelize_max_iter=args.workpiece_sdf_voxelize_max_iter,
                 ),
                 logger=log,
                 rebuild=args.rebuild_workpiece_sdf,

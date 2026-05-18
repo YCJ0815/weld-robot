@@ -19,6 +19,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="World offset in meters for the workpiece mesh.")
     parser.add_argument("--sdf-pitch", type=float, default=0.004, help="Voxel pitch in meters for the cached workpiece SDF.")
     parser.add_argument("--sdf-margin", type=float, default=0.03, help="Extra world-space margin in meters around the SDF grid.")
+    parser.add_argument("--sdf-voxelize-method", type=str, default="subdivide", choices=["subdivide", "ray"], help="Trimesh voxelization method.")
+    parser.add_argument("--sdf-voxelize-max-iter", type=int, default=64, help="Maximum subdivision iterations used by trimesh voxelization.")
     parser.add_argument("--rebuild", action="store_true", help="Force rebuilding existing workpiece_sdf.npz files.")
     return parser.parse_args()
 
@@ -52,7 +54,12 @@ def main() -> None:
             z_offset=args.workpiece_z_offset,
             local_offset=tuple(float(v) for v in args.workpiece_offset),
             npz_path=npz_path,
-            config=SDFBuildConfig(voxel_pitch=args.sdf_pitch, margin=args.sdf_margin),
+            config=SDFBuildConfig(
+                voxel_pitch=args.sdf_pitch,
+                margin=args.sdf_margin,
+                voxelize_method=args.sdf_voxelize_method,
+                voxelize_max_iter=args.sdf_voxelize_max_iter,
+            ),
             logger=log,
             rebuild=args.rebuild,
         )

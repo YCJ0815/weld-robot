@@ -16,6 +16,8 @@ Logger = Callable[[str], None]
 class SDFBuildConfig:
     voxel_pitch: float = 0.004
     margin: float = 0.03
+    voxelize_method: str = "subdivide"
+    voxelize_max_iter: int = 64
 
 
 class SDFCollisionLayer:
@@ -96,7 +98,18 @@ def build_sdf_from_workpiece_mesh(
     world_min = bounds[0] - margin
     world_max = bounds[1] + margin
 
-    filled = mesh.voxelized(pitch).fill()
+    try:
+        filled = mesh.voxelized(
+            pitch,
+            method=config.voxelize_method,
+            max_iter=int(max(1, config.voxelize_max_iter)),
+        ).fill()
+    except ValueError as exc:
+        raise RuntimeError(
+            f"SDF voxelization failed for {stl_path} with pitch={pitch:.6f} m, "
+            f"method={config.voxelize_method}, max_iter={config.voxelize_max_iter}. "
+            "Try increasing voxelize_max_iter or using a coarser voxel pitch."
+        ) from exc
     occupied_points = np.asarray(filled.points, dtype=float)
     if occupied_points.size == 0:
         raise RuntimeError(f"Voxelization produced an empty occupancy set for {stl_path}")
@@ -122,7 +135,8 @@ def build_sdf_from_workpiece_mesh(
     if logger is not None:
         logger(
             f"[SDF] Built workpiece SDF at {npz_path} "
-            f"(shape={grid_shape}, pitch={pitch:.4f} m, margin={margin:.4f} m)"
+            f"(shape={grid_shape}, pitch={pitch:.4f} m, margin={margin:.4f} m, "
+            f"method={config.voxelize_method}, max_iter={config.voxelize_max_iter})"
         )
     return npz_path
 
