@@ -296,6 +296,19 @@ def safe_prim_name(name: str) -> str:
     return value or "collision"
 
 
+def configure_non_reflective_preview_surface(shader: Any, color: Any, roughness: float = 1.0, opacity: float | None = None) -> None:
+    from pxr import Sdf
+
+    shader.CreateIdAttr("UsdPreviewSurface")
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(color)
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(float(roughness))
+    shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+    shader.CreateInput("specular", Sdf.ValueTypeNames.Float).Set(0.0)
+    shader.CreateInput("clearcoat", Sdf.ValueTypeNames.Float).Set(0.0)
+    if opacity is not None:
+        shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(float(opacity))
+
+
 def box_mesh(size: np.ndarray) -> tuple[list[tuple[float, float, float]], list[int], list[int]]:
     sx, sy, sz = size * 0.5
     points = [
@@ -354,9 +367,7 @@ def add_urdf_collision_stl_proxies(
     material_path = "/World/Debug/CollisionProxyMaterial"
     material = UsdShade.Material.Define(stage, material_path)
     shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
-    shader.CreateIdAttr("UsdPreviewSurface")
-    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.0, 0.55, 1.0))
-    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.35)
+    configure_non_reflective_preview_surface(shader, Gf.Vec3f(0.0, 0.55, 1.0))
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
 
     for link in root.findall("link"):
@@ -469,10 +480,7 @@ def import_collision_stl(
     material_path = f"{prim_path}_Material"
     material = UsdShade.Material.Define(stage, material_path)
     shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
-    shader.CreateIdAttr("UsdPreviewSurface")
-    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.72, 0.58, 0.40))
-    shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(float(opacity))
-    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.55)
+    configure_non_reflective_preview_surface(shader, Gf.Vec3f(0.72, 0.58, 0.40), opacity=float(opacity))
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
 
@@ -531,10 +539,7 @@ def add_visual_ground(stage: Any, size: float, z: float, opacity: float) -> str:
     material_path = f"{prim_path}_Material"
     material = UsdShade.Material.Define(stage, material_path)
     shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
-    shader.CreateIdAttr("UsdPreviewSurface")
-    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.18, 0.18, 0.18))
-    shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(float(opacity))
-    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.8)
+    configure_non_reflective_preview_surface(shader, Gf.Vec3f(0.18, 0.18, 0.18), opacity=float(opacity))
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
     log(f"[demo] Added collidable transparent ground: {prim_path}, size={size}, z={z}, opacity={opacity}")
@@ -1214,9 +1219,17 @@ def make_articulation(robot_prim_path: str) -> Any:
     return robot
 
 
-def warm_up_articulation_state(world: Any, robot: Any, steps: int = 3) -> np.ndarray:
-    for _ in range(max(steps, 0)):
+def ensure_physics_sim_view(world: Any, warmup_steps: int = 2) -> None:
+    try:
+        world.play()
+    except Exception:
+        pass
+    for _ in range(max(warmup_steps, 0)):
         world.step(render=True)
+
+
+def warm_up_articulation_state(world: Any, robot: Any, steps: int = 3) -> np.ndarray:
+    ensure_physics_sim_view(world, warmup_steps=steps)
     joint_positions = read_full_joint_positions(robot)
     log(f"[robot] Warm-up joint state shape={joint_positions.shape}, dofs={robot_dof_count(robot)}")
     return joint_positions
@@ -1622,6 +1635,7 @@ def write_ik_endpoint_screenshots(
     for index, (label, q) in enumerate((("start_ik", q_start), ("goal_ik", q_goal))):
         label_dir = screenshot_dir / label
         label_dir.mkdir(parents=True, exist_ok=True)
+        ensure_physics_sim_view(world, warmup_steps=1)
         set_robot_q(robot, dof_indices, q)
         zero_robot_velocities(robot)
         world.step(render=True)
@@ -1725,6 +1739,8 @@ def run_playback(
     args: argparse.Namespace,
     recording_session: RecordingSession | None,
 ) -> None:
+    ensure_physics_sim_view(world, warmup_steps=1)
+
     def capture_step() -> None:
         if recording_session is None:
             step_scene(world, rep=None, args=None)
@@ -1824,6 +1840,7 @@ def main() -> None:
 
         log("[demo] Resetting world and initializing articulation.")
         world.reset()
+        ensure_physics_sim_view(world, warmup_steps=2)
         robot = make_articulation(robot_prim_path)
         warm_up_articulation_state(world, robot)
         dof_indices = dof_indices_for(robot, kinematics.planning_names)
