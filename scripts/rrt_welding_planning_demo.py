@@ -79,6 +79,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=1280, help="Recording width.")
     parser.add_argument("--height", type=int, default=720, help="Recording height.")
     parser.add_argument("--rt-subframes", type=int, default=8, help="Replicator render subframes per captured frame.")
+    parser.add_argument("--visual-ground-size", type=float, default=2.0, help="Size of the non-collidable visual ground plane.")
+    parser.add_argument("--visual-ground-z", type=float, default=-0.002, help="Z height of the non-collidable visual ground plane.")
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="STL and weld xyz scale, mm to m.")
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
@@ -251,6 +253,36 @@ def import_collision_stl(
     world_max = tuple(local_offset[axis] + max_point[axis] for axis in range(3))
     log(f"[demo] Workpiece bounds: min={world_min}, max={world_max}, size={size}")
     return {"prim_path": prim_path, "world_min": world_min, "world_max": world_max, "size": size}
+
+
+def add_visual_ground(stage: Any, size: float, z: float) -> None:
+    from pxr import Gf, Sdf, UsdGeom, UsdShade
+
+    half = float(size) * 0.5
+    prim_path = "/World/VisualGround"
+    mesh = UsdGeom.Mesh.Define(stage, prim_path)
+    points = [
+        Gf.Vec3f(-half, -half, z),
+        Gf.Vec3f(half, -half, z),
+        Gf.Vec3f(half, half, z),
+        Gf.Vec3f(-half, half, z),
+    ]
+    mesh.CreatePointsAttr(points)
+    mesh.CreateFaceVertexCountsAttr([4])
+    mesh.CreateFaceVertexIndicesAttr([0, 1, 2, 3])
+    mesh.CreateSubdivisionSchemeAttr("none")
+    mesh.CreateDoubleSidedAttr(True)
+    mesh.CreateDisplayColorAttr([Gf.Vec3f(0.18, 0.18, 0.18)])
+
+    material_path = f"{prim_path}_Material"
+    material = UsdShade.Material.Define(stage, material_path)
+    shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
+    shader.CreateIdAttr("UsdPreviewSurface")
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.18, 0.18, 0.18))
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.8)
+    material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
+    UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
+    log(f"[demo] Added non-collidable visual ground: {prim_path}, size={size}, z={z}")
 
 
 def rpy_matrix(rpy: np.ndarray) -> np.ndarray:
@@ -794,24 +826,70 @@ def solve_valid_endpoint(
     )
 
 
-def draw_target_markers(stage: Any, start: np.ndarray, goal: np.ndarray, path_points: np.ndarray) -> None:
+def draw_curve(
+    stage: Any,
+    prim_path: str,
+    points: list[np.ndarray],
+    color: Any,
+    width: float,
+) -> None:
+    from pxr import Gf, UsdGeom
+
+    curve = UsdGeom.BasisCurves.Define(stage, prim_path)
+    curve.CreateTypeAttr("linear")
+    curve.CreateCurveVertexCountsAttr([len(points)])
+    curve.CreatePointsAttr([Gf.Vec3f(*p) for p in points])
+    curve.CreateWidthsAttr([width])
+    curve.CreateDisplayColorAttr([color])
+
+
+def draw_pose_vector(stage: Any, prim_path: str, origin: np.ndarray, vector: np.ndarray, color: Any, length: float) -> None:
+    v = normalize(np.asarray(vector, dtype=float))
+    start = np.asarray(origin, dtype=float)
+    end = start + v * length
+    draw_curve(stage, prim_path, [start, end], color, width=0.006)
+
+
+def draw_target_markers(
+    stage: Any,
+    weld_start: np.ndarray,
+    weld_goal: np.ndarray,
+    start_normal: np.ndarray,
+    goal_normal: np.ndarray,
+    tcp_start: np.ndarray,
+    tcp_goal: np.ndarray,
+    path_points: np.ndarray,
+) -> None:
     from pxr import Gf, UsdGeom
 
     for name, point, color in (
-        ("Start", start, Gf.Vec3f(0.1, 0.85, 0.2)),
-        ("Goal", goal, Gf.Vec3f(1.0, 0.15, 0.1)),
+        ("WeldStart", weld_start, Gf.Vec3f(0.1, 0.9, 0.2)),
+        ("WeldGoal", weld_goal, Gf.Vec3f(1.0, 0.12, 0.08)),
+        ("TcpStart", tcp_start, Gf.Vec3f(0.2, 1.0, 0.8)),
+        ("TcpGoal", tcp_goal, Gf.Vec3f(1.0, 0.55, 0.15)),
     ):
         sphere = UsdGeom.Sphere.Define(stage, f"/World/Debug/{name}")
-        sphere.CreateRadiusAttr(0.008)
+        sphere.CreateRadiusAttr(0.007 if name.startswith("Weld") else 0.005)
         sphere.CreateDisplayColorAttr([color])
         UsdGeom.Xformable(sphere.GetPrim()).AddTranslateOp().Set(Gf.Vec3d(*point))
 
-    curve = UsdGeom.BasisCurves.Define(stage, "/World/Debug/TcpPath")
-    curve.CreateTypeAttr("linear")
-    curve.CreateCurveVertexCountsAttr([len(path_points)])
-    curve.CreatePointsAttr([Gf.Vec3f(*p) for p in path_points])
-    curve.CreateWidthsAttr([0.006])
-    curve.CreateDisplayColorAttr([Gf.Vec3f(0.05, 0.8, 1.0)])
+    draw_pose_vector(
+        stage,
+        "/World/Debug/StartPoseVector",
+        weld_start,
+        start_normal,
+        Gf.Vec3f(0.0, 1.0, 0.15),
+        length=0.06,
+    )
+    draw_pose_vector(
+        stage,
+        "/World/Debug/GoalPoseVector",
+        weld_goal,
+        goal_normal,
+        Gf.Vec3f(1.0, 0.2, 0.05),
+        length=0.06,
+    )
+    draw_curve(stage, "/World/Debug/TcpPath", list(path_points), Gf.Vec3f(0.05, 0.8, 1.0), width=0.006)
 
 
 def add_recording_camera(rep: Any, workpiece_info: dict[str, Any], args: argparse.Namespace):
@@ -864,9 +942,9 @@ def main() -> None:
             import omni.replicator.core as rep
 
         world = World(physics_dt=1.0 / 60.0, rendering_dt=1.0 / args.fps, stage_units_in_meters=1.0)
-        world.scene.add_default_ground_plane()
         stage = get_context().get_stage()
         ensure_xform(stage, "/World/Debug")
+        add_visual_ground(stage, size=args.visual_ground_size, z=args.visual_ground_z)
         add_scene_lighting(stage)
 
         resolved_urdf = make_resolved_urdf(args.urdf)
@@ -965,7 +1043,16 @@ def main() -> None:
         plan_time = time.perf_counter() - t0
         q_playback = densify_path(q_path, args.playback_resolution)
         tcp_points = np.array([kinematics.forward(q)[:3, 3] for q in q_playback])
-        draw_target_markers(stage, targets["start_tf"][:3, 3], targets["goal_tf"][:3, 3], tcp_points)
+        draw_target_markers(
+            stage=stage,
+            weld_start=targets["start_xyz"],
+            weld_goal=targets["end_xyz"],
+            start_normal=targets["start_normal"],
+            goal_normal=targets["end_normal"],
+            tcp_start=targets["start_tf"][:3, 3],
+            tcp_goal=targets["goal_tf"][:3, 3],
+            path_points=tcp_points,
+        )
         log(f"[demo] Planned {len(q_path)} RRT waypoints, {len(q_playback)} playback points in {plan_time:.2f}s")
 
         writer = None
