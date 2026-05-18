@@ -82,6 +82,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
     parser.add_argument("--tcp-normal-offset", type=float, default=0.035, help="Retreat distance along weld normal in m.")
+    parser.add_argument("--endpoint-retreat-step", type=float, default=0.01, help="Additional endpoint retreat step along weld normal in m.")
+    parser.add_argument("--endpoint-retreat-max-steps", type=int, default=8, help="Maximum endpoint retreat attempts if IK state collides.")
     parser.add_argument("--rrt-step-size", type=float, default=0.35, help="RRT joint-space step size.")
     parser.add_argument("--edge-resolution", type=float, default=0.08, help="Joint-space edge collision resolution.")
     parser.add_argument("--playback-resolution", type=float, default=0.025, help="Joint-space playback interpolation resolution.")
@@ -462,7 +464,19 @@ def load_weld_targets(job_dir: Path, weld_index: int, scale: float, offset: list
         "end_xyz": end_xyz,
         "start_normal": start_normal,
         "end_normal": end_normal,
+        "tangent": tangent,
     }
+
+
+def retreated_target_tf(
+    base_xyz: np.ndarray,
+    normal: np.ndarray,
+    tangent: np.ndarray,
+    tcp_offset: float,
+    retreat_step: float,
+    retreat_index: int,
+) -> np.ndarray:
+    return target_frame_from_weld(base_xyz, normal, tangent, tcp_offset + retreat_step * retreat_index)
 
 
 def interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
@@ -674,6 +688,40 @@ def set_robot_q(robot: Any, dof_indices: list[int], q: np.ndarray) -> None:
     robot.set_joint_positions(full)
 
 
+def solve_valid_endpoint(
+    label: str,
+    kinematics: URDFKinematics,
+    checker: IsaacCollisionChecker,
+    base_xyz: np.ndarray,
+    normal: np.ndarray,
+    tangent: np.ndarray,
+    seeds: list[np.ndarray],
+    tcp_offset: float,
+    retreat_step: float,
+    max_retreat_steps: int,
+) -> tuple[np.ndarray, np.ndarray, int]:
+    last_error: Exception | None = None
+    for retreat_index in range(max_retreat_steps + 1):
+        target_tf = retreated_target_tf(base_xyz, normal, tangent, tcp_offset, retreat_step, retreat_index)
+        try:
+            q = kinematics.solve_ik(target_tf, seeds)
+        except RuntimeError as exc:
+            last_error = exc
+            continue
+        if checker.is_state_valid(q):
+            if retreat_index > 0:
+                log(
+                    f"[endpoint] {label} retreated by {retreat_step * retreat_index:.3f} m "
+                    f"along weld normal to avoid collision."
+                )
+            return target_tf, q, retreat_index
+        last_error = RuntimeError(f"{label} IK state collides at retreat_index={retreat_index}")
+    raise RuntimeError(
+        f"Could not find a collision-free {label} endpoint after {max_retreat_steps} retreat steps. "
+        f"Last error: {last_error}"
+    )
+
+
 def draw_target_markers(stage: Any, start: np.ndarray, goal: np.ndarray, path_points: np.ndarray) -> None:
     from pxr import Gf, UsdGeom
 
@@ -771,11 +819,6 @@ def main() -> None:
             q_home + np.array([-0.35, 0.20, -0.25, 0.2, -0.2, 0.3]),
             np.zeros(6),
         ]
-        q_start = kinematics.solve_ik(targets["start_tf"], seeds)
-        q_goal = kinematics.solve_ik(targets["goal_tf"], [q_start, q_home, np.zeros(6)])
-        log(f"[IK] q_start={np.round(q_start, 4)}")
-        log(f"[IK] q_goal ={np.round(q_goal, 4)}")
-
         checker = IsaacCollisionChecker(
             world=world,
             stage=stage,
@@ -785,10 +828,34 @@ def main() -> None:
             dof_indices=dof_indices,
             padding=args.collision_padding,
         )
-        if not checker.is_state_valid(q_start):
-            raise RuntimeError("IK start state collides with the workpiece in Isaac/PhysX.")
-        if not checker.is_state_valid(q_goal):
-            raise RuntimeError("IK goal state collides with the workpiece in Isaac/PhysX.")
+        start_tf, q_start, start_retreat_steps = solve_valid_endpoint(
+            label="start",
+            kinematics=kinematics,
+            checker=checker,
+            base_xyz=targets["start_xyz"],
+            normal=targets["start_normal"],
+            tangent=targets["tangent"],
+            seeds=seeds,
+            tcp_offset=args.tcp_normal_offset,
+            retreat_step=args.endpoint_retreat_step,
+            max_retreat_steps=args.endpoint_retreat_max_steps,
+        )
+        goal_tf, q_goal, goal_retreat_steps = solve_valid_endpoint(
+            label="goal",
+            kinematics=kinematics,
+            checker=checker,
+            base_xyz=targets["end_xyz"],
+            normal=targets["end_normal"],
+            tangent=targets["tangent"],
+            seeds=[q_start, q_home, np.zeros(6)],
+            tcp_offset=args.tcp_normal_offset,
+            retreat_step=args.endpoint_retreat_step,
+            max_retreat_steps=args.endpoint_retreat_max_steps,
+        )
+        targets["start_tf"] = start_tf
+        targets["goal_tf"] = goal_tf
+        log(f"[IK] q_start={np.round(q_start, 4)} retreat_steps={start_retreat_steps}")
+        log(f"[IK] q_goal ={np.round(q_goal, 4)} retreat_steps={goal_retreat_steps}")
 
         def is_edge_valid(qa: np.ndarray, qb: np.ndarray) -> bool:
             for q in interpolate_edge(qa, qb, args.edge_resolution)[1:]:
