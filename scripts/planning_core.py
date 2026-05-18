@@ -21,8 +21,8 @@ TrajOptRunner = Callable[[np.ndarray, Logger | None], tuple[np.ndarray, bool]]
 @dataclass(frozen=True)
 class TrajOptConfig:
     num_waypoints: int = 20
-    maxiter: int = 200
-    smoothness_weight: float = 5.0
+    maxiter: int = 500
+    smoothness_weight: float = 8.0
     path_length_weight: float = 1.0
     seed_weight: float = 0.15
     constraint_edge_resolution: float = 0.08

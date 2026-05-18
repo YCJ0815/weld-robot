@@ -17,10 +17,10 @@ Logger = Callable[[str], None]
 
 @dataclass(frozen=True)
 class SDFTrajOptConfig:
-    num_waypoints: int = 14
-    maxiter: int = 80
+    num_waypoints: int = 20
+    maxiter: int = 500
     collision_weight: float = 2.0e7
-    smoothness_weight: float = 5.0
+    smoothness_weight: float = 8.0
     arm_safe_distance: float = 0.05
     tool_safe_distance: float = 0.01
     penetration_tol: float = -0.001
