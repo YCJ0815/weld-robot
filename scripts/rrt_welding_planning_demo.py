@@ -604,11 +604,60 @@ class IsaacCollisionChecker:
         from pxr import Usd, UsdPhysics
 
         root = self.stage.GetPrimAtPath(self.robot_prim_path)
+        if not root.IsValid():
+            raise RuntimeError(f"Robot root prim is invalid: {self.robot_prim_path}")
+
+        all_prims = [prim for prim in Usd.PrimRange(root)]
         prims = []
         for prim in Usd.PrimRange(root):
             if prim.HasAPI(UsdPhysics.CollisionAPI):
                 prims.append(prim)
-        return prims
+        if prims:
+            log(f"[collision] Found {len(prims)} prims with UsdPhysics.CollisionAPI.")
+            return prims
+
+        collision_meshes = []
+        for prim in all_prims:
+            path_lower = str(prim.GetPath()).lower()
+            type_name = prim.GetTypeName()
+            if type_name in {"Mesh", "Cube", "Sphere", "Capsule"} and (
+                "collision" in path_lower or "collider" in path_lower
+            ):
+                collision_meshes.append(prim)
+        if collision_meshes:
+            log(
+                "[collision] No UsdPhysics.CollisionAPI prims found; "
+                f"using {len(collision_meshes)} collision-named geometry prims as bbox proxies."
+            )
+            return collision_meshes
+
+        link_names = {
+            "base_link",
+            "shoulder_link",
+            "upper_arm_link",
+            "forearm_link",
+            "wrist_1_link",
+            "wrist_2_link",
+            "wrist_3_link",
+            "ee_link",
+            "pen_link",
+        }
+        link_prims = [prim for prim in all_prims if prim.GetName() in link_names]
+        if link_prims:
+            log(
+                "[collision] No explicit collision geometry found; "
+                f"using {len(link_prims)} robot link prims as conservative bbox proxies."
+            )
+            return link_prims
+
+        preview = [
+            f"{prim.GetPath()} type={prim.GetTypeName()} apis={list(prim.GetAppliedSchemas())}"
+            for prim in all_prims[:80]
+        ]
+        raise RuntimeError(
+            f"No usable robot geometry prims found under {self.robot_prim_path}. "
+            "First prims:\n" + "\n".join(preview)
+        )
 
     def set_q(self, q: np.ndarray) -> None:
         full = np.array(self.robot.get_joint_positions(), dtype=float)
