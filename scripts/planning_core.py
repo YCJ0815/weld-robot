@@ -25,7 +25,7 @@ class TrajOptConfig:
     path_length_weight: float = 1.0
     seed_weight: float = 0.15
     constraint_edge_resolution: float = 0.08
-    constraint_samples_per_segment: int = 4
+    constraint_samples_per_segment: int = 0
 
 
 def interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
@@ -242,14 +242,13 @@ def _trajopt_validity_constraint(
     margins = []
     for q in path[1:-1]:
         margins.append(1.0 if is_state_valid(q) else -1.0)
-    for i in range(len(path) - 1):
-        qa, qb = path[i], path[i + 1]
-        num_samples = max(0, int(samples_per_segment))
-        if num_samples > 0:
+    num_samples = max(0, int(samples_per_segment))
+    if num_samples > 0:
+        for i in range(len(path) - 1):
+            qa, qb = path[i], path[i + 1]
             for alpha in np.linspace(0.0, 1.0, num_samples + 2)[1:-1]:
                 q = (1.0 - alpha) * qa + alpha * qb
                 margins.append(1.0 if is_state_valid(q) else -1.0)
-        margins.append(1.0 if is_edge_valid(qa, qb) else -1.0)
     if not margins:
         return np.array([1.0], dtype=float)
     return np.array(margins, dtype=float)
@@ -320,7 +319,7 @@ def run_trajopt(
     )
 
     q_opt = _reconstruct_trajopt_path(result.x, q_start, q_goal, len(lower))
-    valid = bool(np.all(_trajopt_validity_constraint(
+    waypoint_valid = bool(np.all(_trajopt_validity_constraint(
         result.x,
         q_start,
         q_goal,
@@ -329,10 +328,16 @@ def run_trajopt(
         is_edge_valid,
         config.constraint_samples_per_segment,
     ) >= 0.0))
-    success = bool(result.success) and valid
+    edge_valid = True
+    for i in range(len(q_opt) - 1):
+        if not is_edge_valid(q_opt[i], q_opt[i + 1]):
+            edge_valid = False
+            break
+    success = bool(result.success) and waypoint_valid and edge_valid
     if logger is not None:
         logger(
             f"[TrajOpt] Finished: success={result.success} accepted={success} "
+            f"waypoint_valid={waypoint_valid} edge_valid={edge_valid} "
             f"status={result.status} nit={getattr(result, 'nit', -1)} fun={float(result.fun):.4f}"
         )
     return q_opt, success
