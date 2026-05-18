@@ -15,6 +15,7 @@ except Exception:
 StateValidator = Callable[[np.ndarray], bool]
 EdgeValidator = Callable[[np.ndarray, np.ndarray], bool]
 Logger = Callable[[str], None]
+TrajOptRunner = Callable[[np.ndarray, Logger | None], tuple[np.ndarray, bool]]
 
 
 @dataclass(frozen=True)
@@ -435,6 +436,7 @@ def optimize_path(
     config: TrajOptConfig,
     rng: np.random.Generator,
     logger: Logger | None = None,
+    trajopt_runner: TrajOptRunner | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     current = q_seed.copy()
     stages: list[str] = ["rrt_seed"]
@@ -483,15 +485,18 @@ def optimize_path(
     )
     stages.append("average")
 
-    q_trajopt, trajopt_success = run_trajopt(
-        q_seed=current,
-        lower=lower,
-        upper=upper,
-        is_state_valid=is_state_valid,
-        is_edge_valid=is_edge_valid,
-        config=config,
-        logger=logger,
-    )
+    if trajopt_runner is None:
+        q_trajopt, trajopt_success = run_trajopt(
+            q_seed=current,
+            lower=lower,
+            upper=upper,
+            is_state_valid=is_state_valid,
+            is_edge_valid=is_edge_valid,
+            config=config,
+            logger=logger,
+        )
+    else:
+        q_trajopt, trajopt_success = trajopt_runner(current, logger)
     if trajopt_success:
         current = accept_if_safe(q_trajopt, "trajopt")
         stages.append("trajopt")

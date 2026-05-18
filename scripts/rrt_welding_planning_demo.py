@@ -52,6 +52,8 @@ if str(SCRIPT_DIR) not in sys.path:
 from sim_welding_arm import import_robot_from_urdf, make_resolved_urdf  # noqa: E402
 from sim_parallel_welding import add_scene_lighting, ensure_xform, move_prim_to_path, step_replicator  # noqa: E402
 from planning_core import TrajOptConfig, densify_path, interpolate_edge, optimize_path, rrt_connect_plan_with_restarts  # noqa: E402
+from sdf_trajopt import KinematicSDFCollisionEvaluator, SDFTrajOptConfig, run_sdf_trajopt  # noqa: E402
+from workpiece_sdf import SDFBuildConfig, load_or_build_workpiece_sdf  # noqa: E402
 
 
 def log(message: str) -> None:
@@ -156,6 +158,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trajopt-smoothness-weight", type=float, default=5.0, help="Smoothness weight for TrajOpt.")
     parser.add_argument("--trajopt-path-length-weight", type=float, default=1.0, help="Path-length weight for TrajOpt.")
     parser.add_argument("--trajopt-seed-weight", type=float, default=0.15, help="Seed-adherence weight for TrajOpt.")
+    parser.add_argument("--sdf-trajopt", dest="sdf_trajopt", action="store_true", default=True, help="Use cached workpiece SDF for trajectory optimization. Enabled by default.")
+    parser.add_argument("--no-sdf-trajopt", dest="sdf_trajopt", action="store_false", help="Use the legacy non-SDF TrajOpt fallback.")
+    parser.add_argument("--workpiece-sdf-path", type=Path, default=None, help="Optional path to the cached workpiece SDF .npz. Defaults to <job-dir>/workpiece_sdf.npz.")
+    parser.add_argument("--rebuild-workpiece-sdf", action="store_true", help="Force rebuilding the cached workpiece SDF for the current job.")
+    parser.add_argument("--workpiece-sdf-pitch", type=float, default=0.004, help="Voxel pitch in meters for cached workpiece SDF generation.")
+    parser.add_argument("--workpiece-sdf-margin", type=float, default=0.03, help="Extra world-space margin in meters around the workpiece SDF grid.")
+    parser.add_argument("--sdf-collision-weight", type=float, default=2.0e7, help="Collision penalty weight for SDF TrajOpt.")
+    parser.add_argument("--sdf-arm-safe-distance", type=float, default=0.05, help="Safe distance in meters for arm sample points in SDF TrajOpt.")
+    parser.add_argument("--sdf-tool-safe-distance", type=float, default=0.01, help="Safe distance in meters for tool sample points in SDF TrajOpt.")
+    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.001, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
+    parser.add_argument("--sdf-arm-step-size", type=float, default=0.02, help="Sampling resolution in meters along robot links for SDF evaluation.")
+    parser.add_argument("--sdf-tool-step-size", type=float, default=0.01, help="Sampling resolution in meters along the tool segment for SDF evaluation.")
+    parser.add_argument("--sdf-constraint-point-stride", type=int, default=8, help="Stride for sampled points used in SDF non-penetration constraints.")
     parser.add_argument("--shortcut-iterations", type=int, default=160, help="Shortcut smoothing attempts per pass.")
     parser.add_argument("--shortcut-passes", type=int, default=3, help="Number of shortcut smoothing passes.")
     parser.add_argument("--average-passes", type=int, default=8, help="Number of local averaging smoothing passes.")
@@ -731,6 +746,8 @@ class URDFKinematics:
         self.name_to_q_index = {name: idx for idx, name in enumerate(self.planning_names)}
         self.lower = np.array([next(j.lower for j in self.chain if j.name == name) for name in self.planning_names])
         self.upper = np.array([next(j.upper for j in self.chain if j.name == name) for name in self.planning_names])
+        self.base_link = base_link
+        self.tcp_link = tcp_link
 
     def forward(self, q: np.ndarray) -> np.ndarray:
         tf = np.eye(4)
@@ -741,6 +758,49 @@ class URDFKinematics:
                 motion[:3, :3] = axis_angle_matrix(joint.axis, float(q[self.name_to_q_index[joint.name]]))
                 tf = tf @ motion
         return tf
+
+    def compute_link_transforms(self, q: np.ndarray) -> dict[str, np.ndarray]:
+        tf = np.eye(4)
+        transforms: dict[str, np.ndarray] = {self.base_link: tf.copy()}
+        for joint in self.chain:
+            tf = tf @ joint.origin
+            if joint.name in self.name_to_q_index:
+                motion = np.eye(4)
+                motion[:3, :3] = axis_angle_matrix(joint.axis, float(q[self.name_to_q_index[joint.name]]))
+                tf = tf @ motion
+            transforms[joint.child] = tf.copy()
+        return transforms
+
+    def sample_collision_points(
+        self,
+        q: np.ndarray,
+        arm_step_size: float = 0.02,
+        tool_step_size: float = 0.01,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        transforms = self.compute_link_transforms(q)
+        chain_points = [transforms[self.base_link][:3, 3]]
+        for joint in self.chain:
+            chain_points.append(transforms[joint.child][:3, 3])
+
+        arm_segments = []
+        for p0, p1 in zip(chain_points[:-1], chain_points[1:]):
+            segment_length = float(np.linalg.norm(p1 - p0))
+            num_steps = max(1, int(np.ceil(segment_length / max(arm_step_size, 1e-6))))
+            alphas = np.linspace(0.0, 1.0, num_steps + 1)[:, None]
+            arm_segments.append((1.0 - alphas) * p0[None, :] + alphas * p1[None, :])
+        arm_points = np.vstack(arm_segments) if arm_segments else np.empty((0, 3), dtype=float)
+
+        tool_points = np.empty((0, 3), dtype=float)
+        if "pen_link" in transforms and self.tcp_link in transforms:
+            p0 = transforms["pen_link"][:3, 3]
+            p1 = transforms[self.tcp_link][:3, 3]
+            segment_length = float(np.linalg.norm(p1 - p0))
+            num_steps = max(1, int(np.ceil(segment_length / max(tool_step_size, 1e-6))))
+            alphas = np.linspace(0.0, 1.0, num_steps + 1)[:, None]
+            tool_points = (1.0 - alphas) * p0[None, :] + alphas * p1[None, :]
+        elif self.tcp_link in transforms:
+            tool_points = transforms[self.tcp_link][:3, 3][None, :]
+        return arm_points, tool_points
 
     def solve_ik(
         self,
@@ -1899,6 +1959,28 @@ def main() -> None:
             local_offset=tuple(float(v) for v in args.workpiece_offset),
             opacity=args.workpiece_opacity,
         )
+        sdf_layer = None
+        sdf_npz_path = None
+        if args.trajopt and args.sdf_trajopt:
+            sdf_npz_path = (
+                args.workpiece_sdf_path.resolve()
+                if args.workpiece_sdf_path is not None
+                else (args.job_dir / "workpiece_sdf.npz").resolve()
+            )
+            sdf_layer, sdf_npz_path = load_or_build_workpiece_sdf(
+                stl_path=(args.job_dir / "workpiece.stl").resolve(),
+                scale=args.workpiece_scale,
+                z_offset=args.workpiece_z_offset,
+                local_offset=tuple(float(v) for v in args.workpiece_offset),
+                npz_path=sdf_npz_path,
+                config=SDFBuildConfig(
+                    voxel_pitch=args.workpiece_sdf_pitch,
+                    margin=args.workpiece_sdf_margin,
+                ),
+                logger=log,
+                rebuild=args.rebuild_workpiece_sdf,
+            )
+            log(f"[SDF] Using workpiece SDF cache: {sdf_npz_path}")
 
         log("[demo] Resetting world and initializing articulation.")
         world.reset()
@@ -2084,6 +2166,37 @@ def main() -> None:
         q_plan = q_seed_path
         trajopt_success = False
         if args.trajopt:
+            trajopt_runner = None
+            if args.sdf_trajopt:
+                if sdf_layer is None:
+                    raise RuntimeError("SDF TrajOpt requested but workpiece SDF failed to load.")
+                sdf_evaluator = KinematicSDFCollisionEvaluator(
+                    kinematics=kinematics,
+                    sdf_layer=sdf_layer,
+                    config=SDFTrajOptConfig(
+                        num_waypoints=args.trajopt_waypoints,
+                        maxiter=args.trajopt_maxiter,
+                        collision_weight=args.sdf_collision_weight,
+                        smoothness_weight=args.trajopt_smoothness_weight,
+                        arm_safe_distance=args.sdf_arm_safe_distance,
+                        tool_safe_distance=args.sdf_tool_safe_distance,
+                        penetration_tol=args.sdf_penetration_tol,
+                        arm_step_size=args.sdf_arm_step_size,
+                        tool_step_size=args.sdf_tool_step_size,
+                        constraint_point_stride=args.sdf_constraint_point_stride,
+                        dense_check_resolution=collision_check_resolution,
+                    ),
+                )
+
+                def trajopt_runner(q_seed_current: np.ndarray, logger: Any) -> tuple[np.ndarray, bool]:
+                    return run_sdf_trajopt(
+                        q_seed=q_seed_current,
+                        lower=kinematics.lower,
+                        upper=kinematics.upper,
+                        evaluator=sdf_evaluator,
+                        logger=logger,
+                    )
+
             q_plan, optimization_info = optimize_path(
                 q_seed=q_seed_path,
                 lower=kinematics.lower,
@@ -2105,6 +2218,7 @@ def main() -> None:
                 ),
                 rng=rng,
                 logger=log,
+                trajopt_runner=trajopt_runner,
             )
             trajopt_success = bool(optimization_info.get("trajopt_success", False))
         q_playback = densify_path(q_plan, args.playback_resolution)
