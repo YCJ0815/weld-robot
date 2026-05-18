@@ -68,6 +68,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-record", dest="record", action="store_false", help="Replay without writing frames or MP4.")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="MP4 output path.")
     parser.add_argument("--frames-dir", type=Path, default=None, help="Temporary RGB frame directory.")
+    parser.add_argument("--encode-only", action="store_true", help="Only encode an existing frames directory to MP4.")
     parser.add_argument("--keep-frames", action="store_true", help="Keep RGB frames after encoding.")
     parser.add_argument(
         "--allow-frames-only",
@@ -120,13 +121,23 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
             "ffmpeg was not found, so MP4 encoding cannot run. "
             f"RGB frames remain in: {frames_dir}"
         )
-    frame_candidates = sorted(frames_dir.glob("*.png"))
+    frames_dir = frames_dir.resolve()
+    output_path = output_path.resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    log(f"[demo] ffmpeg path: {ffmpeg}")
+
+    frame_candidates = sorted(
+        path for path in frames_dir.glob("*.png") if "_encode_sequence" not in path.parts
+    )
     if not frame_candidates:
-        frame_candidates = sorted(frames_dir.glob("**/*.png"))
+        frame_candidates = sorted(
+            path for path in frames_dir.glob("**/*.png") if "_encode_sequence" not in path.parts
+        )
         if frame_candidates:
             log(f"[demo] Replicator wrote nested PNG frames; normalizing {len(frame_candidates)} frames for ffmpeg.")
         else:
             raise RuntimeError(f"No PNG frames were written under: {frames_dir}")
+    log(f"[demo] Encoding {len(frame_candidates)} PNG frames. First frame: {frame_candidates[0]}")
 
     encode_dir = frames_dir / "_encode_sequence"
     if encode_dir.exists():
@@ -135,14 +146,14 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
     for index, source in enumerate(frame_candidates):
         target = encode_dir / f"frame_{index:06d}.png"
         try:
-            target.symlink_to(source.resolve())
+            target.hardlink_to(source.resolve())
         except OSError:
             shutil.copy2(source, target)
 
     if not list(encode_dir.glob("frame_*.png")):
         raise RuntimeError(f"No PNG frames were written under: {frames_dir}")
 
-    subprocess.run(
+    commands = [
         [
             ffmpeg,
             "-y",
@@ -158,10 +169,40 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
             "+faststart",
             str(output_path),
         ],
-        check=True,
-    )
+        [
+            ffmpeg,
+            "-y",
+            "-framerate",
+            str(fps),
+            "-i",
+            str(encode_dir / "frame_%06d.png"),
+            "-c:v",
+            "mpeg4",
+            "-q:v",
+            "3",
+            str(output_path),
+        ],
+    ]
+    errors = []
+    for command in commands:
+        log("[demo] Running encoder: " + " ".join(command))
+        result = subprocess.run(
+            command,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+        if result.returncode == 0:
+            break
+        errors.append(result.stdout[-4000:])
+        log(f"[demo] Encoder failed with code {result.returncode}. Trying fallback codec if available.")
+    else:
+        raise RuntimeError("ffmpeg failed to encode MP4. Last ffmpeg output:\n" + "\n".join(errors[-1:]))
+
     if not output_path.is_file() or output_path.stat().st_size == 0:
         raise RuntimeError(f"ffmpeg finished but MP4 was not created: {output_path}")
+    log(f"[demo] Encoded MP4 size: {output_path.stat().st_size} bytes")
 
 
 def parse_binary_stl(data: bytes) -> tuple[list[tuple[float, float, float]], list[int], list[int]]:
@@ -916,6 +957,15 @@ def import_single_robot(stage: Any, resolved_urdf: Path) -> str:
 
 def main() -> None:
     args = parse_args()
+    if args.encode_only:
+        args.output = args.output.resolve()
+        if args.frames_dir is None:
+            args.frames_dir = args.output.parent / f"{args.output.stem}_frames"
+        frames_dir = args.frames_dir.resolve()
+        encode_video(frames_dir, args.output, args.fps)
+        log(f"[demo] Video saved to: {args.output}")
+        return
+
     frames_dir = prepare_recording_paths(args) if args.record else None
     rng = np.random.default_rng(args.seed)
 
@@ -1110,7 +1160,7 @@ def main() -> None:
     if args.record and frames_dir is not None:
         try:
             encode_video(frames_dir, args.output, args.fps)
-        except RuntimeError as exc:
+        except Exception as exc:
             log(f"[demo] {exc}")
             log(f"[demo] Keeping frames for manual encoding: {frames_dir}")
             if not args.allow_frames_only:
