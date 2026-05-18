@@ -68,6 +68,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-record", dest="record", action="store_false", help="Replay without writing frames or MP4.")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="MP4 output path.")
     parser.add_argument("--frames-dir", type=Path, default=None, help="Temporary RGB frame directory.")
+    parser.add_argument("--failure-screenshot-dir", type=Path, default=None, help="Directory for a planning-failure PNG screenshot.")
     parser.add_argument("--encode-only", action="store_true", help="Only encode an existing frames directory to MP4.")
     parser.add_argument("--keep-frames", action="store_true", help="Keep RGB frames after encoding.")
     parser.add_argument(
@@ -92,11 +93,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--endpoint-random-seeds", type=int, default=80, help="Random IK seeds per endpoint retreat attempt.")
     parser.add_argument("--endpoint-yaw-samples", type=int, default=12, help="TCP rotations around weld normal per endpoint retreat attempt.")
     parser.add_argument("--endpoint-ik-rot-weight", type=float, default=0.12, help="IK orientation weight for endpoint solving.")
-    parser.add_argument("--rrt-step-size", type=float, default=0.35, help="RRT joint-space step size.")
+    parser.add_argument("--rrt-step-size", type=float, default=0.25, help="RRT joint-space step size.")
     parser.add_argument("--edge-resolution", type=float, default=0.08, help="Joint-space edge collision resolution.")
     parser.add_argument("--playback-resolution", type=float, default=0.025, help="Joint-space playback interpolation resolution.")
-    parser.add_argument("--max-iter", type=int, default=10000, help="Maximum RRT-Connect iterations.")
-    parser.add_argument("--goal-bias", type=float, default=0.20, help="Probability of sampling q_goal.")
+    parser.add_argument("--max-iter", type=int, default=50000, help="Maximum RRT-Connect iterations per restart.")
+    parser.add_argument("--rrt-restarts", type=int, default=4, help="Number of RRT-Connect restarts.")
+    parser.add_argument("--goal-bias", type=float, default=0.35, help="Probability of sampling q_goal.")
     parser.add_argument("--collision-padding", type=float, default=0.015, help="AABB padding for PhysX overlap queries.")
     parser.add_argument("--include-tool-collision", dest="include_tool_collision", action="store_true", default=True, help="Use ee/pen collision geometry. Enabled by default.")
     parser.add_argument("--no-tool-collision", dest="include_tool_collision", action="store_false", help="Do not use ee/pen collision geometry.")
@@ -840,12 +842,18 @@ def rrt_connect_plan(
     goal_bias: float,
     rng: np.random.Generator,
 ) -> np.ndarray:
+    if is_edge_valid(q_start, q_goal):
+        log("[RRT-Connect] Direct start-goal edge is valid.")
+        return np.vstack([q_start, q_goal])
+
     start_nodes, goal_nodes = [q_start.copy()], [q_goal.copy()]
     start_parents, goal_parents = [-1], [-1]
+    best_goal_distance = float(np.linalg.norm(q_goal - q_start))
     for iteration in range(max_iter):
         q_rand = q_goal if rng.random() < goal_bias else rng.uniform(lower, upper)
         new_idx, _ = extend_tree(start_nodes, start_parents, q_rand, step_size, is_state_valid, is_edge_valid)
         if new_idx is not None:
+            best_goal_distance = min(best_goal_distance, float(np.linalg.norm(start_nodes[new_idx] - q_goal)))
             connect_idx, status = connect_tree(
                 goal_nodes, goal_parents, start_nodes[new_idx], step_size, is_state_valid, is_edge_valid
             )
@@ -857,7 +865,46 @@ def rrt_connect_plan(
                 return path
         start_nodes, goal_nodes = goal_nodes, start_nodes
         start_parents, goal_parents = goal_parents, start_parents
-    raise RuntimeError(f"RRT-Connect failed after {max_iter} iterations.")
+    raise RuntimeError(
+        f"RRT-Connect failed after {max_iter} iterations; "
+        f"best_goal_distance={best_goal_distance:.4f}, "
+        f"tree_sizes=({len(start_nodes)}, {len(goal_nodes)})"
+    )
+
+
+def rrt_connect_plan_with_restarts(
+    q_start: np.ndarray,
+    q_goal: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    is_state_valid: Callable[[np.ndarray], bool],
+    is_edge_valid: Callable[[np.ndarray, np.ndarray], bool],
+    step_size: float,
+    max_iter: int,
+    restarts: int,
+    goal_bias: float,
+    rng: np.random.Generator,
+) -> np.ndarray:
+    last_error: Exception | None = None
+    for attempt in range(1, max(1, restarts) + 1):
+        log(f"[RRT-Connect] Planning attempt {attempt}/{max(1, restarts)}")
+        try:
+            return rrt_connect_plan(
+                q_start=q_start,
+                q_goal=q_goal,
+                lower=lower,
+                upper=upper,
+                is_state_valid=is_state_valid,
+                is_edge_valid=is_edge_valid,
+                step_size=step_size,
+                max_iter=max_iter,
+                goal_bias=goal_bias,
+                rng=rng,
+            )
+        except RuntimeError as exc:
+            last_error = exc
+            log(f"[RRT-Connect] Attempt {attempt} failed: {exc}")
+    raise RuntimeError(f"RRT-Connect failed after {max(1, restarts)} restarts. Last error: {last_error}")
 
 
 class IsaacCollisionChecker:
@@ -1330,6 +1377,41 @@ def add_recording_camera(rep: Any, workpiece_info: dict[str, Any], args: argpars
     return rep.create.render_product(camera, resolution=(args.width, args.height))
 
 
+def write_failure_screenshot(
+    rep: Any,
+    world: Any,
+    workpiece_info: dict[str, Any],
+    args: argparse.Namespace,
+) -> Path:
+    screenshot_dir = (
+        args.failure_screenshot_dir
+        if args.failure_screenshot_dir is not None
+        else args.output.resolve().parent / f"{args.output.resolve().stem}_failure_screenshot"
+    )
+    screenshot_dir = screenshot_dir.resolve()
+    if screenshot_dir.exists():
+        shutil.rmtree(screenshot_dir)
+    screenshot_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        rep.orchestrator.set_capture_on_play(False)
+    except Exception:
+        pass
+    render_product = add_recording_camera(rep, workpiece_info, args)
+    writer = rep.WriterRegistry.get("BasicWriter")
+    writer.initialize(output_dir=str(screenshot_dir), rgb=True)
+    writer.attach([render_product])
+    world.step(render=True)
+    step_replicator(rep, args)
+    rep.orchestrator.wait_until_complete()
+    writer.detach()
+    pngs = sorted(screenshot_dir.glob("*.png")) or sorted(screenshot_dir.glob("**/*.png"))
+    if not pngs:
+        raise RuntimeError(f"Failed to write planning-failure screenshot under {screenshot_dir}")
+    log(f"[demo] Planning-failure screenshot saved: {pngs[0]}")
+    return pngs[0]
+
+
 def import_single_robot(stage: Any, resolved_urdf: Path) -> str:
     target_path = "/World/UR5ePen"
     imported_path = import_robot_from_urdf(resolved_urdf, target_path, fix_base=True)
@@ -1475,6 +1557,16 @@ def main() -> None:
         targets["goal_tf"] = goal_tf
         log(f"[IK] q_start={np.round(q_start, 4)} retreat_steps={start_retreat_steps}")
         log(f"[IK] q_goal ={np.round(q_goal, 4)} retreat_steps={goal_retreat_steps}")
+        draw_target_markers(
+            stage=stage,
+            weld_start=targets["start_xyz"],
+            weld_goal=targets["end_xyz"],
+            start_normal=targets["start_normal"],
+            goal_normal=targets["end_normal"],
+            tcp_start=targets["start_tf"][:3, 3],
+            tcp_goal=targets["goal_tf"][:3, 3],
+            path_points=np.array([targets["start_tf"][:3, 3], targets["goal_tf"][:3, 3]]),
+        )
 
         def is_edge_valid(qa: np.ndarray, qb: np.ndarray) -> bool:
             for q in interpolate_edge(qa, qb, args.edge_resolution)[1:]:
@@ -1483,18 +1575,27 @@ def main() -> None:
             return True
 
         t0 = time.perf_counter()
-        q_path = rrt_connect_plan(
-            q_start=q_start,
-            q_goal=q_goal,
-            lower=kinematics.lower,
-            upper=kinematics.upper,
-            is_state_valid=checker.is_state_valid,
-            is_edge_valid=is_edge_valid,
-            step_size=args.rrt_step_size,
-            max_iter=args.max_iter,
-            goal_bias=args.goal_bias,
-            rng=rng,
-        )
+        try:
+            q_path = rrt_connect_plan_with_restarts(
+                q_start=q_start,
+                q_goal=q_goal,
+                lower=kinematics.lower,
+                upper=kinematics.upper,
+                is_state_valid=checker.is_state_valid,
+                is_edge_valid=is_edge_valid,
+                step_size=args.rrt_step_size,
+                max_iter=args.max_iter,
+                restarts=args.rrt_restarts,
+                goal_bias=args.goal_bias,
+                rng=rng,
+            )
+        except RuntimeError:
+            if args.record:
+                try:
+                    write_failure_screenshot(rep, world, workpiece_info, args)
+                except Exception as screenshot_exc:
+                    log(f"[demo] Failed to write planning-failure screenshot: {screenshot_exc}")
+            raise
         plan_time = time.perf_counter() - t0
         q_playback = densify_path(q_path, args.playback_resolution)
         tcp_points = np.array([kinematics.forward(q)[:3, 3] for q in q_playback])
