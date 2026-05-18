@@ -1077,7 +1077,7 @@ class IsaacCollisionChecker:
 
     def set_q(self, q: np.ndarray) -> None:
         q = coerce_joint_vector(q, len(self.dof_indices), label="collision-check joint vector")
-        full = np.array(self.robot.get_joint_positions(), dtype=float)
+        full = read_full_joint_positions(self.robot)
         for local_idx, dof_idx in enumerate(self.dof_indices):
             full[dof_idx] = q[local_idx]
         self.robot.set_joint_positions(full)
@@ -1214,12 +1214,30 @@ def make_articulation(robot_prim_path: str) -> Any:
     return robot
 
 
+def warm_up_articulation_state(world: Any, robot: Any, steps: int = 3) -> np.ndarray:
+    for _ in range(max(steps, 0)):
+        world.step(render=True)
+    joint_positions = read_full_joint_positions(robot)
+    log(f"[robot] Warm-up joint state shape={joint_positions.shape}, dofs={robot_dof_count(robot)}")
+    return joint_positions
+
+
 def dof_indices_for(robot: Any, names: list[str]) -> list[int]:
     dof_names = list(robot.dof_names)
     missing = [name for name in names if name not in dof_names]
     if missing:
         raise RuntimeError(f"Imported articulation is missing joints {missing}; available={dof_names}")
     return [dof_names.index(name) for name in names]
+
+
+def robot_dof_count(robot: Any) -> int:
+    dof_names = getattr(robot, "dof_names", None)
+    if dof_names is not None:
+        return len(list(dof_names))
+    count = getattr(robot, "num_dof", None)
+    if count is not None:
+        return int(count)
+    raise RuntimeError(f"Could not determine articulation dof count for robot type={type(robot).__name__}")
 
 
 def coerce_joint_vector(q: Any, expected_len: int, label: str = "joint vector") -> np.ndarray:
@@ -1235,9 +1253,38 @@ def coerce_joint_vector(q: Any, expected_len: int, label: str = "joint vector") 
     return arr
 
 
+def read_full_joint_positions(robot: Any) -> np.ndarray:
+    raw = robot.get_joint_positions()
+    expected_len = robot_dof_count(robot)
+    value = raw
+    while isinstance(value, np.ndarray) and value.ndim == 0:
+        value = value.item()
+
+    if value is None:
+        log(f"[robot] get_joint_positions returned None; initializing zero joint state of length {expected_len}.")
+        return np.zeros(expected_len, dtype=float)
+
+    arr = np.asarray(value, dtype=float)
+    if arr.ndim == 0:
+        log(
+            f"[robot] get_joint_positions returned scalar-like value type={type(raw).__name__}, "
+            f"shape={arr.shape}; initializing zero joint state of length {expected_len}."
+        )
+        return np.zeros(expected_len, dtype=float)
+
+    arr = arr.reshape(-1)
+    if arr.size != expected_len:
+        log(
+            f"[robot] get_joint_positions size mismatch: expected {expected_len}, got {arr.size}. "
+            "Falling back to zero joint state."
+        )
+        return np.zeros(expected_len, dtype=float)
+    return arr.copy()
+
+
 def set_robot_q(robot: Any, dof_indices: list[int], q: np.ndarray) -> None:
     q = coerce_joint_vector(q, len(dof_indices), label="robot joint vector")
-    full = np.array(robot.get_joint_positions(), dtype=float)
+    full = read_full_joint_positions(robot)
     for local_idx, dof_idx in enumerate(dof_indices):
         full[dof_idx] = q[local_idx]
     robot.set_joint_positions(full)
@@ -1803,6 +1850,7 @@ def main() -> None:
         log("[demo] Resetting world and initializing articulation.")
         world.reset()
         robot = make_articulation(robot_prim_path)
+        warm_up_articulation_state(world, robot)
         dof_indices = dof_indices_for(robot, kinematics.planning_names)
         log(f"[demo] Articulation ready: dofs={list(robot.dof_names)} planning_indices={dof_indices}")
         q_home = np.array([DEFAULT_INITIAL_JOINT_POS[name] for name in kinematics.planning_names], dtype=float)
