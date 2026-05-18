@@ -140,7 +140,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--visual-ground-z", type=float, default=-0.002, help="Z height of the collidable visual ground plane.")
     parser.add_argument("--visual-ground-opacity", type=float, default=0.18, help="Visual opacity for the collidable ground plane.")
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="STL and weld xyz scale, mm to m.")
-    parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="Workpiece offset in m.")
+    parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.7, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
     parser.add_argument("--workpiece-opacity", type=float, default=1.0, help="Visual opacity for the workpiece mesh.")
     parser.add_argument("--tcp-normal-offset", type=float, default=0.035, help="Retreat distance along weld normal in m.")
