@@ -80,8 +80,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=1280, help="Recording width.")
     parser.add_argument("--height", type=int, default=720, help="Recording height.")
     parser.add_argument("--rt-subframes", type=int, default=8, help="Replicator render subframes per captured frame.")
-    parser.add_argument("--visual-ground-size", type=float, default=2.0, help="Size of the non-collidable visual ground plane.")
-    parser.add_argument("--visual-ground-z", type=float, default=-0.002, help="Z height of the non-collidable visual ground plane.")
+    parser.add_argument("--visual-ground-size", type=float, default=2.0, help="Size of the collidable visual ground plane.")
+    parser.add_argument("--visual-ground-z", type=float, default=-0.002, help="Z height of the collidable visual ground plane.")
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="STL and weld xyz scale, mm to m.")
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
@@ -91,14 +91,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rrt-step-size", type=float, default=0.35, help="RRT joint-space step size.")
     parser.add_argument("--edge-resolution", type=float, default=0.08, help="Joint-space edge collision resolution.")
     parser.add_argument("--playback-resolution", type=float, default=0.025, help="Joint-space playback interpolation resolution.")
-    parser.add_argument("--max-iter", type=int, default=2500, help="Maximum RRT-Connect iterations.")
+    parser.add_argument("--max-iter", type=int, default=10000, help="Maximum RRT-Connect iterations.")
     parser.add_argument("--goal-bias", type=float, default=0.20, help="Probability of sampling q_goal.")
     parser.add_argument("--collision-padding", type=float, default=0.015, help="AABB padding for PhysX overlap queries.")
-    parser.add_argument(
-        "--include-tool-collision",
-        action="store_true",
-        help="Also use ee/pen collision geometry. Disabled by default because the tool is intentionally near the weld.",
-    )
+    parser.add_argument("--include-tool-collision", dest="include_tool_collision", action="store_true", default=True, help="Use ee/pen collision geometry. Enabled by default.")
+    parser.add_argument("--no-tool-collision", dest="include_tool_collision", action="store_false", help="Do not use ee/pen collision geometry.")
+    parser.add_argument("--contact-settle-steps", type=int, default=2, help="Physics steps after setting q before reading contact reports.")
+    parser.add_argument("--use-bbox-collision", action="store_true", help="Use legacy bbox overlap checks instead of PhysX contact reports.")
     parser.add_argument(
         "--show-collision-proxies",
         action="store_true",
@@ -321,7 +320,9 @@ def add_urdf_collision_stl_proxies(
 ) -> list[str]:
     from pxr import Gf, Sdf, UsdGeom, UsdPhysics, UsdShade
 
-    excluded_links = {"world", "base"}
+    # The fixed base is mounted at the ground plane; excluding it avoids a
+    # permanent base-ground contact from invalidating every sampled state.
+    excluded_links = {"world", "base", "base_link"}
     if not include_tool_collision:
         excluded_links.update({"ee_link", "pen_link", "tool0"})
 
@@ -394,7 +395,8 @@ def add_urdf_collision_stl_proxies(
             UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
             UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
             mesh_collision = UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim())
-            mesh_collision.CreateApproximationAttr("convexHull")
+            mesh_collision.CreateApproximationAttr("convexDecomposition")
+            enable_contact_report(mesh.GetPrim())
             if not show_collision_proxies:
                 mesh.CreatePurposeAttr("proxy")
             proxy_paths.append(proxy_path)
@@ -439,6 +441,7 @@ def import_collision_stl(
     UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
     mesh_collision = UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim())
     mesh_collision.CreateApproximationAttr("none")
+    enable_contact_report(mesh.GetPrim())
 
     material_path = f"{prim_path}_Material"
     material = UsdShade.Material.Define(stage, material_path)
@@ -455,8 +458,30 @@ def import_collision_stl(
     return {"prim_path": prim_path, "world_min": world_min, "world_max": world_max, "size": size}
 
 
-def add_visual_ground(stage: Any, size: float, z: float) -> None:
-    from pxr import Gf, Sdf, UsdGeom, UsdShade
+def enable_contact_report(prim: Any, threshold: float = 0.0) -> None:
+    try:
+        from pxr import PhysxSchema
+
+        api = PhysxSchema.PhysxContactReportAPI.Apply(prim)
+        attr = api.GetThresholdAttr()
+        if attr:
+            attr.Set(float(threshold))
+        else:
+            api.CreateThresholdAttr(float(threshold))
+    except Exception:
+        try:
+            from pxr import PhysxSchema
+
+            api = PhysxSchema.PhysxContactReportAPI.Apply(prim)
+            attr = getattr(api, "CreatePhysxContactReportThresholdAttr", None)
+            if attr is not None:
+                attr(float(threshold))
+        except Exception:
+            pass
+
+
+def add_visual_ground(stage: Any, size: float, z: float) -> str:
+    from pxr import Gf, Sdf, UsdGeom, UsdPhysics, UsdShade
 
     half = float(size) * 0.5
     prim_path = "/World/VisualGround"
@@ -473,6 +498,10 @@ def add_visual_ground(stage: Any, size: float, z: float) -> None:
     mesh.CreateSubdivisionSchemeAttr("none")
     mesh.CreateDoubleSidedAttr(True)
     mesh.CreateDisplayColorAttr([Gf.Vec3f(0.18, 0.18, 0.18)])
+    UsdPhysics.CollisionAPI.Apply(mesh.GetPrim())
+    mesh_collision = UsdPhysics.MeshCollisionAPI.Apply(mesh.GetPrim())
+    mesh_collision.CreateApproximationAttr("none")
+    enable_contact_report(mesh.GetPrim())
 
     material_path = f"{prim_path}_Material"
     material = UsdShade.Material.Define(stage, material_path)
@@ -482,7 +511,8 @@ def add_visual_ground(stage: Any, size: float, z: float) -> None:
     shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.8)
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
-    log(f"[demo] Added non-collidable visual ground: {prim_path}, size={size}, z={z}")
+    log(f"[demo] Added collidable visual ground: {prim_path}, size={size}, z={z}")
+    return prim_path
 
 
 def rpy_matrix(rpy: np.ndarray) -> np.ndarray:
@@ -811,28 +841,52 @@ class IsaacCollisionChecker:
         robot: Any,
         robot_prim_path: str,
         workpiece_prim_path: str,
+        ground_prim_path: str,
         dof_indices: list[int],
         padding: float,
+        contact_settle_steps: int,
+        use_bbox_collision: bool,
     ) -> None:
         self.world = world
         self.stage = stage
         self.robot = robot
         self.robot_prim_path = robot_prim_path
         self.workpiece_prim_path = workpiece_prim_path
+        self.ground_prim_path = ground_prim_path
+        self.environment_prim_paths = [workpiece_prim_path, ground_prim_path]
         self.dof_indices = dof_indices
         self.padding = padding
+        self.contact_settle_steps = max(1, int(contact_settle_steps))
+        self.use_bbox_collision = use_bbox_collision
         self.query = self._get_scene_query()
+        self.sim_query = self._get_simulation_interface()
         self.robot_collision_prims = self._collect_robot_collision_prims()
         self.last_collision_prim_path: str | None = None
         self.last_collision_bbox: tuple[tuple[float, float, float], tuple[float, float, float]] | None = None
+        self.last_contact_pair: tuple[str, str] | None = None
         if not self.robot_collision_prims:
             raise RuntimeError(f"No robot collision prims found under {robot_prim_path}")
-        log(f"[collision] Using {len(self.robot_collision_prims)} robot collision prims with PhysX overlap queries.")
+        self._enable_contact_reports()
+        mode = "bbox overlap fallback" if self.use_bbox_collision else "PhysX contact reports"
+        log(f"[collision] Using {len(self.robot_collision_prims)} robot collision prims with {mode}.")
 
     def _get_scene_query(self) -> Any:
         from omni.physx import get_physx_scene_query_interface
 
         return get_physx_scene_query_interface()
+
+    def _get_simulation_interface(self) -> Any:
+        from omni.physx import get_physx_simulation_interface
+
+        return get_physx_simulation_interface()
+
+    def _enable_contact_reports(self) -> None:
+        for prim in self.robot_collision_prims:
+            enable_contact_report(prim)
+        for prim_path in self.environment_prim_paths:
+            prim = self.stage.GetPrimAtPath(prim_path)
+            if prim.IsValid():
+                enable_contact_report(prim)
 
     def _collect_robot_collision_prims(self) -> list[Any]:
         from pxr import Usd, UsdPhysics
@@ -917,18 +971,18 @@ class IsaacCollisionChecker:
             pass
         self.world.step(render=False)
 
-    def _overlap_box_hits_workpiece(self, half_extent: tuple[float, float, float], center: tuple[float, float, float]) -> bool:
+    def _overlap_box_hits_environment(self, half_extent: tuple[float, float, float], center: tuple[float, float, float]) -> bool:
         hits: list[str] = []
 
         def report_hit(hit: Any) -> bool:
             fields = ("rigid_body", "collider", "collision", "prim_path")
             for field in fields:
                 value = getattr(hit, field, "")
-                if value and self.workpiece_prim_path in str(value):
+                if value and any(env_path in str(value) for env_path in self.environment_prim_paths):
                     hits.append(str(value))
                     return False
             text = str(hit)
-            if self.workpiece_prim_path in text:
+            if any(env_path in text for env_path in self.environment_prim_paths):
                 hits.append(text)
                 return False
             return True
@@ -943,12 +997,72 @@ class IsaacCollisionChecker:
                 self.query.overlap_box(half_extent, center, report_hit)
         return bool(hits)
 
+    def _path_from_physx_id(self, value: Any) -> str:
+        try:
+            from pxr import PhysicsSchemaTools
+
+            return str(PhysicsSchemaTools.intToSdfPath(int(value)))
+        except Exception:
+            return str(value)
+
+    def _contact_header_paths(self, header: Any) -> list[str]:
+        paths = []
+        for field in ("actor0", "actor1", "collider0", "collider1", "rigid_body0", "rigid_body1"):
+            if hasattr(header, field):
+                paths.append(self._path_from_physx_id(getattr(header, field)))
+        return paths
+
+    def _is_robot_path(self, path: str) -> bool:
+        return path.startswith(self.robot_prim_path)
+
+    def _is_environment_path(self, path: str) -> bool:
+        return any(path.startswith(env_path) for env_path in self.environment_prim_paths)
+
+    def _has_robot_environment_contact(self) -> bool:
+        try:
+            contact_report = self.sim_query.get_contact_report()
+        except Exception as exc:
+            raise RuntimeError(f"Failed to read PhysX contact report: {exc}") from exc
+
+        headers = contact_report
+        if isinstance(contact_report, tuple):
+            headers = []
+            for item in contact_report:
+                try:
+                    first = next(iter(item))
+                except Exception:
+                    continue
+                if any(hasattr(first, field) for field in ("actor0", "collider0", "rigid_body0")):
+                    headers = item
+                    break
+        for header in headers:
+            header_type = str(getattr(header, "type", ""))
+            if "LOST" in header_type:
+                continue
+            paths = self._contact_header_paths(header)
+            robot_paths = [path for path in paths if self._is_robot_path(path)]
+            env_paths = [path for path in paths if self._is_environment_path(path)]
+            if robot_paths and env_paths:
+                self.last_contact_pair = (robot_paths[0], env_paths[0])
+                self.last_collision_prim_path = robot_paths[0]
+                return True
+        return False
+
     def is_state_valid(self, q: np.ndarray) -> bool:
         from pxr import Usd, UsdGeom
 
-        self.set_q(q)
         self.last_collision_prim_path = None
         self.last_collision_bbox = None
+        self.last_contact_pair = None
+
+        if not self.use_bbox_collision:
+            for _ in range(self.contact_settle_steps):
+                self.set_q(q)
+                if self._has_robot_environment_contact():
+                    return False
+            return True
+
+        self.set_q(q)
         cache = UsdGeom.BBoxCache(Usd.TimeCode.Default(), ["default", "render", "proxy"], useExtentsHint=True)
         for prim in self.robot_collision_prims:
             bbox = cache.ComputeWorldBound(prim).ComputeAlignedBox()
@@ -956,7 +1070,7 @@ class IsaacCollisionChecker:
             max_v = bbox.GetMax()
             half = tuple(max((max_v[i] - min_v[i]) * 0.5 + self.padding, 0.002) for i in range(3))
             center = tuple((max_v[i] + min_v[i]) * 0.5 for i in range(3))
-            if self._overlap_box_hits_workpiece(half, center):
+            if self._overlap_box_hits_environment(half, center):
                 self.last_collision_prim_path = str(prim.GetPath())
                 self.last_collision_bbox = (center, half)
                 return False
@@ -1018,7 +1132,8 @@ def solve_valid_endpoint(
             return target_tf, q, retreat_index
         last_error = RuntimeError(
             f"{label} IK state collides at retreat_index={retreat_index}, "
-            f"prim={checker.last_collision_prim_path}, bbox={checker.last_collision_bbox}"
+            f"prim={checker.last_collision_prim_path}, contact={checker.last_contact_pair}, "
+            f"bbox={checker.last_collision_bbox}"
         )
     raise RuntimeError(
         f"Could not find a collision-free {label} endpoint after {max_retreat_steps} retreat steps. "
@@ -1153,7 +1268,7 @@ def main() -> None:
         world = World(physics_dt=1.0 / 60.0, rendering_dt=1.0 / args.fps, stage_units_in_meters=1.0)
         stage = get_context().get_stage()
         ensure_xform(stage, "/World/Debug")
-        add_visual_ground(stage, size=args.visual_ground_size, z=args.visual_ground_z)
+        ground_prim_path = add_visual_ground(stage, size=args.visual_ground_size, z=args.visual_ground_z)
         add_scene_lighting(stage)
 
         resolved_urdf = make_resolved_urdf(args.urdf)
@@ -1204,8 +1319,11 @@ def main() -> None:
             robot=robot,
             robot_prim_path=robot_prim_path,
             workpiece_prim_path="/World/Workpiece",
+            ground_prim_path=ground_prim_path,
             dof_indices=dof_indices,
             padding=args.collision_padding,
+            contact_settle_steps=args.contact_settle_steps,
+            use_bbox_collision=args.use_bbox_collision,
         )
         log("[demo] Solving collision-free IK endpoints.")
         start_tf, q_start, start_retreat_steps = solve_valid_endpoint(
