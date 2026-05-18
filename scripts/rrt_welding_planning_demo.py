@@ -21,6 +21,7 @@ import struct
 import subprocess
 import sys
 import time
+import traceback
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -49,7 +50,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from sim_welding_arm import import_robot_from_urdf, make_resolved_urdf  # noqa: E402
-from sim_parallel_welding import add_scene_lighting, ensure_xform, step_replicator  # noqa: E402
+from sim_parallel_welding import add_scene_lighting, ensure_xform, move_prim_to_path, step_replicator  # noqa: E402
 
 
 def log(message: str) -> None:
@@ -753,6 +754,17 @@ def add_recording_camera(rep: Any, workpiece_info: dict[str, Any], args: argpars
     return rep.create.render_product(camera, resolution=(args.width, args.height))
 
 
+def import_single_robot(stage: Any, resolved_urdf: Path) -> str:
+    target_path = "/World/UR5ePen"
+    imported_path = import_robot_from_urdf(resolved_urdf, target_path, fix_base=True)
+    if not stage.GetPrimAtPath(imported_path).IsValid() and stage.GetPrimAtPath("/ur5e_pen").IsValid():
+        log("[demo] URDF importer ignored requested prim path; normalizing /ur5e_pen -> /World/UR5ePen")
+        imported_path = "/ur5e_pen"
+    robot_path = move_prim_to_path(stage, imported_path, target_path)
+    log(f"[demo] Imported robot prim: {robot_path}")
+    return robot_path
+
+
 def main() -> None:
     args = parse_args()
     frames_dir = prepare_recording_paths(args) if args.record else None
@@ -788,7 +800,7 @@ def main() -> None:
 
         resolved_urdf = make_resolved_urdf(args.urdf)
         kinematics = URDFKinematics(resolved_urdf)
-        robot_prim_path = import_robot_from_urdf(resolved_urdf, "/World/UR5ePen", fix_base=True)
+        robot_prim_path = import_single_robot(stage, resolved_urdf)
         workpiece_info = import_collision_stl(
             stage,
             stl_path=args.job_dir / "workpiece.stl",
@@ -809,9 +821,11 @@ def main() -> None:
         log(f"[demo] Loaded weld segment {args.weld_index} from {targets['vector_path']}")
         log(f"[demo] Raw weld start/end in world: {targets['start_xyz']} -> {targets['end_xyz']}")
 
+        log("[demo] Resetting world and initializing articulation.")
         world.reset()
         robot = make_articulation(robot_prim_path)
         dof_indices = dof_indices_for(robot, kinematics.planning_names)
+        log(f"[demo] Articulation ready: dofs={list(robot.dof_names)} planning_indices={dof_indices}")
         q_home = np.array([DEFAULT_INITIAL_JOINT_POS[name] for name in kinematics.planning_names], dtype=float)
         seeds = [
             q_home,
@@ -828,6 +842,7 @@ def main() -> None:
             dof_indices=dof_indices,
             padding=args.collision_padding,
         )
+        log("[demo] Solving collision-free IK endpoints.")
         start_tf, q_start, start_retreat_steps = solve_valid_endpoint(
             label="start",
             kinematics=kinematics,
@@ -927,6 +942,10 @@ def main() -> None:
                 world.step(render=True)
                 time.sleep(0.0)
 
+    except Exception:
+        log("[demo] Fatal error during planning or recording:")
+        traceback.print_exc()
+        raise
     finally:
         simulation_app.close()
 
