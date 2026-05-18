@@ -150,16 +150,26 @@ def load_model_generation_module() -> Any:
     return _load_module("mode_generate_model_generation", ROOT / "mode_generate" / "model_generation.py")
 
 
-def generate_models_in_subprocess(count: int, output_dir: Path) -> list[dict[str, str]]:
+def generate_models_in_subprocess(count: int, output_dir: Path, seed: int | None) -> list[dict[str, str]]:
     code = r"""
 import importlib.util
 import json
+import random
 import sys
 from pathlib import Path
 
 root = Path(sys.argv[1])
 count = int(sys.argv[2])
 output_dir = Path(sys.argv[3])
+seed_arg = sys.argv[4]
+if seed_arg != "":
+    seed = int(seed_arg)
+    random.seed(seed)
+    try:
+        import numpy as np
+        np.random.seed(seed)
+    except Exception:
+        pass
 spec = importlib.util.spec_from_file_location(
     "mode_generate_model_generation",
     root / "mode_generate" / "model_generation.py",
@@ -172,7 +182,7 @@ generated = module.generate_batch(count=count, output_dir=str(output_dir))
 print("__GENERATED_JSON__" + json.dumps(generated, ensure_ascii=False))
 """
     result = subprocess.run(
-        [sys.executable, "-c", code, str(ROOT), str(count), str(output_dir)],
+        [sys.executable, "-c", code, str(ROOT), str(count), str(output_dir), "" if seed is None else str(seed)],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -220,9 +230,11 @@ def extract_sequence_in_subprocess(
     compute_pose_normals: bool,
     pose_normal_tol: float,
 ) -> Path:
+    extract_python = get_extract_python()
+    print(f"[env] extract python: {extract_python}")
     result = subprocess.run(
         [
-            get_extract_python(),
+            extract_python,
             str(Path(__file__).resolve()),
             "--extract-worker",
             "--step-file",
@@ -690,12 +702,15 @@ def run_pipeline(
     grid_cols: int,
     compute_pose_normals: bool,
     pose_normal_tol: float,
+    seed: int | None,
 ) -> tuple[list[Path], Path]:
     for output_dir in (model_dir, extract_dir, final_dir, vector_dir, jobs_dir):
         clear_output_dir(output_dir)
 
     try:
-        generated = generate_models_in_subprocess(count=count, output_dir=model_dir)
+        if seed is not None:
+            print(f"[env] model generation seed: {seed}")
+        generated = generate_models_in_subprocess(count=count, output_dir=model_dir, seed=seed)
     except RuntimeError:
         raise
     except ModuleNotFoundError as exc:
@@ -795,6 +810,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--spacing", type=float, default=2.0, help="Default X spacing between jobs in Isaac Sim scene units.")
     parser.add_argument("--layout", choices=("line", "grid"), default="line", help="Placement layout for generated Isaac Sim jobs.")
     parser.add_argument("--grid-cols", type=int, default=5, help="Number of columns when --layout=grid.")
+    parser.add_argument("--seed", type=int, default=None, help="Optional random seed for reproducible model generation.")
     parser.add_argument("--skip-pose-normals", action="store_true", help="Skip point pose normal computation.")
     parser.add_argument("--pose-normal-tol", type=float, default=1e-2, help="Point-to-face/arc tolerance for pose normals.")
     parser.add_argument("--extract-worker", action="store_true", help=argparse.SUPPRESS)
@@ -831,6 +847,7 @@ def main() -> None:
             grid_cols=args.grid_cols,
             compute_pose_normals=not args.skip_pose_normals,
             pose_normal_tol=args.pose_normal_tol,
+            seed=args.seed,
         )
     except RuntimeError as exc:
         print(f"[error] {exc}", file=sys.stderr)

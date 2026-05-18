@@ -3,10 +3,10 @@
   "description": "Generated workpiece/path jobs for Isaac Sim parallel welding simulation.",
   "path_resolution": "relative_to_manifest_directory",
   "jobs_dir": ".",
-  "job_count": 1,
-  "layout": "line",
+  "job_count": 9,
+  "layout": "grid",
   "spacing": 2.0,
-  "grid_cols": null,
+  "grid_cols": 3,
   "default_frame": "workpiece",
   "default_units": "mm",
   "jobs": [
@@ -31,6 +31,182 @@
       "stl_asset": "job_000/workpiece.stl",
       "vector_json": "job_000/weld_vectors.json",
       "raw_topology_json": "job_000/raw_weld_topology.json"
+    },
+    {
+      "id": "job_001",
+      "source_stem": "random_plate_1",
+      "workpiece_asset": "job_001/workpiece.stl",
+      "path_json": "job_001/path.json",
+      "origin": [
+        2.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_001/workpiece.step",
+      "stl_asset": "job_001/workpiece.stl",
+      "vector_json": "job_001/weld_vectors.json",
+      "raw_topology_json": "job_001/raw_weld_topology.json"
+    },
+    {
+      "id": "job_002",
+      "source_stem": "random_plate_2",
+      "workpiece_asset": "job_002/workpiece.stl",
+      "path_json": "job_002/path.json",
+      "origin": [
+        4.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_002/workpiece.step",
+      "stl_asset": "job_002/workpiece.stl",
+      "vector_json": "job_002/weld_vectors.json",
+      "raw_topology_json": "job_002/raw_weld_topology.json"
+    },
+    {
+      "id": "job_003",
+      "source_stem": "random_plate_3_double_side_ribs",
+      "workpiece_asset": "job_003/workpiece.stl",
+      "path_json": "job_003/path.json",
+      "origin": [
+        0.0,
+        2.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_003/workpiece.step",
+      "stl_asset": "job_003/workpiece.stl",
+      "vector_json": "job_003/weld_vectors.json",
+      "raw_topology_json": "job_003/raw_weld_topology.json"
+    },
+    {
+      "id": "job_004",
+      "source_stem": "random_plate_4_double_side_ribs",
+      "workpiece_asset": "job_004/workpiece.stl",
+      "path_json": "job_004/path.json",
+      "origin": [
+        2.0,
+        2.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_004/workpiece.step",
+      "stl_asset": "job_004/workpiece.stl",
+      "vector_json": "job_004/weld_vectors.json",
+      "raw_topology_json": "job_004/raw_weld_topology.json"
+    },
+    {
+      "id": "job_005",
+      "source_stem": "random_plate_5",
+      "workpiece_asset": "job_005/workpiece.stl",
+      "path_json": "job_005/path.json",
+      "origin": [
+        4.0,
+        2.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_005/workpiece.step",
+      "stl_asset": "job_005/workpiece.stl",
+      "vector_json": "job_005/weld_vectors.json",
+      "raw_topology_json": "job_005/raw_weld_topology.json"
+    },
+    {
+      "id": "job_006",
+      "source_stem": "random_plate_6",
+      "workpiece_asset": "job_006/workpiece.stl",
+      "path_json": "job_006/path.json",
+      "origin": [
+        0.0,
+        4.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_006/workpiece.step",
+      "stl_asset": "job_006/workpiece.stl",
+      "vector_json": "job_006/weld_vectors.json",
+      "raw_topology_json": "job_006/raw_weld_topology.json"
+    },
+    {
+      "id": "job_007",
+      "source_stem": "random_plate_7",
+      "workpiece_asset": "job_007/workpiece.stl",
+      "path_json": "job_007/path.json",
+      "origin": [
+        2.0,
+        4.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_007/workpiece.step",
+      "stl_asset": "job_007/workpiece.stl",
+      "vector_json": "job_007/weld_vectors.json",
+      "raw_topology_json": "job_007/raw_weld_topology.json"
+    },
+    {
+      "id": "job_008",
+      "source_stem": "random_plate_8",
+      "workpiece_asset": "job_008/workpiece.stl",
+      "path_json": "job_008/path.json",
+      "origin": [
+        4.0,
+        4.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_008/workpiece.step",
+      "stl_asset": "job_008/workpiece.stl",
+      "vector_json": "job_008/weld_vectors.json",
+      "raw_topology_json": "job_008/raw_weld_topology.json"
     }
   ]
 }
