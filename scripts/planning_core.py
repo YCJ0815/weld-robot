@@ -25,6 +25,7 @@ class TrajOptConfig:
     path_length_weight: float = 1.0
     seed_weight: float = 0.15
     constraint_edge_resolution: float = 0.08
+    constraint_samples_per_segment: int = 4
 
 
 def interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
@@ -235,7 +236,7 @@ def _trajopt_validity_constraint(
     n_dof: int,
     is_state_valid: StateValidator,
     is_edge_valid: EdgeValidator,
-    edge_resolution: float,
+    samples_per_segment: int,
 ) -> np.ndarray:
     path = _reconstruct_trajopt_path(x, q_start, q_goal, n_dof)
     margins = []
@@ -243,8 +244,10 @@ def _trajopt_validity_constraint(
         margins.append(1.0 if is_state_valid(q) else -1.0)
     for i in range(len(path) - 1):
         qa, qb = path[i], path[i + 1]
-        if edge_resolution > 0:
-            for q in interpolate_edge(qa, qb, edge_resolution)[1:-1]:
+        num_samples = max(0, int(samples_per_segment))
+        if num_samples > 0:
+            for alpha in np.linspace(0.0, 1.0, num_samples + 2)[1:-1]:
+                q = (1.0 - alpha) * qa + alpha * qb
                 margins.append(1.0 if is_state_valid(q) else -1.0)
         margins.append(1.0 if is_edge_valid(qa, qb) else -1.0)
     if not margins:
@@ -296,7 +299,7 @@ def run_trajopt(
                 len(lower),
                 is_state_valid,
                 is_edge_valid,
-                config.constraint_edge_resolution,
+                config.constraint_samples_per_segment,
             ),
         }
     ]
@@ -324,7 +327,7 @@ def run_trajopt(
         len(lower),
         is_state_valid,
         is_edge_valid,
-        config.constraint_edge_resolution,
+        config.constraint_samples_per_segment,
     ) >= 0.0))
     success = bool(result.success) and valid
     if logger is not None:
