@@ -85,6 +85,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="STL and weld xyz scale, mm to m.")
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
+    parser.add_argument("--workpiece-opacity", type=float, default=0.35, help="Visual opacity for the workpiece mesh.")
     parser.add_argument("--tcp-normal-offset", type=float, default=0.035, help="Retreat distance along weld normal in m.")
     parser.add_argument("--endpoint-retreat-step", type=float, default=0.01, help="Additional endpoint retreat step along weld normal in m.")
     parser.add_argument("--endpoint-retreat-max-steps", type=int, default=8, help="Maximum endpoint retreat attempts if IK state collides.")
@@ -420,6 +421,7 @@ def import_collision_stl(
     scale: float,
     z_offset: float,
     local_offset: tuple[float, float, float],
+    opacity: float,
 ) -> dict[str, Any]:
     from pxr import Gf, Sdf, UsdGeom, UsdPhysics, UsdShade
 
@@ -437,6 +439,7 @@ def import_collision_stl(
     mesh.CreateExtentAttr([Gf.Vec3f(*min_point), Gf.Vec3f(*max_point)])
     mesh.CreateDoubleSidedAttr(True)
     mesh.CreateDisplayColorAttr([Gf.Vec3f(0.72, 0.58, 0.40)])
+    mesh.CreateDisplayOpacityAttr([float(opacity)])
     xformable = UsdGeom.Xformable(mesh.GetPrim())
     xformable.ClearXformOpOrder()
     xformable.AddTranslateOp().Set(Gf.Vec3d(*local_offset))
@@ -451,6 +454,7 @@ def import_collision_stl(
     shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
     shader.CreateIdAttr("UsdPreviewSurface")
     shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(0.72, 0.58, 0.40))
+    shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(float(opacity))
     shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.55)
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
@@ -889,6 +893,8 @@ class IsaacCollisionChecker:
         self.last_contact_pair: tuple[str, str] | None = None
         if not self.robot_collision_prims:
             raise RuntimeError(f"No robot collision prims found under {robot_prim_path}")
+        self.robot_collision_prim_paths = [str(prim.GetPath()) for prim in self.robot_collision_prims]
+        self.robot_contact_link_paths = self._build_robot_contact_link_paths()
         self._enable_contact_reports()
         mode = "bbox overlap fallback" if self.use_bbox_collision else "PhysX contact reports"
         log(f"[collision] Using {len(self.robot_collision_prims)} robot collision prims with {mode}.")
@@ -919,12 +925,23 @@ class IsaacCollisionChecker:
             raise RuntimeError(f"Robot root prim is invalid: {self.robot_prim_path}")
 
         all_prims = [prim for prim in Usd.PrimRange(root)]
+        proxy_prims = []
+        for prim in all_prims:
+            if prim.HasAPI(UsdPhysics.CollisionAPI) and "/CollisionProxy/" in str(prim.GetPath()):
+                proxy_prims.append(prim)
+        if proxy_prims:
+            log(f"[collision] Found {len(proxy_prims)} generated CollisionProxy prims with UsdPhysics.CollisionAPI.")
+            return proxy_prims
+
         prims = []
+        ignored_link_names = {"base_link", "base", "world"}
         for prim in Usd.PrimRange(root):
-            if prim.HasAPI(UsdPhysics.CollisionAPI):
+            if prim.HasAPI(UsdPhysics.CollisionAPI) and not any(
+                f"/{name}" in str(prim.GetPath()) for name in ignored_link_names
+            ):
                 prims.append(prim)
         if prims:
-            log(f"[collision] Found {len(prims)} prims with UsdPhysics.CollisionAPI.")
+            log(f"[collision] Found {len(prims)} non-base prims with UsdPhysics.CollisionAPI.")
             return prims
 
         collision_meshes = []
@@ -983,6 +1000,17 @@ class IsaacCollisionChecker:
             "First prims:\n" + "\n".join(preview)
         )
 
+    def _build_robot_contact_link_paths(self) -> list[str]:
+        link_paths = set()
+        for proxy_path in self.robot_collision_prim_paths:
+            if "/CollisionProxy/" in proxy_path:
+                link_paths.add(proxy_path.split("/CollisionProxy/")[0])
+            else:
+                link_paths.add(proxy_path)
+        paths = sorted(link_paths)
+        log("[collision] Contact-filter robot links: " + ", ".join(paths[:12]))
+        return paths
+
     def set_q(self, q: np.ndarray) -> None:
         full = np.array(self.robot.get_joint_positions(), dtype=float)
         for local_idx, dof_idx in enumerate(self.dof_indices):
@@ -1036,7 +1064,17 @@ class IsaacCollisionChecker:
         return paths
 
     def _is_robot_path(self, path: str) -> bool:
-        return path.startswith(self.robot_prim_path)
+        if not path.startswith(self.robot_prim_path):
+            return False
+        if path in {f"{self.robot_prim_path}/base_link", f"{self.robot_prim_path}/base", f"{self.robot_prim_path}/world"}:
+            return False
+        for proxy_path in self.robot_collision_prim_paths:
+            if path.startswith(proxy_path) or proxy_path.startswith(path):
+                return True
+        for link_path in self.robot_contact_link_paths:
+            if path.startswith(link_path) or link_path.startswith(path):
+                return True
+        return False
 
     def _is_environment_path(self, path: str) -> bool:
         return any(path.startswith(env_path) for env_path in self.environment_prim_paths)
@@ -1362,6 +1400,7 @@ def main() -> None:
             scale=args.workpiece_scale,
             z_offset=args.workpiece_z_offset,
             local_offset=tuple(float(v) for v in args.workpiece_offset),
+            opacity=args.workpiece_opacity,
         )
 
         targets = load_weld_targets(
