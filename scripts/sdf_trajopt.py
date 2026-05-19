@@ -21,6 +21,7 @@ class SDFTrajOptConfig:
     maxiter: int = 500
     collision_weight: float = 2.0e7
     smoothness_weight: float = 8.0
+    path_length_weight: float = 3.0
     arm_safe_distance: float = 0.05
     tool_safe_distance: float = 0.01
     penetration_tol: float = -0.001
@@ -99,6 +100,9 @@ class KinematicSDFCollisionEvaluator:
     def is_state_valid(self, q: np.ndarray) -> bool:
         return bool(self.evaluate_state(q)["valid"])
 
+    def is_state_nonpenetrating(self, q: np.ndarray) -> bool:
+        return bool(self.evaluate_state(q)["nonpenetrating"])
+
     def summarize_trajectory(self, path: np.ndarray) -> dict[str, float | int]:
         dense = _densify_path(path, self.config.dense_check_resolution)
         penetration_count = 0
@@ -138,6 +142,7 @@ def _trajopt_objective(
     if len(path) >= 3:
         q_dd = path[2:] - 2.0 * path[1:-1] + path[:-2]
         smoothness_cost = float(np.sum(np.square(q_dd)))
+    path_length_cost = float(np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1)))
     collision_cost = 0.0
     for q in path:
         arm_pts, tool_pts = evaluator.sample_points(q)
@@ -149,7 +154,11 @@ def _trajopt_objective(
             evaluator.sdf_layer.get_distances(tool_pts),
             config.tool_safe_distance,
         )
-    return config.collision_weight * collision_cost + config.smoothness_weight * smoothness_cost
+    return (
+        config.collision_weight * collision_cost
+        + config.smoothness_weight * smoothness_cost
+        + config.path_length_weight * path_length_cost
+    )
 
 
 def _trajopt_nonpenetration_constraint(

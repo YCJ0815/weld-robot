@@ -150,7 +150,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--endpoint-ik-max-iters", type=int, default=160, help="Maximum IK iterations per seed during endpoint solving.")
     parser.add_argument("--endpoint-yaw-samples", type=int, default=12, help="TCP rotations around weld normal per endpoint retreat attempt.")
     parser.add_argument("--endpoint-ik-rot-weight", type=float, default=0.12, help="IK orientation weight for endpoint solving.")
-    parser.add_argument("--rrt-step-size", type=float, default=0.12, help="RRT joint-space step size.")
+    parser.add_argument("--rrt-step-size", type=float, default=0.01, help="RRT joint-space step size.")
     parser.add_argument("--edge-resolution", type=float, default=0.08, help="Joint-space edge collision resolution.")
     parser.add_argument("--playback-resolution", type=float, default=0.025, help="Joint-space playback interpolation resolution.")
     parser.add_argument("--max-iter", type=int, default=50000, help="Maximum RRT-Connect iterations per restart.")
@@ -161,8 +161,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trajopt-waypoints", type=int, default=20, help="Number of waypoints used by TrajOpt resampling.")
     parser.add_argument("--trajopt-maxiter", type=int, default=500, help="Maximum SLSQP iterations for TrajOpt.")
     parser.add_argument("--trajopt-smoothness-weight", type=float, default=8.0, help="Smoothness weight for TrajOpt.")
-    parser.add_argument("--trajopt-path-length-weight", type=float, default=1.0, help="Path-length weight for TrajOpt.")
-    parser.add_argument("--trajopt-seed-weight", type=float, default=0.15, help="Seed-adherence weight for TrajOpt.")
+    parser.add_argument("--trajopt-path-length-weight", type=float, default=3.0, help="Path-length weight for TrajOpt.")
+    parser.add_argument("--trajopt-seed-weight", type=float, default=0.05, help="Seed-adherence weight for TrajOpt.")
     parser.add_argument("--sdf-trajopt", dest="sdf_trajopt", action="store_true", default=True, help="Use cached workpiece SDF for trajectory optimization. Enabled by default.")
     parser.add_argument("--no-sdf-trajopt", dest="sdf_trajopt", action="store_false", help="Use the legacy non-SDF TrajOpt fallback.")
     parser.add_argument("--workpiece-sdf-path", type=Path, default=None, help="Optional path to the cached workpiece SDF .npz. Defaults to <job-dir>/workpiece_sdf.npz.")
@@ -178,8 +178,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sdf-arm-step-size", type=float, default=0.02, help="Sampling resolution in meters along robot links for SDF evaluation.")
     parser.add_argument("--sdf-tool-step-size", type=float, default=0.01, help="Sampling resolution in meters along the tool segment for SDF evaluation.")
     parser.add_argument("--sdf-constraint-point-stride", type=int, default=8, help="Stride for sampled points used in SDF non-penetration constraints.")
-    parser.add_argument("--shortcut-iterations", type=int, default=160, help="Shortcut smoothing attempts per pass.")
-    parser.add_argument("--shortcut-passes", type=int, default=3, help="Number of shortcut smoothing passes.")
+    parser.add_argument("--shortcut-iterations", type=int, default=600, help="Shortcut smoothing attempts per pass.")
+    parser.add_argument("--shortcut-passes", type=int, default=6, help="Number of shortcut smoothing passes.")
     parser.add_argument("--average-passes", type=int, default=8, help="Number of local averaging smoothing passes.")
     parser.add_argument("--average-blend", type=float, default=0.4, help="Blend factor for local averaging smoothing.")
     parser.add_argument("--collision-padding", type=float, default=0.015, help="AABB padding for PhysX overlap queries.")
@@ -1470,8 +1470,10 @@ def solve_valid_endpoint(
     ik_rot_weight: float,
     ik_max_iters: int,
     rng: np.random.Generator,
+    endpoint_accept_validator: Callable[[np.ndarray], bool] | None = None,
 ) -> tuple[np.ndarray, np.ndarray, int]:
     last_error: Exception | None = None
+    accept_validator = checker.is_state_valid if endpoint_accept_validator is None else endpoint_accept_validator
     for retreat_index in range(max_retreat_steps + 1):
         seed_pool = build_endpoint_seed_pool(
             seeds,
@@ -1503,7 +1505,7 @@ def solve_valid_endpoint(
         except RuntimeError as exc:
             last_error = exc
             continue
-        if checker.is_state_valid(q):
+        if accept_validator(q):
             if retreat_index > 0:
                 log(f"[endpoint] {label} retreated={retreat_step * retreat_index:.3f} m along pose_normal.")
             return target_tf, q, retreat_index
@@ -2034,6 +2036,28 @@ def main() -> None:
             contact_settle_steps=args.contact_settle_steps,
             use_bbox_collision=args.use_bbox_collision,
         )
+        endpoint_accept_validator = checker.is_state_valid
+        if args.trajopt and args.sdf_trajopt and sdf_layer is not None:
+            endpoint_sdf_evaluator = KinematicSDFCollisionEvaluator(
+                kinematics=kinematics,
+                sdf_layer=sdf_layer,
+                    config=SDFTrajOptConfig(
+                        num_waypoints=args.trajopt_waypoints,
+                        maxiter=args.trajopt_maxiter,
+                        collision_weight=args.sdf_collision_weight,
+                        smoothness_weight=args.trajopt_smoothness_weight,
+                        path_length_weight=args.trajopt_path_length_weight,
+                        arm_safe_distance=args.sdf_arm_safe_distance,
+                        tool_safe_distance=args.sdf_tool_safe_distance,
+                        penetration_tol=args.sdf_penetration_tol,
+                    arm_step_size=args.sdf_arm_step_size,
+                    tool_step_size=args.sdf_tool_step_size,
+                    constraint_point_stride=args.sdf_constraint_point_stride,
+                    dense_check_resolution=min(args.edge_resolution, args.playback_resolution),
+                ),
+            )
+            endpoint_accept_validator = endpoint_sdf_evaluator.is_state_nonpenetrating
+            log("[demo] Endpoint SDF check uses non-penetration only; near-contact without negative SDF will not trigger retreat.")
         planned_segments: list[dict[str, Any]] = []
         found_noncoincident_transition = False
         scan_all_transitions = args.auto_first_transition or args.plan_all_transitions
@@ -2081,6 +2105,7 @@ def main() -> None:
                     ik_rot_weight=args.endpoint_ik_rot_weight,
                     ik_max_iters=args.endpoint_ik_max_iters,
                     rng=rng,
+                    endpoint_accept_validator=endpoint_accept_validator,
                 )
                 goal_tf, q_goal, goal_retreat_steps = solve_valid_endpoint(
                     label="goal",
@@ -2098,6 +2123,7 @@ def main() -> None:
                     ik_rot_weight=args.endpoint_ik_rot_weight,
                     ik_max_iters=args.endpoint_ik_max_iters,
                     rng=rng,
+                    endpoint_accept_validator=endpoint_accept_validator,
                 )
             except RuntimeError as exc:
                 log(
@@ -2179,14 +2205,15 @@ def main() -> None:
                     sdf_evaluator = KinematicSDFCollisionEvaluator(
                         kinematics=kinematics,
                         sdf_layer=sdf_layer,
-                        config=SDFTrajOptConfig(
-                            num_waypoints=args.trajopt_waypoints,
-                            maxiter=args.trajopt_maxiter,
-                            collision_weight=args.sdf_collision_weight,
-                            smoothness_weight=args.trajopt_smoothness_weight,
-                            arm_safe_distance=args.sdf_arm_safe_distance,
-                            tool_safe_distance=args.sdf_tool_safe_distance,
-                            penetration_tol=args.sdf_penetration_tol,
+                config=SDFTrajOptConfig(
+                    num_waypoints=args.trajopt_waypoints,
+                    maxiter=args.trajopt_maxiter,
+                    collision_weight=args.sdf_collision_weight,
+                    smoothness_weight=args.trajopt_smoothness_weight,
+                    path_length_weight=args.trajopt_path_length_weight,
+                    arm_safe_distance=args.sdf_arm_safe_distance,
+                    tool_safe_distance=args.sdf_tool_safe_distance,
+                    penetration_tol=args.sdf_penetration_tol,
                             arm_step_size=args.sdf_arm_step_size,
                             tool_step_size=args.sdf_tool_step_size,
                             constraint_point_stride=args.sdf_constraint_point_stride,

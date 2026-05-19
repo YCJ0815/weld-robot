@@ -23,12 +23,12 @@ class TrajOptConfig:
     num_waypoints: int = 20
     maxiter: int = 500
     smoothness_weight: float = 8.0
-    path_length_weight: float = 1.0
-    seed_weight: float = 0.15
+    path_length_weight: float = 3.0
+    seed_weight: float = 0.05
     constraint_edge_resolution: float = 0.08
     constraint_samples_per_segment: int = 0
-    shortcut_iterations: int = 120
-    shortcut_passes: int = 2
+    shortcut_iterations: int = 600
+    shortcut_passes: int = 6
     averaging_passes: int = 6
     averaging_blend: float = 0.35
     validation_resolution: float = 0.05
