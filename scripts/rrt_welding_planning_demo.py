@@ -458,6 +458,36 @@ def box_mesh(size: np.ndarray) -> tuple[list[tuple[float, float, float]], list[i
     return points, face_counts, face_indices
 
 
+def downsample_points(points: np.ndarray, spacing: float) -> np.ndarray:
+    pts = np.asarray(points, dtype=float).reshape(-1, 3)
+    if len(pts) == 0:
+        return np.empty((0, 3), dtype=float)
+    spacing = max(float(spacing), 1e-6)
+    buckets = np.rint(pts / spacing).astype(np.int64)
+    _, unique_idx = np.unique(buckets, axis=0, return_index=True)
+    unique_idx.sort()
+    return pts[unique_idx]
+
+
+def sample_box_surface_points(size: np.ndarray, spacing: float) -> np.ndarray:
+    sx, sy, sz = np.asarray(size, dtype=float) * 0.5
+    spacing = max(float(spacing), 1e-6)
+    xs = np.arange(-sx, sx + spacing * 0.5, spacing, dtype=float)
+    ys = np.arange(-sy, sy + spacing * 0.5, spacing, dtype=float)
+    zs = np.arange(-sz, sz + spacing * 0.5, spacing, dtype=float)
+    faces = []
+    for z in (-sz, sz):
+        xx, yy = np.meshgrid(xs, ys, indexing="xy")
+        faces.append(np.column_stack([xx.reshape(-1), yy.reshape(-1), np.full(xx.size, z, dtype=float)]))
+    for y in (-sy, sy):
+        xx, zz = np.meshgrid(xs, zs, indexing="xy")
+        faces.append(np.column_stack([xx.reshape(-1), np.full(xx.size, y, dtype=float), zz.reshape(-1)]))
+    for x in (-sx, sx):
+        yy, zz = np.meshgrid(ys, zs, indexing="xy")
+        faces.append(np.column_stack([np.full(yy.size, x, dtype=float), yy.reshape(-1), zz.reshape(-1)]))
+    return downsample_points(np.vstack(faces), spacing)
+
+
 def find_descendant_by_name(stage: Any, root_path: str, name: str):
     from pxr import Usd
 
@@ -729,8 +759,15 @@ class ChainJoint:
 
 
 class URDFKinematics:
-    def __init__(self, urdf_path: Path, base_link: str = "base_link", tcp_link: str = "tool0") -> None:
+    def __init__(
+        self,
+        urdf_path: Path,
+        base_link: str = "base_link",
+        tcp_link: str = "tool0",
+        include_tool_collision: bool = True,
+    ) -> None:
         root = ET.parse(urdf_path).getroot()
+        self.urdf_path = urdf_path
         child_to_joint: dict[str, tuple[str, ET.Element]] = {}
         for joint in root.findall("joint"):
             child = joint.find("child")
@@ -780,6 +817,77 @@ class URDFKinematics:
         self.upper = np.array([next(j.upper for j in self.chain if j.name == name) for name in self.planning_names])
         self.base_link = base_link
         self.tcp_link = tcp_link
+        self.include_tool_collision = include_tool_collision
+        self.tool_collision_links = {"ee_link", "pen_link", "tool0"}
+        self.link_collision_geometry = self._parse_link_collision_geometry(root)
+        self._collision_points_cache: dict[tuple[str, str, float], np.ndarray] = {}
+
+    def _parse_link_collision_geometry(self, root: ET.Element) -> dict[str, list[dict[str, Any]]]:
+        collision_by_link: dict[str, list[dict[str, Any]]] = {}
+        excluded_links = {"world", "base", "base_link"}
+        if not self.include_tool_collision:
+            excluded_links.update(self.tool_collision_links)
+        for link in root.findall("link"):
+            link_name = link.attrib.get("name", "")
+            if link_name in excluded_links:
+                continue
+            geoms: list[dict[str, Any]] = []
+            for collision in link.findall("collision"):
+                geometry = collision.find("geometry")
+                if geometry is None:
+                    continue
+                origin_xml = collision.find("origin")
+                origin_xyz = parse_urdf_vec(origin_xml.attrib.get("xyz") if origin_xml is not None else None, (0.0, 0.0, 0.0))
+                origin_rpy = parse_urdf_vec(origin_xml.attrib.get("rpy") if origin_xml is not None else None, (0.0, 0.0, 0.0))
+                origin_rot = rpy_matrix(origin_rpy)
+                mesh_xml = geometry.find("mesh")
+                box_xml = geometry.find("box")
+                if mesh_xml is not None:
+                    mesh_path = Path(mesh_xml.attrib["filename"]).expanduser()
+                    if not mesh_path.is_absolute():
+                        mesh_path = (self.urdf_path.parent / mesh_path).resolve()
+                    mesh_scale = parse_urdf_vec(mesh_xml.attrib.get("scale"), (1.0, 1.0, 1.0))
+                    points, _, _ = load_stl_mesh(mesh_path)
+                    raw_points = []
+                    for point in points:
+                        p = np.asarray(point, dtype=float) * mesh_scale
+                        p = origin_rot @ p + origin_xyz
+                        raw_points.append(p)
+                    if raw_points:
+                        geoms.append({"type": "mesh", "points": np.asarray(raw_points, dtype=float)})
+                elif box_xml is not None:
+                    size = parse_urdf_vec(box_xml.attrib.get("size"), (0.01, 0.01, 0.01))
+                    geoms.append({"type": "box", "size": np.asarray(size, dtype=float), "origin_xyz": origin_xyz, "origin_rot": origin_rot})
+            if geoms:
+                collision_by_link[link_name] = geoms
+        return collision_by_link
+
+    def _sample_link_collision_geometry(self, link_name: str, spacing: float, tool_spacing: float) -> np.ndarray:
+        cache_key = (
+            link_name,
+            "tool" if link_name in self.tool_collision_links else "arm",
+            round(tool_spacing if link_name in self.tool_collision_links else spacing, 5),
+        )
+        cached = self._collision_points_cache.get(cache_key)
+        if cached is not None:
+            return cached
+        geoms = self.link_collision_geometry.get(link_name, [])
+        if not geoms:
+            result = np.empty((0, 3), dtype=float)
+            self._collision_points_cache[cache_key] = result
+            return result
+        local_spacing = tool_spacing if link_name in self.tool_collision_links else spacing
+        sampled = []
+        for geom in geoms:
+            if geom["type"] == "mesh":
+                sampled.append(downsample_points(geom["points"], local_spacing))
+            elif geom["type"] == "box":
+                points = sample_box_surface_points(geom["size"], local_spacing)
+                transformed = (geom["origin_rot"] @ points.T).T + geom["origin_xyz"][None, :]
+                sampled.append(transformed)
+        result = downsample_points(np.vstack(sampled), local_spacing) if sampled else np.empty((0, 3), dtype=float)
+        self._collision_points_cache[cache_key] = result
+        return result
 
     def forward(self, q: np.ndarray) -> np.ndarray:
         tf = np.eye(4)
@@ -810,6 +918,23 @@ class URDFKinematics:
         tool_step_size: float = 0.01,
     ) -> tuple[np.ndarray, np.ndarray]:
         transforms = self.compute_link_transforms(q)
+        if self.link_collision_geometry:
+            arm_points = []
+            tool_points = []
+            for link_name, link_tf in transforms.items():
+                local_points = self._sample_link_collision_geometry(link_name, arm_step_size, tool_step_size)
+                if len(local_points) == 0:
+                    continue
+                world_points = (link_tf[:3, :3] @ local_points.T).T + link_tf[:3, 3][None, :]
+                if link_name in self.tool_collision_links:
+                    tool_points.append(world_points)
+                else:
+                    arm_points.append(world_points)
+            arm_arr = np.vstack(arm_points) if arm_points else np.empty((0, 3), dtype=float)
+            tool_arr = np.vstack(tool_points) if tool_points else np.empty((0, 3), dtype=float)
+            if len(arm_arr) > 0 or len(tool_arr) > 0:
+                return arm_arr, tool_arr
+
         chain_points = [transforms[self.base_link][:3, 3]]
         for joint in self.chain:
             chain_points.append(transforms[joint.child][:3, 3])
@@ -2103,7 +2228,7 @@ def main() -> None:
         add_scene_lighting(stage)
 
         resolved_urdf = make_resolved_urdf(args.urdf)
-        kinematics = URDFKinematics(resolved_urdf)
+        kinematics = URDFKinematics(resolved_urdf, include_tool_collision=args.include_tool_collision)
         robot_prim_path = import_single_robot(stage, resolved_urdf)
         add_urdf_collision_stl_proxies(
             stage=stage,
