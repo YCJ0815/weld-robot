@@ -162,8 +162,8 @@ def parse_args() -> argparse.Namespace:
         default=0.04,
         help="Joint-space probe step used to verify that an RRT anchor can expand away from its root.",
     )
-    parser.add_argument("--rrt-step-size", type=float, default=0.04, help="RRT joint-space step size.")
-    parser.add_argument("--edge-resolution", type=float, default=0.04, help="Joint-space edge collision resolution.")
+    parser.add_argument("--rrt-step-size", type=float, default=0.08, help="RRT joint-space step size.")
+    parser.add_argument("--edge-resolution", type=float, default=0.08, help="Joint-space edge collision resolution.")
     parser.add_argument("--playback-resolution", type=float, default=0.025, help="Joint-space playback interpolation resolution.")
     parser.add_argument("--max-iter", type=int, default=50000, help="Maximum RRT-Connect iterations per restart.")
     parser.add_argument("--rrt-restarts", type=int, default=4, help="Number of RRT-Connect restarts.")
@@ -187,7 +187,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sdf-collision-weight", type=float, default=2.0e8, help="Collision penalty weight for SDF TrajOpt.")
     parser.add_argument("--sdf-arm-safe-distance", type=float, default=0.01, help="Safe distance in meters for arm sample points in SDF TrajOpt.")
     parser.add_argument("--sdf-tool-safe-distance", type=float, default=0.000, help="Safe distance in meters for tool sample points in SDF TrajOpt.")
-    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.0015, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
+    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.002, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
     parser.add_argument(
         "--sdf-initial-penetration-tol",
         type=float,
