@@ -241,6 +241,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-sdf-voxelize-max-iter", type=int, default=64, help="Maximum subdivision iterations used by trimesh voxelization for cached workpiece SDF generation.")
     parser.add_argument("--sdf-collision-weight", type=float, default=4.0e8, help="Collision penalty weight for SDF TrajOpt.")
     parser.add_argument(
+        "--sdf-arm-collision-weight",
+        type=float,
+        default=2.0e8,
+        help="Collision penalty weight for arm sample points in SDF TrajOpt.",
+    )
+    parser.add_argument(
+        "--sdf-tool-collision-weight",
+        type=float,
+        default=1.2e9,
+        help="Collision penalty weight for tool sample points in SDF TrajOpt.",
+    )
+    parser.add_argument(
         "--sdf-trajopt-ftol",
         type=float,
         default=2e-3,
@@ -248,7 +260,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--sdf-arm-safe-distance", type=float, default=0.01, help="Safe distance in meters for arm sample points in SDF TrajOpt.")
     parser.add_argument("--sdf-tool-safe-distance", type=float, default=0.000, help="Safe distance in meters for tool sample points in SDF TrajOpt.")
-    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.002, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
+    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.003, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
     parser.add_argument(
         "--sdf-initial-penetration-tol",
         type=float,
@@ -1951,6 +1963,8 @@ def build_sdf_trajopt_retry_configs(args: argparse.Namespace, failure_reason: st
         "path_length_weight": float(args.trajopt_path_length_weight),
         "smoothness_weight": float(args.trajopt_smoothness_weight),
         "collision_weight": float(args.sdf_collision_weight),
+        "arm_collision_weight": float(args.sdf_arm_collision_weight),
+        "tool_collision_weight": float(args.sdf_tool_collision_weight),
         "constraint_point_stride": int(args.sdf_constraint_point_stride),
         "initial_penetration_tol": float(args.sdf_initial_penetration_tol),
         "seed_fallback_penetration_tol": float(args.sdf_seed_fallback_penetration_tol),
@@ -1963,12 +1977,15 @@ def build_sdf_trajopt_retry_configs(args: argparse.Namespace, failure_reason: st
                     **base,
                     "path_length_weight": max(0.2, base["path_length_weight"] * 0.5),
                     "collision_weight": base["collision_weight"] * 1.5,
+                    "tool_collision_weight": base["tool_collision_weight"] * 1.75,
                     "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 2),
                 },
                 {
                     **base,
                     "path_length_weight": max(0.1, base["path_length_weight"] * 0.35),
                     "collision_weight": base["collision_weight"] * 2.0,
+                    "tool_collision_weight": base["tool_collision_weight"] * 2.25,
+                    "arm_collision_weight": base["arm_collision_weight"] * 1.25,
                     "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 4),
                     "ftol": max(base["ftol"], 2e-3),
                 },
@@ -2024,6 +2041,8 @@ def make_sdf_trajopt_config(
         "maxiter": args.trajopt_maxiter,
         "ftol": args.sdf_trajopt_ftol,
         "collision_weight": args.sdf_collision_weight,
+        "arm_collision_weight": args.sdf_arm_collision_weight,
+        "tool_collision_weight": args.sdf_tool_collision_weight,
         "smoothness_weight": args.trajopt_smoothness_weight,
         "path_length_weight": args.trajopt_path_length_weight,
         "arm_safe_distance": args.sdf_arm_safe_distance,
@@ -3229,6 +3248,8 @@ def main() -> None:
                     maxiter=args.trajopt_maxiter,
                     ftol=args.sdf_trajopt_ftol,
                     collision_weight=args.sdf_collision_weight,
+                    arm_collision_weight=args.sdf_arm_collision_weight,
+                    tool_collision_weight=args.sdf_tool_collision_weight,
                     smoothness_weight=args.trajopt_smoothness_weight,
                     path_length_weight=args.trajopt_path_length_weight,
                     arm_safe_distance=args.sdf_arm_safe_distance,
@@ -3481,6 +3502,8 @@ def main() -> None:
                             maxiter=args.trajopt_maxiter,
                             ftol=args.sdf_trajopt_ftol,
                             collision_weight=args.sdf_collision_weight,
+                            arm_collision_weight=args.sdf_arm_collision_weight,
+                            tool_collision_weight=args.sdf_tool_collision_weight,
                             smoothness_weight=args.trajopt_smoothness_weight,
                             path_length_weight=args.trajopt_path_length_weight,
                             arm_safe_distance=args.sdf_arm_safe_distance,

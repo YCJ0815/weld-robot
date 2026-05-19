@@ -22,6 +22,8 @@ class SDFTrajOptConfig:
     maxiter: int = 800
     ftol: float = 1e-3
     collision_weight: float = 2.0e8
+    arm_collision_weight: float = 2.0e8
+    tool_collision_weight: float = 6.0e8
     smoothness_weight: float = 8.0
     path_length_weight: float = 3.0
     arm_safe_distance: float = 0.05
@@ -309,20 +311,22 @@ def _trajopt_objective(
         q_dd = path[2:] - 2.0 * path[1:-1] + path[:-2]
         smoothness_cost = float(np.sum(np.square(q_dd)))
     path_length_cost = float(np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1)))
-    collision_cost = 0.0
+    arm_collision_cost = 0.0
+    tool_collision_cost = 0.0
     for path_index, q in enumerate(path):
         safe_scale = _endpoint_safe_distance_scale(path_index, len(path), config)
         arm_pts, tool_pts = evaluator.sample_points(q)
-        collision_cost += _collision_penalty_from_distances(
+        arm_collision_cost += _collision_penalty_from_distances(
             evaluator.sdf_layer.get_distances(arm_pts),
             config.arm_safe_distance * safe_scale,
         )
-        collision_cost += _collision_penalty_from_distances(
+        tool_collision_cost += _collision_penalty_from_distances(
             evaluator.sdf_layer.get_distances(tool_pts),
             config.tool_safe_distance * safe_scale,
         )
     return (
-        config.collision_weight * collision_cost
+        config.arm_collision_weight * arm_collision_cost
+        + config.tool_collision_weight * tool_collision_cost
         + config.smoothness_weight * smoothness_cost
         + config.path_length_weight * path_length_cost
     )
