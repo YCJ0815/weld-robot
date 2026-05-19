@@ -105,14 +105,7 @@ def _candidate_waypoint_counts(seed_len: int, requested: int, max_waypoints: int
         return [max(3, requested)]
     upper_bound = seed_len if max_waypoints <= 0 else min(seed_len, max(max_waypoints, requested))
     current = max(3, min(requested, upper_bound))
-    counts = [current]
-    while current < upper_bound:
-        remaining = upper_bound - current
-        step = max(1, int(math.ceil(remaining * 0.5)))
-        current = min(upper_bound, current + step)
-        if current != counts[-1]:
-            counts.append(current)
-    return counts
+    return list(range(current, upper_bound + 1))
 
 
 class KinematicSDFCollisionEvaluator:
@@ -120,6 +113,17 @@ class KinematicSDFCollisionEvaluator:
         self.kinematics = kinematics
         self.sdf_layer = sdf_layer
         self.config = config
+        self._state_cache: dict[bytes, dict[str, float | bool]] = {}
+        self._state_cache_max_size = 4096
+
+    def _cache_key(self, q: np.ndarray) -> bytes:
+        arr = np.asarray(q, dtype=np.float32).reshape(-1)
+        return np.round(arr, decimals=5).tobytes()
+
+    def _store_cached_state(self, key: bytes, value: dict[str, float | bool]) -> None:
+        if len(self._state_cache) >= self._state_cache_max_size:
+            self._state_cache.clear()
+        self._state_cache[key] = value
 
     def sample_points(self, q: np.ndarray, step_size: float | None = None) -> tuple[np.ndarray, np.ndarray]:
         step = self.config.arm_step_size if step_size is None else float(step_size)
@@ -130,12 +134,16 @@ class KinematicSDFCollisionEvaluator:
         )
 
     def evaluate_state(self, q: np.ndarray) -> dict[str, float | bool]:
+        key = self._cache_key(q)
+        cached = self._state_cache.get(key)
+        if cached is not None:
+            return cached
         arm_pts, tool_pts = self.sample_points(q)
         dist_arm = self.sdf_layer.get_distances(arm_pts) if len(arm_pts) > 0 else np.array([999.0])
         dist_tool = self.sdf_layer.get_distances(tool_pts) if len(tool_pts) > 0 else np.array([999.0])
         arm_min = float(np.min(dist_arm))
         tool_min = float(np.min(dist_tool))
-        return {
+        result = {
             "arm_min": arm_min,
             "tool_min": tool_min,
             "arm_pen": arm_min < self.config.penetration_tol,
@@ -143,6 +151,11 @@ class KinematicSDFCollisionEvaluator:
             "valid": arm_min >= self.config.arm_safe_distance and tool_min >= self.config.tool_safe_distance,
             "nonpenetrating": arm_min >= self.config.penetration_tol and tool_min >= self.config.penetration_tol,
         }
+        self._store_cached_state(key, result)
+        return result
+
+    def evaluate_path_states(self, path: np.ndarray) -> list[dict[str, float | bool]]:
+        return [self.evaluate_state(q) for q in np.asarray(path, dtype=float)]
 
     def is_state_valid(self, q: np.ndarray) -> bool:
         return bool(self.evaluate_state(q)["valid"])
@@ -152,12 +165,12 @@ class KinematicSDFCollisionEvaluator:
 
     def summarize_trajectory(self, path: np.ndarray) -> dict[str, float | int]:
         dense = _densify_path(path, self.config.dense_check_resolution)
+        dense_states = self.evaluate_path_states(dense)
         penetration_count = 0
         near_count = 0
         arm_min_global = np.inf
         tool_min_global = np.inf
-        for q in dense:
-            state_eval = self.evaluate_state(q)
+        for state_eval in dense_states:
             arm_min = float(state_eval["arm_min"])
             tool_min = float(state_eval["tool_min"])
             arm_min_global = min(arm_min_global, arm_min)
@@ -185,12 +198,12 @@ def _adaptive_select_waypoints(
     num_waypoints = max(2, int(num_waypoints))
     curvature_scores = _normalized_curvature_scores(path)
     clearance_scores = np.zeros(len(path), dtype=float)
+    state_evals = evaluator.evaluate_path_states(path)
     target_clearance = max(
         1e-6,
         float(max(evaluator.config.arm_safe_distance, evaluator.config.tool_safe_distance)),
     )
-    for i, q in enumerate(path):
-        state_eval = evaluator.evaluate_state(q)
+    for i, state_eval in enumerate(state_evals):
         clearance = float(min(state_eval["arm_min"], state_eval["tool_min"]))
         clearance_scores[i] = max(0.0, target_clearance - clearance) / target_clearance
 
