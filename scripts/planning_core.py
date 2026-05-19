@@ -357,7 +357,7 @@ def run_trajopt(
             logger("[TrajOpt] Seed path has too few waypoints; skipping optimization.")
         return q_seed, False
 
-    num_waypoints = max(3, min(config.num_waypoints, len(q_seed)))
+    num_waypoints = max(3, int(config.num_waypoints))
     q_init = _resample_trajectory(q_seed, num_waypoints)
     q_start = q_init[0]
     q_goal = q_init[-1]

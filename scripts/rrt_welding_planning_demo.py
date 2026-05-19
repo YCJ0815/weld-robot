@@ -150,7 +150,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--endpoint-ik-max-iters", type=int, default=160, help="Maximum IK iterations per seed during endpoint solving.")
     parser.add_argument("--endpoint-yaw-samples", type=int, default=12, help="TCP rotations around weld normal per endpoint retreat attempt.")
     parser.add_argument("--endpoint-ik-rot-weight", type=float, default=0.12, help="IK orientation weight for endpoint solving.")
-    parser.add_argument("--rrt-step-size", type=float, default=0.25, help="RRT joint-space step size.")
+    parser.add_argument("--rrt-step-size", type=float, default=0.12, help="RRT joint-space step size.")
     parser.add_argument("--edge-resolution", type=float, default=0.08, help="Joint-space edge collision resolution.")
     parser.add_argument("--playback-resolution", type=float, default=0.025, help="Joint-space playback interpolation resolution.")
     parser.add_argument("--max-iter", type=int, default=50000, help="Maximum RRT-Connect iterations per restart.")

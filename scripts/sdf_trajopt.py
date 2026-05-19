@@ -190,7 +190,7 @@ def run_sdf_trajopt(
         return q_seed, False
 
     config = evaluator.config
-    num_waypoints = max(3, min(config.num_waypoints, len(q_seed)))
+    num_waypoints = max(3, int(config.num_waypoints))
     q_init = _resample_trajectory(q_seed, num_waypoints)
     q_start = q_init[0]
     q_goal = q_init[-1]
