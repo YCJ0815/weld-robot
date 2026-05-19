@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import itertools
 import shutil
 import struct
 import subprocess
@@ -168,11 +169,36 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-iter", type=int, default=50000, help="Maximum RRT-Connect iterations per restart.")
     parser.add_argument("--rrt-restarts", type=int, default=4, help="Number of RRT-Connect restarts.")
     parser.add_argument("--goal-bias", type=float, default=0.45, help="Probability of sampling q_goal.")
+    parser.add_argument(
+        "--auto-rrt-adapt",
+        dest="auto_rrt_adapt",
+        action="store_true",
+        default=True,
+        help="Automatically try a small family of RRT step sizes and goal biases around the requested values. Enabled by default.",
+    )
+    parser.add_argument(
+        "--no-auto-rrt-adapt",
+        dest="auto_rrt_adapt",
+        action="store_false",
+        help="Disable adaptive multi-try RRT parameter search and only use the requested step size / goal bias.",
+    )
+    parser.add_argument(
+        "--rrt-auto-max-candidates",
+        type=int,
+        default=10,
+        help="Maximum number of adaptive RRT parameter candidates to try per transition.",
+    )
     parser.add_argument("--trajopt", dest="trajopt", action="store_true", default=True, help="Run TrajOpt-style smoothing after RRT. Enabled by default.")
     parser.add_argument("--no-trajopt", dest="trajopt", action="store_false", help="Skip TrajOpt smoothing and replay the raw RRT path.")
     parser.add_argument("--trajopt-waypoints", type=int, default=12, help="Number of waypoints used by TrajOpt resampling.")
     parser.add_argument("--trajopt-max-waypoints", type=int, default=16, help="Upper bound on SDF TrajOpt resampling waypoints; 0 disables the cap.")
     parser.add_argument("--trajopt-maxiter", type=int, default=800, help="Maximum SLSQP iterations for TrajOpt.")
+    parser.add_argument(
+        "--trajopt-ftol",
+        type=float,
+        default=5e-3,
+        help="SLSQP convergence tolerance for the legacy non-SDF TrajOpt.",
+    )
     parser.add_argument("--trajopt-smoothness-weight", type=float, default=5.0, help="Smoothness weight for TrajOpt.")
     parser.add_argument("--trajopt-path-length-weight", type=float, default=1.0, help="Path-length weight for TrajOpt.")
     parser.add_argument("--trajopt-seed-weight", type=float, default=0.05, help="Seed-adherence weight for TrajOpt.")
@@ -184,10 +210,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-sdf-margin", type=float, default=0.03, help="Extra world-space margin in meters around the workpiece SDF grid.")
     parser.add_argument("--workpiece-sdf-voxelize-method", type=str, default="subdivide", choices=["subdivide", "ray"], help="Trimesh voxelization method for cached workpiece SDF generation.")
     parser.add_argument("--workpiece-sdf-voxelize-max-iter", type=int, default=64, help="Maximum subdivision iterations used by trimesh voxelization for cached workpiece SDF generation.")
-    parser.add_argument("--sdf-collision-weight", type=float, default=2.0e8, help="Collision penalty weight for SDF TrajOpt.")
+    parser.add_argument("--sdf-collision-weight", type=float, default=4.0e8, help="Collision penalty weight for SDF TrajOpt.")
+    parser.add_argument(
+        "--sdf-trajopt-ftol",
+        type=float,
+        default=1e-3,
+        help="SLSQP convergence tolerance for SDF TrajOpt.",
+    )
     parser.add_argument("--sdf-arm-safe-distance", type=float, default=0.01, help="Safe distance in meters for arm sample points in SDF TrajOpt.")
     parser.add_argument("--sdf-tool-safe-distance", type=float, default=0.000, help="Safe distance in meters for tool sample points in SDF TrajOpt.")
-    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.002, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
+    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.0015, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
     parser.add_argument(
         "--sdf-initial-penetration-tol",
         type=float,
@@ -199,6 +231,18 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=-0.0045,
         help="More relaxed signed-distance penetration tolerance in meters for falling back to the full RRT seed as the initial SDF TrajOpt seed.",
+    )
+    parser.add_argument(
+        "--sdf-local-repair-passes",
+        type=int,
+        default=3,
+        help="Number of local waypoint-repair passes applied to the initial SDF TrajOpt seed before increasing waypoint count.",
+    )
+    parser.add_argument(
+        "--sdf-local-repair-samples",
+        type=int,
+        default=5,
+        help="Number of blend candidates tested when locally repairing an SDF-violating waypoint.",
     )
     parser.add_argument("--sdf-arm-step-size", type=float, default=0.02, help="Sampling resolution in meters along robot links for SDF evaluation.")
     parser.add_argument("--sdf-tool-step-size", type=float, default=0.01, help="Sampling resolution in meters along the tool segment for SDF evaluation.")
@@ -249,6 +293,18 @@ def parse_args() -> argparse.Namespace:
         help="Display generated URDF collision STL proxies in the render.",
     )
     parser.add_argument("--num-idle-frames", type=int, default=30, help="Initial/final hold frames in recordings.")
+    parser.add_argument(
+        "--compare-playback",
+        action="store_true",
+        help="Replay both the raw RRT seed path and the final optimized path for side-by-side temporal comparison.",
+    )
+    parser.add_argument(
+        "--compare-playback-order",
+        type=str,
+        default="rrt_first",
+        choices=["rrt_first", "optimized_first"],
+        help="Playback order when --compare-playback is enabled.",
+    )
     parser.add_argument(
         "--suppress-physx-warnings",
         dest="suppress_physx_warnings",
@@ -1689,6 +1745,59 @@ def checker_edge_valid(checker: Any, qa: np.ndarray, qb: np.ndarray, resolution:
     return True
 
 
+def unique_floats(values: list[float], decimals: int = 5) -> list[float]:
+    result: list[float] = []
+    seen: set[float] = set()
+    for value in values:
+        key = round(float(value), decimals)
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(float(value))
+    return result
+
+
+def build_rrt_candidate_configs(
+    base_step_size: float,
+    base_goal_bias: float,
+    max_candidates: int,
+) -> list[tuple[float, float]]:
+    step_candidates = unique_floats(
+        [
+            base_step_size,
+            0.08,
+            base_step_size * 0.75,
+            base_step_size * 1.25,
+            base_step_size * 0.5,
+            base_step_size * 1.5,
+            base_step_size * 0.35,
+            base_step_size * 1.75,
+            0.06,
+            0.10,
+            0.12,
+            0.04,
+        ]
+    )
+    step_candidates = [min(0.25, max(0.02, step)) for step in step_candidates]
+    step_candidates = unique_floats(step_candidates)
+    goal_candidates = unique_floats(
+        [
+            base_goal_bias,
+            0.45,
+            0.35,
+            0.55,
+            0.30,
+            0.60,
+        ]
+    )
+    goal_candidates = [min(0.9, max(0.05, bias)) for bias in goal_candidates]
+    goal_candidates = unique_floats(goal_candidates)
+
+    combos = list(itertools.product(step_candidates, goal_candidates))
+    combos.sort(key=lambda item: (abs(item[0] - base_step_size), abs(item[1] - base_goal_bias)))
+    return combos[: max(1, int(max_candidates))]
+
+
 def has_rrt_root_escape(
     q_root: np.ndarray,
     lower: np.ndarray,
@@ -2181,12 +2290,15 @@ def run_playback_segments(
     stage: Any,
     robot: Any,
     dof_indices: list[int],
-    playback_segments: list[np.ndarray],
+    playback_segments: list[tuple[str, np.ndarray]],
     args: argparse.Namespace,
     recording_session: RecordingSession | None,
 ) -> None:
-    for segment_index, q_segment in enumerate(playback_segments, start=1):
-        log(f"[demo] Replaying segment {segment_index}/{len(playback_segments)} with {len(q_segment)} points.")
+    for segment_index, (segment_label, q_segment) in enumerate(playback_segments, start=1):
+        log(
+            f"[demo] Replaying segment {segment_index}/{len(playback_segments)} "
+            f"[{segment_label}] with {len(q_segment)} points."
+        )
         run_playback(world, stage, robot, dof_indices, q_segment, args, recording_session)
 
 
@@ -2324,6 +2436,7 @@ def main() -> None:
                     num_waypoints=args.trajopt_waypoints,
                     max_waypoints=args.trajopt_max_waypoints,
                     maxiter=args.trajopt_maxiter,
+                    ftol=args.sdf_trajopt_ftol,
                     collision_weight=args.sdf_collision_weight,
                     smoothness_weight=args.trajopt_smoothness_weight,
                     path_length_weight=args.trajopt_path_length_weight,
@@ -2332,6 +2445,8 @@ def main() -> None:
                     penetration_tol=args.sdf_penetration_tol,
                     initial_penetration_tol=args.sdf_initial_penetration_tol,
                     seed_fallback_penetration_tol=args.sdf_seed_fallback_penetration_tol,
+                    local_repair_passes=args.sdf_local_repair_passes,
+                    local_repair_samples=args.sdf_local_repair_samples,
                     arm_step_size=args.sdf_arm_step_size,
                     tool_step_size=args.sdf_tool_step_size,
                     constraint_point_stride=args.sdf_constraint_point_stride,
@@ -2506,29 +2621,59 @@ def main() -> None:
             )
 
             t0 = time.perf_counter()
-            try:
-                q_anchor_seed_path = rrt_connect_plan_with_restarts(
-                    q_start=q_rrt_start,
-                    q_goal=q_rrt_goal,
-                    lower=kinematics.lower,
-                    upper=kinematics.upper,
-                    is_state_valid=checker.is_state_valid,
-                    is_edge_valid=is_edge_valid,
-                    step_size=args.rrt_step_size,
-                    max_iter=args.max_iter,
-                    restarts=args.rrt_restarts,
-                    goal_bias=args.goal_bias,
-                    rng=rng,
-                    logger=log,
+            if args.auto_rrt_adapt:
+                rrt_candidates = build_rrt_candidate_configs(
+                    base_step_size=args.rrt_step_size,
+                    base_goal_bias=args.goal_bias,
+                    max_candidates=args.rrt_auto_max_candidates,
                 )
-            except RuntimeError as exc:
+            else:
+                rrt_candidates = [(float(args.rrt_step_size), float(args.goal_bias))]
+            q_anchor_seed_path = None
+            selected_rrt_step = None
+            selected_rrt_goal_bias = None
+            last_rrt_error: Exception | None = None
+            for candidate_index, (candidate_step_size, candidate_goal_bias) in enumerate(rrt_candidates, start=1):
+                log(
+                    f"[demo] RRT candidate {candidate_index}/{len(rrt_candidates)}: "
+                    f"step_size={candidate_step_size:.4f}, goal_bias={candidate_goal_bias:.2f}"
+                )
+                try:
+                    q_anchor_seed_path = rrt_connect_plan_with_restarts(
+                        q_start=q_rrt_start,
+                        q_goal=q_rrt_goal,
+                        lower=kinematics.lower,
+                        upper=kinematics.upper,
+                        is_state_valid=checker.is_state_valid,
+                        is_edge_valid=is_edge_valid,
+                        step_size=candidate_step_size,
+                        max_iter=args.max_iter,
+                        restarts=args.rrt_restarts,
+                        goal_bias=candidate_goal_bias,
+                        rng=rng,
+                        logger=log,
+                    )
+                    selected_rrt_step = candidate_step_size
+                    selected_rrt_goal_bias = candidate_goal_bias
+                    break
+                except RuntimeError as exc:
+                    last_rrt_error = exc
+                    log(
+                        f"[demo] RRT candidate {candidate_index}/{len(rrt_candidates)} failed: "
+                        f"step_size={candidate_step_size:.4f}, goal_bias={candidate_goal_bias:.2f}, error={exc}"
+                    )
+            if q_anchor_seed_path is None:
                 log(
                     f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
-                    f"failed during RRT planning; trying next transition. Last error: {exc}"
+                    f"failed during RRT planning; trying next transition. Last error: {last_rrt_error}"
                 )
                 continue
             q_seed_path = q_anchor_seed_path
             plan_time = time.perf_counter() - t0
+            log(
+                f"[demo] Selected RRT parameters: step_size={selected_rrt_step:.4f}, "
+                f"goal_bias={selected_rrt_goal_bias:.2f}"
+            )
             q_plan = q_seed_path
             trajopt_success = False
             if args.trajopt:
@@ -2543,6 +2688,7 @@ def main() -> None:
                             num_waypoints=args.trajopt_waypoints,
                             max_waypoints=args.trajopt_max_waypoints,
                             maxiter=args.trajopt_maxiter,
+                            ftol=args.sdf_trajopt_ftol,
                             collision_weight=args.sdf_collision_weight,
                             smoothness_weight=args.trajopt_smoothness_weight,
                             path_length_weight=args.trajopt_path_length_weight,
@@ -2551,6 +2697,8 @@ def main() -> None:
                             penetration_tol=args.sdf_penetration_tol,
                             initial_penetration_tol=args.sdf_initial_penetration_tol,
                             seed_fallback_penetration_tol=args.sdf_seed_fallback_penetration_tol,
+                            local_repair_passes=args.sdf_local_repair_passes,
+                            local_repair_samples=args.sdf_local_repair_samples,
                             arm_step_size=args.sdf_arm_step_size,
                             tool_step_size=args.sdf_tool_step_size,
                             constraint_point_stride=args.sdf_constraint_point_stride,
@@ -2578,6 +2726,7 @@ def main() -> None:
                     config=TrajOptConfig(
                         num_waypoints=args.trajopt_waypoints,
                         maxiter=args.trajopt_maxiter,
+                        ftol=args.trajopt_ftol,
                         smoothness_weight=args.trajopt_smoothness_weight,
                         path_length_weight=args.trajopt_path_length_weight,
                         seed_weight=args.trajopt_seed_weight,
@@ -2593,6 +2742,14 @@ def main() -> None:
                     trajopt_runner=trajopt_runner,
                 )
                 trajopt_success = bool(optimization_info.get("trajopt_success", False))
+            q_rrt_playback = densify_path(q_seed_path, args.playback_resolution)
+            rrt_playback_collision = next((q for q in q_rrt_playback if not checker.is_state_valid(q)), None)
+            if rrt_playback_collision is not None:
+                log(
+                    f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+                    f"rejected before comparison playback: RRT playback collision at sample={np.round(rrt_playback_collision, 4)}"
+                )
+                continue
             q_playback = densify_path(q_plan, args.playback_resolution)
             playback_collision = next((q for q in q_playback if not checker.is_state_valid(q)), None)
             if playback_collision is not None:
@@ -2609,8 +2766,11 @@ def main() -> None:
                     "q_goal": q_goal,
                     "q_rrt_start": q_rrt_start,
                     "q_rrt_goal": q_rrt_goal,
+                    "rrt_step_size": selected_rrt_step,
+                    "rrt_goal_bias": selected_rrt_goal_bias,
                     "q_seed_path": q_seed_path,
                     "q_plan": q_plan,
+                    "q_rrt_playback": q_rrt_playback,
                     "q_playback": q_playback,
                     "tcp_points": tcp_points,
                     "trajopt_success": trajopt_success,
@@ -2640,7 +2800,23 @@ def main() -> None:
                 )
             raise RuntimeError("No valid transition could be fully planned and optimized.")
 
-        playback_segments = [segment["q_playback"] for segment in planned_segments]
+        playback_segments: list[tuple[str, np.ndarray]] = []
+        compare_order = ["RRT", "Optimized"] if args.compare_playback_order == "rrt_first" else ["Optimized", "RRT"]
+        for segment in planned_segments:
+            if args.compare_playback:
+                for label in compare_order:
+                    if label == "RRT":
+                        playback_segments.append((f"RRT transition {segment['targets']['prev_weld_index']}->{segment['targets']['next_weld_index']}", segment["q_rrt_playback"]))
+                    else:
+                        optimized_label = "TrajOpt" if segment["trajopt_success"] else "Fallback"
+                        playback_segments.append((f"{optimized_label} transition {segment['targets']['prev_weld_index']}->{segment['targets']['next_weld_index']}", segment["q_playback"]))
+            else:
+                playback_segments.append(
+                    (
+                        f"Final transition {segment['targets']['prev_weld_index']}->{segment['targets']['next_weld_index']}",
+                        segment["q_playback"],
+                    )
+                )
         tcp_points = np.vstack([segment["tcp_points"] for segment in planned_segments])
         first_targets = planned_segments[0]["targets"]
         last_targets = planned_segments[-1]["targets"]
@@ -2656,8 +2832,13 @@ def main() -> None:
         )
         log(
             f"[demo] Planned {len(planned_segments)} transition segments, "
-            f"{sum(len(segment) for segment in playback_segments)} total playback points."
+            f"{sum(len(path) for _, path in playback_segments)} total playback points."
         )
+        if args.compare_playback:
+            log(
+                f"[demo] Compare playback enabled: order={args.compare_playback_order}, "
+                "replaying both raw RRT and final optimized trajectories."
+            )
 
         recording_session = None
         if args.record and frames_dir is not None:

@@ -22,6 +22,7 @@ TrajOptRunner = Callable[[np.ndarray, Logger | None], tuple[np.ndarray, bool]]
 class TrajOptConfig:
     num_waypoints: int = 20
     maxiter: int = 500
+    ftol: float = 1e-3
     smoothness_weight: float = 8.0
     path_length_weight: float = 3.0
     seed_weight: float = 0.05
@@ -389,7 +390,7 @@ def run_trajopt(
     if logger is not None:
         logger(
             f"[TrajOpt] Starting optimization: seed_points={len(q_seed)} "
-            f"opt_points={len(q_init)} maxiter={config.maxiter}"
+            f"opt_points={len(q_init)} maxiter={config.maxiter} ftol={config.ftol:.1e}"
         )
 
     result = minimize(
@@ -399,7 +400,7 @@ def run_trajopt(
         method="SLSQP",
         bounds=bounds,
         constraints=constraints,
-        options={"maxiter": config.maxiter, "disp": False, "ftol": 1e-4},
+        options={"maxiter": config.maxiter, "disp": False, "ftol": config.ftol},
     )
 
     q_opt = _reconstruct_trajopt_path(result.x, q_start, q_goal, len(lower))

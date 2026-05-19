@@ -20,6 +20,7 @@ class SDFTrajOptConfig:
     num_waypoints: int = 20
     max_waypoints: int = 16
     maxiter: int = 800
+    ftol: float = 1e-3
     collision_weight: float = 2.0e8
     smoothness_weight: float = 8.0
     path_length_weight: float = 3.0
@@ -34,6 +35,8 @@ class SDFTrajOptConfig:
     endpoint_safe_distance_scale: float = 0.0
     initial_penetration_tol: float = -0.0025
     seed_fallback_penetration_tol: float = -0.0045
+    local_repair_passes: int = 3
+    local_repair_samples: int = 5
 
 
 def _interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
@@ -247,6 +250,49 @@ def _adaptive_select_waypoints(
     return path[ordered_indices]
 
 
+def _locally_repair_path(
+    path: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    evaluator: KinematicSDFCollisionEvaluator,
+    tolerance: float,
+    passes: int,
+    samples: int,
+) -> np.ndarray:
+    if len(path) <= 2:
+        return path.copy()
+
+    repaired = path.copy()
+    num_samples = max(2, int(samples))
+    blends = np.linspace(0.15, 0.95, num_samples)
+    for _ in range(max(0, int(passes))):
+        changed = False
+        state_evals = evaluator.evaluate_path_states(repaired)
+        for i in range(1, len(repaired) - 1):
+            state_eval = state_evals[i]
+            current_min = float(min(state_eval["arm_min"], state_eval["tool_min"]))
+            if current_min >= tolerance:
+                continue
+            midpoint = 0.5 * (repaired[i - 1] + repaired[i + 1])
+            best_q = repaired[i]
+            best_min = current_min
+            for blend in blends:
+                candidate = np.clip((1.0 - blend) * repaired[i] + blend * midpoint, lower, upper)
+                candidate_eval = evaluator.evaluate_state(candidate)
+                candidate_min = float(min(candidate_eval["arm_min"], candidate_eval["tool_min"]))
+                if candidate_min > best_min + 1e-9:
+                    best_q = candidate
+                    best_min = candidate_min
+                if candidate_min >= tolerance:
+                    break
+            if best_min > current_min + 1e-9:
+                repaired[i] = best_q
+                changed = True
+        if not changed:
+            break
+    return repaired
+
+
 def _trajopt_objective(
     x: np.ndarray,
     q_start: np.ndarray,
@@ -320,7 +366,16 @@ def run_sdf_trajopt(
         return q_seed, False
 
     config = evaluator.config
-    full_seed_summary = evaluator.summarize_trajectory(q_seed)
+    repaired_full_seed = _locally_repair_path(
+        q_seed,
+        lower=lower,
+        upper=upper,
+        evaluator=evaluator,
+        tolerance=evaluator.config.seed_fallback_penetration_tol,
+        passes=evaluator.config.local_repair_passes,
+        samples=evaluator.config.local_repair_samples,
+    )
+    full_seed_summary = evaluator.summarize_trajectory(repaired_full_seed)
     full_seed_nonpenetrating = _summary_within_tolerance(full_seed_summary, evaluator.config.penetration_tol)
     full_seed_initially_acceptable = _summary_within_tolerance(full_seed_summary, evaluator.config.initial_penetration_tol)
     full_seed_fallback_acceptable = _summary_within_tolerance(full_seed_summary, evaluator.config.seed_fallback_penetration_tol)
@@ -330,12 +385,30 @@ def run_sdf_trajopt(
         max_waypoints=int(config.max_waypoints),
     )
     q_init = _adaptive_select_waypoints(q_seed, waypoint_counts[0], evaluator)
+    q_init = _locally_repair_path(
+        q_init,
+        lower=lower,
+        upper=upper,
+        evaluator=evaluator,
+        tolerance=evaluator.config.initial_penetration_tol,
+        passes=evaluator.config.local_repair_passes,
+        samples=evaluator.config.local_repair_samples,
+    )
     q_init_summary = evaluator.summarize_trajectory(q_init)
     selected_count = waypoint_counts[0]
     for count in waypoint_counts[1:]:
         if _summary_within_tolerance(q_init_summary, evaluator.config.initial_penetration_tol):
             break
         candidate = _adaptive_select_waypoints(q_seed, count, evaluator)
+        candidate = _locally_repair_path(
+            candidate,
+            lower=lower,
+            upper=upper,
+            evaluator=evaluator,
+            tolerance=evaluator.config.initial_penetration_tol,
+            passes=evaluator.config.local_repair_passes,
+            samples=evaluator.config.local_repair_samples,
+        )
         candidate_summary = evaluator.summarize_trajectory(candidate)
         q_init = candidate
         q_init_summary = candidate_summary
@@ -347,18 +420,18 @@ def run_sdf_trajopt(
         and full_seed_initially_acceptable
         and len(q_seed) > len(q_init)
     ):
-        q_init = q_seed.copy()
+        q_init = repaired_full_seed.copy()
         q_init_summary = full_seed_summary
-        selected_count = len(q_seed)
+        selected_count = len(repaired_full_seed)
         selected_from_full_seed = True
     elif (
         not _summary_within_tolerance(q_init_summary, evaluator.config.initial_penetration_tol)
         and full_seed_fallback_acceptable
         and len(q_seed) > len(q_init)
     ):
-        q_init = q_seed.copy()
+        q_init = repaired_full_seed.copy()
         q_init_summary = full_seed_summary
-        selected_count = len(q_seed)
+        selected_count = len(repaired_full_seed)
         selected_from_full_seed = True
         selected_from_full_seed_with_fallback_tol = True
     q_start = q_init[0]
@@ -384,7 +457,7 @@ def run_sdf_trajopt(
             f"max_opt_points={config.max_waypoints} selection=adaptive "
             f"init_nonpenetrating={nonpenetrating_init} init_acceptable={acceptable_init} "
             f"init_fallback_acceptable={fallback_acceptable_init} "
-            f"maxiter={config.maxiter} stride={config.constraint_point_stride} "
+            f"maxiter={config.maxiter} ftol={config.ftol:.1e} stride={config.constraint_point_stride} "
             f"endpoint_relax={config.endpoint_relax_waypoints} endpoint_scale={config.endpoint_safe_distance_scale:.2f}"
         )
         if selected_from_full_seed:
@@ -392,12 +465,12 @@ def run_sdf_trajopt(
                 logger(
                     f"[SDF-TrajOpt] Adaptive compression remained penetrating up to {selected_count - 1} points; "
                     f"falling back to full seed with relaxed initial tolerance "
-                    f"{config.seed_fallback_penetration_tol:.4f} and {len(q_seed)} points."
+                    f"{config.seed_fallback_penetration_tol:.4f} and {len(q_seed)} points after local repair."
                 )
             else:
                 logger(
                     f"[SDF-TrajOpt] Adaptive compression remained penetrating up to {selected_count - 1} points; "
-                    f"falling back to full nonpenetrating seed with {len(q_seed)} points."
+                    f"falling back to full nonpenetrating seed with {len(q_seed)} points after local repair."
                 )
         if not fallback_acceptable_init and selected_count == waypoint_counts[-1] and selected_count < len(q_seed):
             logger(
@@ -423,7 +496,7 @@ def run_sdf_trajopt(
         method="SLSQP",
         bounds=bounds,
         constraints=constraints,
-        options={"maxiter": config.maxiter, "disp": False, "ftol": 1e-4},
+        options={"maxiter": config.maxiter, "disp": False, "ftol": config.ftol},
     )
 
     q_opt = _reconstruct_path(result.x, q_start, q_goal, len(lower))
