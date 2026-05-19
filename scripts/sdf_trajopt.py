@@ -355,15 +355,15 @@ def run_sdf_trajopt(
     upper: np.ndarray,
     evaluator: KinematicSDFCollisionEvaluator,
     logger: Logger | None = None,
-) -> tuple[np.ndarray, bool]:
+) -> tuple[np.ndarray, bool, dict[str, Any]]:
     if minimize is None:
         if logger is not None:
             logger("[SDF-TrajOpt] scipy.optimize is unavailable; skipping optimization.")
-        return q_seed, False
+        return q_seed, False, {"failure_reason": "solver_unavailable"}
     if len(q_seed) <= 2:
         if logger is not None:
             logger("[SDF-TrajOpt] Seed path has too few waypoints; skipping optimization.")
-        return q_seed, False
+        return q_seed, False, {"failure_reason": "seed_too_short"}
 
     config = evaluator.config
     repaired_full_seed = _locally_repair_path(
@@ -440,7 +440,7 @@ def run_sdf_trajopt(
     if len(x0) == 0:
         if logger is not None:
             logger("[SDF-TrajOpt] Seed path has no internal waypoints; skipping optimization.")
-        return q_seed, False
+        return q_seed, False, {"failure_reason": "seed_has_no_internal_waypoints"}
 
     bounds = []
     for _ in range(len(q_init) - 2):
@@ -506,6 +506,34 @@ def run_sdf_trajopt(
         and summary["tool_min_global"] >= evaluator.config.penetration_tol
     )
     accepted = bool(result.success) and bool(nonpenetrating)
+    failure_reason = "accepted"
+    if not fallback_acceptable_init:
+        failure_reason = "seed_infeasible_under_sdf"
+    elif not bool(result.success):
+        failure_reason = "optimizer_failed"
+    elif not bool(nonpenetrating):
+        failure_reason = "postcheck_penetration"
+    info = {
+        "optimizer_success": bool(result.success),
+        "accepted": bool(accepted),
+        "failure_reason": failure_reason,
+        "status": int(getattr(result, "status", -1)),
+        "nit": int(getattr(result, "nit", -1)),
+        "fun": float(result.fun),
+        "seed_points": int(len(q_seed)),
+        "requested_opt_points": int(config.num_waypoints),
+        "actual_opt_points": int(len(q_init)),
+        "max_opt_points": int(config.max_waypoints),
+        "init_nonpenetrating": bool(_summary_within_tolerance(q_init_summary, evaluator.config.penetration_tol)),
+        "init_acceptable": bool(_summary_within_tolerance(q_init_summary, evaluator.config.initial_penetration_tol)),
+        "init_fallback_acceptable": bool(fallback_acceptable_init),
+        "selected_from_full_seed": bool(selected_from_full_seed),
+        "selected_from_full_seed_with_fallback_tol": bool(selected_from_full_seed_with_fallback_tol),
+        "penetration_count": int(summary["penetration_count"]),
+        "near_count": int(summary["near_count"]),
+        "arm_min_global": float(summary["arm_min_global"]),
+        "tool_min_global": float(summary["tool_min_global"]),
+    }
     if logger is not None:
         logger(
             f"[SDF-TrajOpt] Finished: success={result.success} accepted={accepted} "
@@ -513,4 +541,4 @@ def run_sdf_trajopt(
             f"penetrations={summary['penetration_count']} near={summary['near_count']} "
             f"arm_min={summary['arm_min_global']:.4f} tool_min={summary['tool_min_global']:.4f}"
         )
-    return q_opt, accepted
+    return q_opt, accepted, info

@@ -81,6 +81,29 @@ def configure_log_filters(args: argparse.Namespace) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run an Isaac Sim RRT welding path-planning demo.")
     parser.add_argument("--job-dir", type=Path, default=DEFAULT_JOB_DIR, help="Generated job directory.")
+    parser.add_argument(
+        "--all-jobs",
+        action="store_true",
+        help="Plan every generated job under --jobs-root instead of a single --job-dir.",
+    )
+    parser.add_argument(
+        "--jobs-root",
+        type=Path,
+        default=REPO_ROOT / "data_generation/data/generated_jobs",
+        help="Root directory containing generated job_* folders for batch processing.",
+    )
+    parser.add_argument(
+        "--job-glob",
+        type=str,
+        default="job_*",
+        help="Glob pattern used with --jobs-root when --all-jobs is enabled.",
+    )
+    parser.add_argument(
+        "--results-subdir",
+        type=str,
+        default="planning_results",
+        help="Per-job subdirectory used to store structured planning outputs and optional videos.",
+    )
     parser.add_argument("--urdf", type=Path, default=DEFAULT_URDF, help="UR5e welding-arm URDF.")
     parser.add_argument(
         "--weld-index",
@@ -193,6 +216,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trajopt-waypoints", type=int, default=12, help="Number of waypoints used by TrajOpt resampling.")
     parser.add_argument("--trajopt-max-waypoints", type=int, default=16, help="Upper bound on SDF TrajOpt resampling waypoints; 0 disables the cap.")
     parser.add_argument("--trajopt-maxiter", type=int, default=800, help="Maximum SLSQP iterations for TrajOpt.")
+    parser.add_argument(
+        "--trajopt-retries",
+        type=int,
+        default=3,
+        help="Maximum number of TrajOpt parameter-adjustment retries after an RRT seed has been selected.",
+    )
     parser.add_argument(
         "--trajopt-ftol",
         type=float,
@@ -335,6 +364,122 @@ def prepare_recording_paths(args: argparse.Namespace) -> Path:
         shutil.rmtree(args.frames_dir)
     args.frames_dir.mkdir(parents=True, exist_ok=True)
     return args.frames_dir
+
+
+def resolve_job_dirs(args: argparse.Namespace) -> list[Path]:
+    if not args.all_jobs:
+        return [args.job_dir.resolve()]
+    jobs_root = args.jobs_root.resolve()
+    if not jobs_root.exists():
+        raise FileNotFoundError(f"Jobs root does not exist: {jobs_root}")
+    job_dirs = sorted(path.resolve() for path in jobs_root.glob(args.job_glob) if path.is_dir())
+    if not job_dirs:
+        raise RuntimeError(f"No job directories matched {args.job_glob!r} under {jobs_root}")
+    return job_dirs
+
+
+def job_results_dir(job_dir: Path, results_subdir: str) -> Path:
+    path = (job_dir / results_subdir).resolve()
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def json_safe(value: Any) -> Any:
+    if isinstance(value, Path):
+        return str(value)
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, (np.floating, np.integer, np.bool_)):
+        return value.item()
+    if isinstance(value, dict):
+        return {str(k): json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_safe(v) for v in value]
+    return value
+
+
+def save_transition_result(job_dir: Path, results_subdir: str, segment: dict[str, Any]) -> dict[str, str]:
+    results_dir = job_results_dir(job_dir, results_subdir)
+    transition_name = f"transition_{segment['targets']['prev_weld_index']:04d}_{segment['targets']['next_weld_index']:04d}"
+    metadata_path = results_dir / f"{transition_name}.json"
+    arrays_path = results_dir / f"{transition_name}.npz"
+    np.savez_compressed(
+        arrays_path,
+        q_start=np.asarray(segment["q_start"], dtype=float),
+        q_goal=np.asarray(segment["q_goal"], dtype=float),
+        q_rrt_start=np.asarray(segment["q_rrt_start"], dtype=float),
+        q_rrt_goal=np.asarray(segment["q_rrt_goal"], dtype=float),
+        q_seed_path=np.asarray(segment["q_seed_path"], dtype=float),
+        q_rrt_playback=np.asarray(segment["q_rrt_playback"], dtype=float),
+        q_plan=np.asarray(segment["q_plan"], dtype=float),
+        q_playback=np.asarray(segment["q_playback"], dtype=float),
+        tcp_points=np.asarray(segment["tcp_points"], dtype=float),
+        start_tf=np.asarray(segment["targets"]["start_tf"], dtype=float),
+        goal_tf=np.asarray(segment["targets"]["goal_tf"], dtype=float),
+        start_xyz=np.asarray(segment["targets"]["start_xyz"], dtype=float),
+        end_xyz=np.asarray(segment["targets"]["end_xyz"], dtype=float),
+        start_normal=np.asarray(segment["targets"]["start_normal"], dtype=float),
+        end_normal=np.asarray(segment["targets"]["end_normal"], dtype=float),
+        tangent=np.asarray(segment["targets"]["tangent"], dtype=float),
+    )
+    metadata = {
+        "job_dir": str(job_dir),
+        "transition_name": transition_name,
+        "prev_weld_index": int(segment["targets"]["prev_weld_index"]),
+        "next_weld_index": int(segment["targets"]["next_weld_index"]),
+        "transition_distance": float(segment["targets"]["transition_distance"]),
+        "rrt_success": True,
+        "trajopt_success": bool(segment["trajopt_success"]),
+        "rrt_step_size": float(segment["rrt_step_size"]),
+        "rrt_goal_bias": float(segment["rrt_goal_bias"]),
+        "plan_time": float(segment["plan_time"]),
+        "collision_check_resolution": float(segment["collision_check_resolution"]),
+        "optimization_info": json_safe(segment.get("optimization_info", {})),
+        "trajopt_attempts": json_safe(segment.get("trajopt_attempts", [])),
+        "array_file": arrays_path.name,
+    }
+    metadata_path.write_text(json.dumps(json_safe(metadata), indent=2, ensure_ascii=False), encoding="utf-8")
+    return {"metadata": str(metadata_path), "arrays": str(arrays_path)}
+
+
+def save_job_summary(job_dir: Path, results_subdir: str, summary: dict[str, Any]) -> Path:
+    results_dir = job_results_dir(job_dir, results_subdir)
+    summary_path = results_dir / "planning_summary.json"
+    summary_path.write_text(json.dumps(json_safe(summary), indent=2, ensure_ascii=False), encoding="utf-8")
+    return summary_path
+
+
+def clear_job_prims(stage: Any) -> None:
+    for prim_path in ["/World/Workpiece", "/World/Workpiece_Material", "/World/Debug"]:
+        try:
+            stage.RemovePrim(prim_path)
+        except Exception:
+            pass
+    ensure_xform(stage, "/World/Debug")
+
+
+def prepare_job_recording_paths(args: argparse.Namespace, job_dir: Path) -> tuple[Path, Path]:
+    results_dir = job_results_dir(job_dir, args.results_subdir)
+    if args.all_jobs:
+        output_path = results_dir / "planning_replay.mp4"
+        frames_dir = results_dir / "planning_replay_frames"
+    else:
+        output_path = args.output.resolve()
+        frames_dir = (
+            args.frames_dir.resolve()
+            if args.frames_dir is not None
+            else output_path.parent / f"{output_path.stem}_frames"
+        )
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if output_path.exists() and not args.overwrite:
+        raise FileExistsError(f"Output already exists. Use --overwrite: {output_path}")
+    if frames_dir.exists():
+        if args.overwrite:
+            shutil.rmtree(frames_dir)
+        else:
+            raise FileExistsError(f"Frames directory already exists. Use --overwrite: {frames_dir}")
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    return output_path, frames_dir
 
 
 def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
@@ -1798,6 +1943,108 @@ def build_rrt_candidate_configs(
     return combos[: max(1, int(max_candidates))]
 
 
+def build_sdf_trajopt_retry_configs(args: argparse.Namespace, failure_reason: str | None) -> list[dict[str, Any]]:
+    base = {
+        "max_waypoints": int(args.trajopt_max_waypoints),
+        "maxiter": int(args.trajopt_maxiter),
+        "ftol": float(args.sdf_trajopt_ftol),
+        "path_length_weight": float(args.trajopt_path_length_weight),
+        "smoothness_weight": float(args.trajopt_smoothness_weight),
+        "collision_weight": float(args.sdf_collision_weight),
+        "constraint_point_stride": int(args.sdf_constraint_point_stride),
+        "initial_penetration_tol": float(args.sdf_initial_penetration_tol),
+        "seed_fallback_penetration_tol": float(args.sdf_seed_fallback_penetration_tol),
+    }
+    retries: list[dict[str, Any]] = [base]
+    if failure_reason == "postcheck_penetration":
+        retries.extend(
+            [
+                {
+                    **base,
+                    "path_length_weight": max(0.2, base["path_length_weight"] * 0.5),
+                    "collision_weight": base["collision_weight"] * 1.5,
+                    "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 2),
+                },
+                {
+                    **base,
+                    "path_length_weight": max(0.1, base["path_length_weight"] * 0.35),
+                    "collision_weight": base["collision_weight"] * 2.0,
+                    "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 4),
+                    "ftol": max(base["ftol"], 2e-3),
+                },
+            ]
+        )
+    elif failure_reason == "optimizer_failed":
+        retries.extend(
+            [
+                {
+                    **base,
+                    "ftol": max(base["ftol"], 2e-3),
+                    "maxiter": max(200, int(base["maxiter"] * 0.75)),
+                    "constraint_point_stride": max(base["constraint_point_stride"], 16),
+                },
+                {
+                    **base,
+                    "ftol": max(base["ftol"], 5e-3),
+                    "maxiter": max(150, int(base["maxiter"] * 0.5)),
+                    "constraint_point_stride": max(base["constraint_point_stride"], 20),
+                    "path_length_weight": max(0.2, base["path_length_weight"] * 0.5),
+                },
+            ]
+        )
+    else:
+        retries.extend(
+            [
+                {
+                    **base,
+                    "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 2),
+                    "initial_penetration_tol": min(base["initial_penetration_tol"], -0.0035),
+                    "seed_fallback_penetration_tol": min(base["seed_fallback_penetration_tol"], -0.0055),
+                },
+                {
+                    **base,
+                    "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 4),
+                    "initial_penetration_tol": min(base["initial_penetration_tol"], -0.0045),
+                    "seed_fallback_penetration_tol": min(base["seed_fallback_penetration_tol"], -0.0065),
+                    "ftol": max(base["ftol"], 2e-3),
+                },
+            ]
+        )
+    return retries[: max(1, int(args.trajopt_retries))]
+
+
+def make_sdf_trajopt_config(
+    args: argparse.Namespace,
+    collision_check_resolution: float,
+    overrides: dict[str, Any] | None = None,
+) -> SDFTrajOptConfig:
+    params: dict[str, Any] = {
+        "num_waypoints": args.trajopt_waypoints,
+        "max_waypoints": args.trajopt_max_waypoints,
+        "maxiter": args.trajopt_maxiter,
+        "ftol": args.sdf_trajopt_ftol,
+        "collision_weight": args.sdf_collision_weight,
+        "smoothness_weight": args.trajopt_smoothness_weight,
+        "path_length_weight": args.trajopt_path_length_weight,
+        "arm_safe_distance": args.sdf_arm_safe_distance,
+        "tool_safe_distance": args.sdf_tool_safe_distance,
+        "penetration_tol": args.sdf_penetration_tol,
+        "initial_penetration_tol": args.sdf_initial_penetration_tol,
+        "seed_fallback_penetration_tol": args.sdf_seed_fallback_penetration_tol,
+        "local_repair_passes": args.sdf_local_repair_passes,
+        "local_repair_samples": args.sdf_local_repair_samples,
+        "arm_step_size": args.sdf_arm_step_size,
+        "tool_step_size": args.sdf_tool_step_size,
+        "constraint_point_stride": args.sdf_constraint_point_stride,
+        "dense_check_resolution": collision_check_resolution,
+        "endpoint_relax_waypoints": args.sdf_endpoint_relax_waypoints,
+        "endpoint_safe_distance_scale": args.sdf_endpoint_safe_distance_scale,
+    }
+    if overrides:
+        params.update(overrides)
+    return SDFTrajOptConfig(**params)
+
+
 def has_rrt_root_escape(
     q_root: np.ndarray,
     lower: np.ndarray,
@@ -2300,6 +2547,550 @@ def run_playback_segments(
             f"[{segment_label}] with {len(q_segment)} points."
         )
         run_playback(world, stage, robot, dof_indices, q_segment, args, recording_session)
+
+
+def process_job(
+    job_dir: Path,
+    args: argparse.Namespace,
+    world: Any,
+    stage: Any,
+    robot: Any,
+    robot_prim_path: str,
+    dof_indices: list[int],
+    kinematics: URDFKinematics,
+    ground_prim_path: str,
+    rng: np.random.Generator,
+    rep: Any | None,
+) -> dict[str, Any]:
+    job_dir = job_dir.resolve()
+    log(f"[demo] Starting job: {job_dir}")
+    clear_job_prims(stage)
+    workpiece_info = import_collision_stl(
+        stage,
+        stl_path=job_dir / "workpiece.stl",
+        prim_path="/World/Workpiece",
+        scale=args.workpiece_scale,
+        z_offset=args.workpiece_z_offset,
+        local_offset=tuple(float(v) for v in args.workpiece_offset),
+        opacity=args.workpiece_opacity,
+    )
+    sdf_layer = None
+    sdf_npz_path = None
+    if args.trajopt and args.sdf_trajopt:
+        sdf_npz_path = (
+            args.workpiece_sdf_path.resolve()
+            if args.workpiece_sdf_path is not None and not args.all_jobs
+            else (job_dir / "workpiece_sdf.npz").resolve()
+        )
+        sdf_layer, sdf_npz_path = load_or_build_workpiece_sdf(
+            stl_path=(job_dir / "workpiece.stl").resolve(),
+            scale=args.workpiece_scale,
+            z_offset=args.workpiece_z_offset,
+            local_offset=tuple(float(v) for v in args.workpiece_offset),
+            npz_path=sdf_npz_path,
+            config=SDFBuildConfig(
+                voxel_pitch=args.workpiece_sdf_pitch,
+                margin=args.workpiece_sdf_margin,
+                voxelize_method=args.workpiece_sdf_voxelize_method,
+                voxelize_max_iter=args.workpiece_sdf_voxelize_max_iter,
+            ),
+            logger=log,
+            rebuild=args.rebuild_workpiece_sdf,
+        )
+        log(f"[SDF] Using workpiece SDF cache: {sdf_npz_path}")
+
+    q_home = np.array([DEFAULT_INITIAL_JOINT_POS[name] for name in kinematics.planning_names], dtype=float)
+    seeds = [
+        q_home,
+        q_home + np.array([0.25, -0.25, 0.20, 0.0, 0.2, 0.0]),
+        q_home + np.array([-0.35, 0.20, -0.25, 0.2, -0.2, 0.3]),
+        np.zeros(6),
+    ]
+    checker = IsaacCollisionChecker(
+        world=world,
+        stage=stage,
+        robot=robot,
+        robot_prim_path=robot_prim_path,
+        workpiece_prim_path="/World/Workpiece",
+        ground_prim_path=ground_prim_path,
+        dof_indices=dof_indices,
+        padding=args.collision_padding,
+        contact_settle_steps=args.contact_settle_steps,
+        use_bbox_collision=args.use_bbox_collision,
+    )
+    endpoint_accept_validator = checker.is_state_valid
+    if args.trajopt and args.sdf_trajopt and sdf_layer is not None:
+        endpoint_sdf_evaluator = KinematicSDFCollisionEvaluator(
+            kinematics=kinematics,
+            sdf_layer=sdf_layer,
+            config=make_sdf_trajopt_config(args, min(args.edge_resolution, args.playback_resolution)),
+        )
+        endpoint_accept_validator = endpoint_sdf_evaluator.is_state_nonpenetrating
+        log("[demo] Endpoint SDF check uses non-penetration only; near-contact without negative SDF will not trigger retreat.")
+        log(
+            "[demo] SDF TrajOpt endpoint relaxation: "
+            f"waypoints={args.sdf_endpoint_relax_waypoints}, "
+            f"endpoint_safe_distance_scale={args.sdf_endpoint_safe_distance_scale:.2f}"
+        )
+
+    planned_segments: list[dict[str, Any]] = []
+    transition_records: list[dict[str, Any]] = []
+    found_noncoincident_transition = False
+    scan_all_transitions = args.auto_first_transition or args.plan_all_transitions
+
+    for targets in iter_transition_targets(
+        job_dir,
+        args.weld_index,
+        args.workpiece_scale,
+        args.workpiece_offset,
+        args.workpiece_z_offset,
+        args.tcp_normal_offset,
+        args.transition_xyz_tol,
+        scan_all_transitions,
+    ):
+        transition_record: dict[str, Any] = {
+            "prev_weld_index": int(targets["prev_weld_index"]),
+            "next_weld_index": int(targets["next_weld_index"]),
+            "skip_planning": bool(targets.get("skip_planning", False)),
+            "transition_distance": float(targets.get("transition_distance", 0.0)),
+            "status": "pending",
+        }
+        log(
+            f"[demo] Loaded weld transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+            f"from {targets['vector_path']}"
+        )
+        if targets.get("skip_planning", False):
+            transition_record["status"] = "skipped_coincident"
+            transition_records.append(transition_record)
+            log(
+                f"[demo] Consecutive weld endpoint/startpoint already coincide within "
+                f"{args.transition_xyz_tol:.2e} m; continuing to next transition."
+            )
+            continue
+
+        found_noncoincident_transition = True
+        log("[demo] Solving collision-free IK endpoints.")
+        try:
+            start_tf, q_start, start_retreat_steps = solve_valid_endpoint(
+                label="start",
+                kinematics=kinematics,
+                checker=checker,
+                base_xyz=targets["start_xyz"],
+                normal=targets["start_normal"],
+                tangent=targets["tangent"],
+                seeds=seeds,
+                tcp_offset=args.tcp_normal_offset,
+                retreat_step=args.endpoint_retreat_step,
+                max_retreat_steps=args.endpoint_retreat_max_steps,
+                yaw_samples=args.endpoint_yaw_samples,
+                random_seeds=args.endpoint_random_seeds,
+                ik_rot_weight=args.endpoint_ik_rot_weight,
+                ik_max_iters=args.endpoint_ik_max_iters,
+                rng=rng,
+                endpoint_accept_validator=endpoint_accept_validator,
+            )
+            goal_tf, q_goal, goal_retreat_steps = solve_valid_endpoint(
+                label="goal",
+                kinematics=kinematics,
+                checker=checker,
+                base_xyz=targets["end_xyz"],
+                normal=targets["end_normal"],
+                tangent=targets["tangent"],
+                seeds=[q_start, q_home, np.zeros(6)],
+                tcp_offset=args.tcp_normal_offset,
+                retreat_step=args.endpoint_retreat_step,
+                max_retreat_steps=args.endpoint_retreat_max_steps,
+                yaw_samples=args.endpoint_yaw_samples,
+                random_seeds=args.endpoint_random_seeds,
+                ik_rot_weight=args.endpoint_ik_rot_weight,
+                ik_max_iters=args.endpoint_ik_max_iters,
+                rng=rng,
+                endpoint_accept_validator=endpoint_accept_validator,
+            )
+        except RuntimeError as exc:
+            transition_record["status"] = "ik_failed"
+            transition_record["error"] = str(exc)
+            transition_records.append(transition_record)
+            log(
+                f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+                f"has no collision-free IK endpoints; trying next transition. Last error: {exc}"
+            )
+            continue
+
+        targets["start_tf"] = start_tf
+        targets["goal_tf"] = goal_tf
+        collision_check_resolution = min(args.edge_resolution, args.playback_resolution)
+
+        def is_edge_valid(qa: np.ndarray, qb: np.ndarray) -> bool:
+            return checker_edge_valid(checker, qa, qb, collision_check_resolution)
+
+        try:
+            _, q_rrt_start, rrt_start_retreat_steps = solve_planning_anchor(
+                label="start",
+                kinematics=kinematics,
+                checker=checker,
+                endpoint_q=q_start,
+                base_xyz=targets["start_xyz"],
+                normal=targets["start_normal"],
+                tangent=targets["tangent"],
+                tcp_offset=args.tcp_normal_offset,
+                retreat_step=args.endpoint_retreat_step,
+                accepted_retreat_index=start_retreat_steps,
+                max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
+                ik_rot_weight=args.endpoint_ik_rot_weight,
+                ik_max_iters=args.endpoint_ik_max_iters,
+                rng=rng,
+                edge_resolution=collision_check_resolution,
+                escape_step=args.planning_anchor_escape_step,
+            )
+            _, q_rrt_goal, rrt_goal_retreat_steps = solve_planning_anchor(
+                label="goal",
+                kinematics=kinematics,
+                checker=checker,
+                endpoint_q=q_goal,
+                base_xyz=targets["end_xyz"],
+                normal=targets["end_normal"],
+                tangent=targets["tangent"],
+                tcp_offset=args.tcp_normal_offset,
+                retreat_step=args.endpoint_retreat_step,
+                accepted_retreat_index=goal_retreat_steps,
+                max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
+                ik_rot_weight=args.endpoint_ik_rot_weight,
+                ik_max_iters=args.endpoint_ik_max_iters,
+                rng=rng,
+                edge_resolution=collision_check_resolution,
+                escape_step=args.planning_anchor_escape_step,
+            )
+        except RuntimeError as exc:
+            transition_record["status"] = "anchor_failed"
+            transition_record["error"] = str(exc)
+            transition_records.append(transition_record)
+            log(
+                f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+                f"has no expandable RRT anchors; trying next transition. Last error: {exc}"
+            )
+            continue
+
+        t0 = time.perf_counter()
+        rrt_candidates = (
+            build_rrt_candidate_configs(args.rrt_step_size, args.goal_bias, args.rrt_auto_max_candidates)
+            if args.auto_rrt_adapt
+            else [(float(args.rrt_step_size), float(args.goal_bias))]
+        )
+        best_fallback_segment: dict[str, Any] | None = None
+        selected_segment: dict[str, Any] | None = None
+        rrt_attempts: list[dict[str, Any]] = []
+        for candidate_index, (candidate_step_size, candidate_goal_bias) in enumerate(rrt_candidates, start=1):
+            log(
+                f"[demo] RRT candidate {candidate_index}/{len(rrt_candidates)}: "
+                f"step_size={candidate_step_size:.4f}, goal_bias={candidate_goal_bias:.2f}"
+            )
+            try:
+                q_seed_path = rrt_connect_plan_with_restarts(
+                    q_start=q_rrt_start,
+                    q_goal=q_rrt_goal,
+                    lower=kinematics.lower,
+                    upper=kinematics.upper,
+                    is_state_valid=checker.is_state_valid,
+                    is_edge_valid=is_edge_valid,
+                    step_size=candidate_step_size,
+                    max_iter=args.max_iter,
+                    restarts=args.rrt_restarts,
+                    goal_bias=candidate_goal_bias,
+                    rng=rng,
+                    logger=log,
+                )
+            except RuntimeError as exc:
+                rrt_attempts.append(
+                    {
+                        "step_size": candidate_step_size,
+                        "goal_bias": candidate_goal_bias,
+                        "success": False,
+                        "error": str(exc),
+                    }
+                )
+                log(
+                    f"[demo] RRT candidate {candidate_index}/{len(rrt_candidates)} failed: "
+                    f"step_size={candidate_step_size:.4f}, goal_bias={candidate_goal_bias:.2f}, error={exc}"
+                )
+                continue
+
+            q_plan = q_seed_path
+            optimization_info: dict[str, Any] = {"trajopt_success": False, "trajopt_info": {"failure_reason": "trajopt_disabled"}}
+            trajopt_success = False
+            trajopt_attempts: list[dict[str, Any]] = []
+            try_next_rrt_candidate = False
+            if args.trajopt:
+                if args.sdf_trajopt:
+                    retry_reason: str | None = None
+                    for retry_index, retry_cfg in enumerate(build_sdf_trajopt_retry_configs(args, retry_reason), start=1):
+                        sdf_evaluator = KinematicSDFCollisionEvaluator(
+                            kinematics=kinematics,
+                            sdf_layer=sdf_layer,
+                            config=make_sdf_trajopt_config(args, collision_check_resolution, overrides=retry_cfg),
+                        )
+
+                        def trajopt_runner(q_seed_current: np.ndarray, logger: Any) -> tuple[np.ndarray, bool, dict[str, Any]]:
+                            return run_sdf_trajopt(
+                                q_seed=q_seed_current,
+                                lower=kinematics.lower,
+                                upper=kinematics.upper,
+                                evaluator=sdf_evaluator,
+                                logger=logger,
+                            )
+
+                        q_candidate_plan, optimization_candidate_info = optimize_path(
+                            q_seed=q_seed_path,
+                            lower=kinematics.lower,
+                            upper=kinematics.upper,
+                            is_state_valid=checker.is_state_valid,
+                            is_edge_valid=is_edge_valid,
+                            config=TrajOptConfig(
+                                num_waypoints=args.trajopt_waypoints,
+                                maxiter=retry_cfg["maxiter"],
+                                ftol=args.trajopt_ftol,
+                                smoothness_weight=args.trajopt_smoothness_weight,
+                                path_length_weight=args.trajopt_path_length_weight,
+                                seed_weight=args.trajopt_seed_weight,
+                                constraint_edge_resolution=args.edge_resolution,
+                                shortcut_iterations=args.shortcut_iterations,
+                                shortcut_passes=args.shortcut_passes,
+                                averaging_passes=args.average_passes,
+                                averaging_blend=args.average_blend,
+                                validation_resolution=collision_check_resolution,
+                            ),
+                            rng=rng,
+                            logger=log,
+                            trajopt_runner=trajopt_runner,
+                        )
+                        trajopt_info = dict(optimization_candidate_info.get("trajopt_info", {}))
+                        trajopt_info["retry_index"] = retry_index
+                        trajopt_info["retry_config"] = json_safe(retry_cfg)
+                        trajopt_attempts.append(trajopt_info)
+                        if optimization_candidate_info.get("trajopt_success", False):
+                            q_plan = q_candidate_plan
+                            optimization_info = optimization_candidate_info
+                            trajopt_success = True
+                            break
+                        retry_reason = str(trajopt_info.get("failure_reason", "optimizer_failed"))
+                        if retry_reason == "seed_infeasible_under_sdf":
+                            try_next_rrt_candidate = True
+                            break
+                        if retry_index == int(args.trajopt_retries):
+                            q_plan = q_seed_path
+                            optimization_info = optimization_candidate_info
+                            trajopt_success = False
+                else:
+                    q_plan, optimization_info = optimize_path(
+                        q_seed=q_seed_path,
+                        lower=kinematics.lower,
+                        upper=kinematics.upper,
+                        is_state_valid=checker.is_state_valid,
+                        is_edge_valid=is_edge_valid,
+                        config=TrajOptConfig(
+                            num_waypoints=args.trajopt_waypoints,
+                            maxiter=args.trajopt_maxiter,
+                            ftol=args.trajopt_ftol,
+                            smoothness_weight=args.trajopt_smoothness_weight,
+                            path_length_weight=args.trajopt_path_length_weight,
+                            seed_weight=args.trajopt_seed_weight,
+                            constraint_edge_resolution=args.edge_resolution,
+                            shortcut_iterations=args.shortcut_iterations,
+                            shortcut_passes=args.shortcut_passes,
+                            averaging_passes=args.average_passes,
+                            averaging_blend=args.average_blend,
+                            validation_resolution=collision_check_resolution,
+                        ),
+                        rng=rng,
+                        logger=log,
+                        trajopt_runner=None,
+                    )
+                    trajopt_success = bool(optimization_info.get("trajopt_success", False))
+                    trajopt_attempts = [json_safe(optimization_info.get("trajopt_info", {}))]
+
+            q_rrt_playback = densify_path(q_seed_path, args.playback_resolution)
+            if next((q for q in q_rrt_playback if not checker.is_state_valid(q)), None) is not None:
+                try_next_rrt_candidate = True
+            if try_next_rrt_candidate:
+                rrt_attempts.append(
+                    {
+                        "step_size": candidate_step_size,
+                        "goal_bias": candidate_goal_bias,
+                        "success": True,
+                        "trajopt_attempts": json_safe(trajopt_attempts),
+                        "result": "rrt_ok_but_sdf_seed_infeasible",
+                    }
+                )
+                if best_fallback_segment is None or len(q_seed_path) < len(best_fallback_segment["q_seed_path"]):
+                    q_candidate_playback = densify_path(q_seed_path, args.playback_resolution)
+                    best_fallback_segment = {
+                        "targets": targets,
+                        "q_start": q_start,
+                        "q_goal": q_goal,
+                        "q_rrt_start": q_rrt_start,
+                        "q_rrt_goal": q_rrt_goal,
+                        "rrt_step_size": candidate_step_size,
+                        "rrt_goal_bias": candidate_goal_bias,
+                        "q_seed_path": q_seed_path,
+                        "q_plan": q_seed_path,
+                        "q_rrt_playback": q_candidate_playback,
+                        "q_playback": q_candidate_playback,
+                        "tcp_points": np.array([kinematics.forward(q)[:3, 3] for q in q_candidate_playback]),
+                        "trajopt_success": False,
+                        "plan_time": time.perf_counter() - t0,
+                        "collision_check_resolution": collision_check_resolution,
+                        "optimization_info": optimization_info,
+                        "trajopt_attempts": trajopt_attempts,
+                    }
+                continue
+
+            q_playback = densify_path(q_plan, args.playback_resolution)
+            playback_collision = next((q for q in q_playback if not checker.is_state_valid(q)), None)
+            if playback_collision is not None:
+                rrt_attempts.append(
+                    {
+                        "step_size": candidate_step_size,
+                        "goal_bias": candidate_goal_bias,
+                        "success": True,
+                        "trajopt_attempts": json_safe(trajopt_attempts),
+                        "result": "playback_collision",
+                        "collision_sample": np.round(playback_collision, 4).tolist(),
+                    }
+                )
+                continue
+
+            selected_segment = {
+                "targets": targets,
+                "q_start": q_start,
+                "q_goal": q_goal,
+                "q_rrt_start": q_rrt_start,
+                "q_rrt_goal": q_rrt_goal,
+                "rrt_step_size": candidate_step_size,
+                "rrt_goal_bias": candidate_goal_bias,
+                "q_seed_path": q_seed_path,
+                "q_plan": q_plan,
+                "q_rrt_playback": q_rrt_playback,
+                "q_playback": q_playback,
+                "tcp_points": np.array([kinematics.forward(q)[:3, 3] for q in q_playback]),
+                "trajopt_success": trajopt_success,
+                "plan_time": time.perf_counter() - t0,
+                "collision_check_resolution": collision_check_resolution,
+                "optimization_info": optimization_info,
+                "trajopt_attempts": trajopt_attempts,
+            }
+            rrt_attempts.append(
+                {
+                    "step_size": candidate_step_size,
+                    "goal_bias": candidate_goal_bias,
+                    "success": True,
+                    "trajopt_attempts": json_safe(trajopt_attempts),
+                    "result": "selected",
+                }
+            )
+            if not trajopt_success and best_fallback_segment is None:
+                best_fallback_segment = selected_segment
+            if trajopt_success or not args.trajopt:
+                break
+            if selected_segment is not None and not trajopt_success:
+                break
+
+        segment_to_store = selected_segment if selected_segment is not None else best_fallback_segment
+        if segment_to_store is None:
+            transition_record["status"] = "rrt_failed"
+            transition_record["rrt_attempts"] = json_safe(rrt_attempts)
+            transition_records.append(transition_record)
+            log(
+                f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+                "failed during RRT planning or SDF seed admission; trying next transition."
+            )
+            continue
+
+        saved_files = save_transition_result(job_dir, args.results_subdir, segment_to_store)
+        transition_record.update(
+            {
+                "status": "planned",
+                "trajopt_success": bool(segment_to_store["trajopt_success"]),
+                "rrt_step_size": float(segment_to_store["rrt_step_size"]),
+                "rrt_goal_bias": float(segment_to_store["rrt_goal_bias"]),
+                "rrt_attempts": json_safe(rrt_attempts),
+                "trajopt_attempts": json_safe(segment_to_store.get("trajopt_attempts", [])),
+                "saved_files": saved_files,
+            }
+        )
+        transition_records.append(transition_record)
+        planned_segments.append(segment_to_store)
+        log(
+            f"[demo] Planned transition {targets['prev_weld_index']} -> {targets['next_weld_index']}: "
+            f"{len(segment_to_store['q_seed_path'])} RRT waypoints, {len(segment_to_store['q_plan'])} optimized waypoints, "
+            f"{len(segment_to_store['q_playback'])} playback points in {segment_to_store['plan_time']:.2f}s "
+            f"(endpoint_qs_excluded_from_trajopt=True) "
+            f"(trajopt={'accepted' if segment_to_store['trajopt_success'] else 'failed_fallback_rrt'})"
+        )
+        if not args.plan_all_transitions:
+            break
+
+    summary: dict[str, Any] = {
+        "job_dir": str(job_dir),
+        "sdf_npz_path": str(sdf_npz_path) if sdf_npz_path is not None else None,
+        "planned_transition_count": len(planned_segments),
+        "transition_records": transition_records,
+    }
+    recording_session = None
+    frames_dir = None
+    output_path = None
+    if planned_segments and args.record:
+        output_path, frames_dir = prepare_job_recording_paths(args, job_dir)
+        recording_session = start_recording_session(
+            rep=rep,
+            world=world,
+            stage=stage,
+            workpiece_info=workpiece_info,
+            frames_dir=frames_dir,
+            args=args,
+        )
+        refresh_articulation_view(world, robot, warmup_steps=1)
+        log(f"[demo] Recording frames to: {frames_dir}")
+    if planned_segments:
+        playback_segments: list[tuple[str, np.ndarray]] = []
+        compare_order = ["RRT", "Optimized"] if args.compare_playback_order == "rrt_first" else ["Optimized", "RRT"]
+        for segment in planned_segments:
+            if args.compare_playback:
+                for label in compare_order:
+                    if label == "RRT":
+                        playback_segments.append((f"RRT transition {segment['targets']['prev_weld_index']}->{segment['targets']['next_weld_index']}", segment["q_rrt_playback"]))
+                    else:
+                        optimized_label = "TrajOpt" if segment["trajopt_success"] else "Fallback"
+                        playback_segments.append((f"{optimized_label} transition {segment['targets']['prev_weld_index']}->{segment['targets']['next_weld_index']}", segment["q_playback"]))
+            else:
+                playback_segments.append(
+                    (
+                        f"Final transition {segment['targets']['prev_weld_index']}->{segment['targets']['next_weld_index']}",
+                        segment["q_playback"],
+                    )
+                )
+        run_playback_segments(world, stage, robot, dof_indices, playback_segments, args, recording_session)
+        if recording_session is not None and frames_dir is not None:
+            finish_recording_session(recording_session, frames_dir)
+            try:
+                assert output_path is not None
+                encode_video(frames_dir, output_path, args.fps)
+                summary["video_path"] = str(output_path)
+            except Exception as exc:
+                log(f"[demo] {exc}")
+                log(f"[demo] Keeping frames for manual encoding: {frames_dir}")
+                summary["video_encode_error"] = str(exc)
+                summary["frames_dir"] = str(frames_dir)
+            else:
+                if not args.keep_frames:
+                    shutil.rmtree(frames_dir)
+                log(f"[demo] Video saved to: {output_path}")
+    else:
+        summary["status"] = "no_valid_transition"
+        if not found_noncoincident_transition:
+            summary["status"] = "all_transitions_coincident"
+    summary_path = save_job_summary(job_dir, args.results_subdir, summary)
+    summary["summary_path"] = str(summary_path)
+    return summary
 
 
 def main() -> None:
@@ -2885,5 +3676,119 @@ def main() -> None:
         log(f"[demo] Video saved to: {args.output}")
 
 
+def main_v2() -> None:
+    args = parse_args()
+    if args.encode_only:
+        args.output = args.output.resolve()
+        if args.frames_dir is None:
+            args.frames_dir = args.output.parent / f"{args.output.stem}_frames"
+        frames_dir = args.frames_dir.resolve()
+        encode_video(frames_dir, args.output, args.fps)
+        log(f"[demo] Video saved to: {args.output}")
+        return
+
+    job_dirs = resolve_job_dirs(args)
+    rng = np.random.default_rng(args.seed)
+    if args.record and shutil.which("ffmpeg") is None:
+        log(
+            "[demo] WARNING: ffmpeg is not installed. Isaac will still record PNG frames; "
+            "install ffmpeg on the server to encode MP4 automatically."
+        )
+    needs_replicator = args.record or args.save_ik_screenshots
+
+    try:
+        from isaacsim import SimulationApp
+    except ImportError:
+        from omni.isaac.kit import SimulationApp
+
+    simulation_app = SimulationApp({"headless": args.headless, "enable_cameras": needs_replicator})
+    try:
+        configure_log_filters(args)
+        try:
+            from isaacsim.core.api import World
+        except ImportError:
+            from omni.isaac.core import World
+
+        from omni.usd import get_context
+        if needs_replicator:
+            import omni.replicator.core as rep
+        else:
+            rep = None
+
+        world = World(physics_dt=1.0 / 60.0, rendering_dt=1.0 / args.fps, stage_units_in_meters=1.0)
+        stage = get_context().get_stage()
+        ensure_xform(stage, "/World/Debug")
+        ground_prim_path = add_visual_ground(
+            stage,
+            size=args.visual_ground_size,
+            z=args.visual_ground_z,
+            opacity=args.visual_ground_opacity,
+        )
+        add_scene_lighting(stage)
+
+        resolved_urdf = make_resolved_urdf(args.urdf)
+        kinematics = URDFKinematics(resolved_urdf, include_tool_collision=args.include_tool_collision)
+        robot_prim_path = import_single_robot(stage, resolved_urdf)
+        add_urdf_collision_stl_proxies(
+            stage=stage,
+            robot_prim_path=robot_prim_path,
+            resolved_urdf=resolved_urdf,
+            include_tool_collision=args.include_tool_collision,
+            show_collision_proxies=args.show_collision_proxies,
+            collision_approximation=args.robot_collision_approximation,
+            sdf_resolution=args.robot_sdf_resolution,
+            sdf_subgrid_resolution=args.robot_sdf_subgrid_resolution,
+        )
+
+        log("[demo] Resetting world and initializing articulation.")
+        world.reset()
+        ensure_physics_sim_view(world, warmup_steps=2)
+        robot = make_articulation(world, robot_prim_path)
+        world.reset()
+        robot.initialize()
+        log(f"[robot] Articulation object type={type(robot).__name__}")
+        warm_up_articulation_state(world, robot)
+        dof_indices = dof_indices_for(robot, kinematics.planning_names)
+        log(f"[demo] Articulation ready: dofs={list(robot.dof_names)} planning_indices={dof_indices}")
+
+        job_summaries = []
+        for job_dir in job_dirs:
+            try:
+                job_summary = process_job(
+                    job_dir=job_dir,
+                    args=args,
+                    world=world,
+                    stage=stage,
+                    robot=robot,
+                    robot_prim_path=robot_prim_path,
+                    dof_indices=dof_indices,
+                    kinematics=kinematics,
+                    ground_prim_path=ground_prim_path,
+                    rng=rng,
+                    rep=rep,
+                )
+            except Exception as exc:
+                log(f"[demo] Job failed but batch will continue: job={job_dir}, error={exc}")
+                save_job_summary(job_dir, args.results_subdir, {"job_dir": str(job_dir), "status": "job_failed", "error": str(exc)})
+                job_summary = {"job_dir": str(job_dir), "status": "job_failed", "error": str(exc)}
+            job_summaries.append(job_summary)
+
+        completed = sum(1 for item in job_summaries if item.get("planned_transition_count", 0) > 0)
+        log(f"[demo] Batch complete: jobs={len(job_summaries)}, jobs_with_plans={completed}")
+
+        if not args.record and not args.headless:
+            log("[demo] Replay complete. Close Isaac Sim or press Ctrl+C to stop.")
+            while simulation_app.is_running():
+                world.step(render=True)
+                time.sleep(0.0)
+
+    except Exception:
+        log("[demo] Fatal error during planning or recording:")
+        traceback.print_exc()
+        raise
+    finally:
+        simulation_app.close()
+
+
 if __name__ == "__main__":
-    main()
+    main_v2()

@@ -15,7 +15,7 @@ except Exception:
 StateValidator = Callable[[np.ndarray], bool]
 EdgeValidator = Callable[[np.ndarray, np.ndarray], bool]
 Logger = Callable[[str], None]
-TrajOptRunner = Callable[[np.ndarray, Logger | None], tuple[np.ndarray, bool]]
+TrajOptRunner = Callable[[np.ndarray, Logger | None], tuple[np.ndarray, bool, dict[str, Any]]]
 
 
 @dataclass(frozen=True)
@@ -347,16 +347,16 @@ def run_trajopt(
     is_edge_valid: EdgeValidator,
     config: TrajOptConfig,
     logger: Logger | None = None,
-) -> tuple[np.ndarray, bool]:
+) -> tuple[np.ndarray, bool, dict[str, Any]]:
     if minimize is None:
         if logger is not None:
             logger("[TrajOpt] scipy.optimize is unavailable; skipping optimization.")
-        return q_seed, False
+        return q_seed, False, {"failure_reason": "solver_unavailable"}
 
     if len(q_seed) <= 2:
         if logger is not None:
             logger("[TrajOpt] Seed path has too few waypoints; skipping optimization.")
-        return q_seed, False
+        return q_seed, False, {"failure_reason": "seed_too_short"}
 
     num_waypoints = max(3, int(config.num_waypoints))
     q_init = _resample_trajectory(q_seed, num_waypoints)
@@ -366,7 +366,7 @@ def run_trajopt(
     if len(x0) == 0:
         if logger is not None:
             logger("[TrajOpt] Seed path has no internal waypoints; skipping optimization.")
-        return q_seed, False
+        return q_seed, False, {"failure_reason": "seed_has_no_internal_waypoints"}
 
     bounds = []
     for _ in range(len(q_init) - 2):
@@ -419,13 +419,31 @@ def run_trajopt(
             edge_valid = False
             break
     success = bool(result.success) and waypoint_valid and edge_valid
+    failure_reason = "accepted"
+    if not bool(result.success):
+        failure_reason = "optimizer_failed"
+    elif not waypoint_valid:
+        failure_reason = "waypoint_constraint_failed"
+    elif not edge_valid:
+        failure_reason = "edge_constraint_failed"
+    info = {
+        "optimizer_success": bool(result.success),
+        "accepted": bool(success),
+        "failure_reason": failure_reason,
+        "status": int(getattr(result, "status", -1)),
+        "nit": int(getattr(result, "nit", -1)),
+        "fun": float(result.fun),
+        "waypoint_valid": bool(waypoint_valid),
+        "edge_valid": bool(edge_valid),
+        "opt_points": int(len(q_init)),
+    }
     if logger is not None:
         logger(
             f"[TrajOpt] Finished: success={result.success} accepted={success} "
             f"waypoint_valid={waypoint_valid} edge_valid={edge_valid} "
             f"status={result.status} nit={getattr(result, 'nit', -1)} fun={float(result.fun):.4f}"
         )
-    return q_opt, success
+    return q_opt, success, info
 
 
 def optimize_path(
@@ -488,7 +506,7 @@ def optimize_path(
     stages.append("average")
 
     if trajopt_runner is None:
-        q_trajopt, trajopt_success = run_trajopt(
+        q_trajopt, trajopt_success, trajopt_info = run_trajopt(
             q_seed=current,
             lower=lower,
             upper=upper,
@@ -503,10 +521,13 @@ def optimize_path(
                 f"[PathOpt] Using conservative RRT seed for external trajopt: "
                 f"rrt_waypoints={len(trajopt_seed)} geometric_waypoints={len(current)}"
             )
-        q_trajopt, trajopt_success = trajopt_runner(trajopt_seed, logger)
+        q_trajopt, trajopt_success, trajopt_info = trajopt_runner(trajopt_seed, logger)
     if trajopt_success:
         current = accept_if_safe(q_trajopt, "trajopt")
         stages.append("trajopt")
+    else:
+        trajopt_info = dict(trajopt_info)
+        trajopt_info.setdefault("accepted", False)
 
     current = accept_if_safe(
         local_average_smooth_path(
@@ -528,4 +549,9 @@ def optimize_path(
             f"seed_waypoints={len(q_seed)} final_waypoints={len(current)} "
             f"seed_length={_path_length(q_seed):.4f} final_length={_path_length(current):.4f}"
         )
-    return current, {"trajopt_success": trajopt_success, "stages": stages, "accepted_stages": accepted_stages}
+    return current, {
+        "trajopt_success": trajopt_success,
+        "trajopt_info": trajopt_info,
+        "stages": stages,
+        "accepted_stages": accepted_stages,
+    }
