@@ -32,6 +32,7 @@ class SDFTrajOptConfig:
     dense_check_resolution: float = 0.025
     endpoint_relax_waypoints: int = 2
     endpoint_safe_distance_scale: float = 0.0
+    initial_penetration_tol: float = -0.0025
 
 
 def _interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
@@ -80,6 +81,10 @@ def _collision_penalty_from_distances(dist_arr: np.ndarray, d_safe: float) -> fl
     if len(dist_arr) == 0:
         return 0.0
     return float(np.sum(np.square(np.maximum(0.0, d_safe - dist_arr))))
+
+
+def _summary_within_tolerance(summary: dict[str, float | int], tol: float) -> bool:
+    return float(summary["arm_min_global"]) >= tol and float(summary["tool_min_global"]) >= tol
 
 
 def _endpoint_safe_distance_scale(path_index: int, num_points: int, config: SDFTrajOptConfig) -> float:
@@ -315,10 +320,8 @@ def run_sdf_trajopt(
 
     config = evaluator.config
     full_seed_summary = evaluator.summarize_trajectory(q_seed)
-    full_seed_nonpenetrating = (
-        full_seed_summary["arm_min_global"] >= evaluator.config.penetration_tol
-        and full_seed_summary["tool_min_global"] >= evaluator.config.penetration_tol
-    )
+    full_seed_nonpenetrating = _summary_within_tolerance(full_seed_summary, evaluator.config.penetration_tol)
+    full_seed_initially_acceptable = _summary_within_tolerance(full_seed_summary, evaluator.config.initial_penetration_tol)
     waypoint_counts = _candidate_waypoint_counts(
         len(q_seed),
         requested=max(3, int(config.num_waypoints)),
@@ -328,10 +331,7 @@ def run_sdf_trajopt(
     q_init_summary = evaluator.summarize_trajectory(q_init)
     selected_count = waypoint_counts[0]
     for count in waypoint_counts[1:]:
-        if (
-            q_init_summary["arm_min_global"] >= evaluator.config.penetration_tol
-            and q_init_summary["tool_min_global"] >= evaluator.config.penetration_tol
-        ):
+        if _summary_within_tolerance(q_init_summary, evaluator.config.initial_penetration_tol):
             break
         candidate = _adaptive_select_waypoints(q_seed, count, evaluator)
         candidate_summary = evaluator.summarize_trajectory(candidate)
@@ -341,10 +341,9 @@ def run_sdf_trajopt(
     selected_from_full_seed = False
     if (
         not (
-            q_init_summary["arm_min_global"] >= evaluator.config.penetration_tol
-            and q_init_summary["tool_min_global"] >= evaluator.config.penetration_tol
+            _summary_within_tolerance(q_init_summary, evaluator.config.initial_penetration_tol)
         )
-        and full_seed_nonpenetrating
+        and full_seed_initially_acceptable
         and len(q_seed) > len(q_init)
     ):
         q_init = q_seed.copy()
@@ -365,14 +364,13 @@ def run_sdf_trajopt(
             bounds.append((float(low), float(high)))
 
     if logger is not None:
-        nonpenetrating_init = (
-            q_init_summary["arm_min_global"] >= evaluator.config.penetration_tol
-            and q_init_summary["tool_min_global"] >= evaluator.config.penetration_tol
-        )
+        nonpenetrating_init = _summary_within_tolerance(q_init_summary, evaluator.config.penetration_tol)
+        acceptable_init = _summary_within_tolerance(q_init_summary, evaluator.config.initial_penetration_tol)
         logger(
             f"[SDF-TrajOpt] Starting optimization: seed_points={len(q_seed)} "
             f"requested_opt_points={config.num_waypoints} actual_opt_points={len(q_init)} "
-            f"max_opt_points={config.max_waypoints} selection=adaptive init_nonpenetrating={nonpenetrating_init} "
+            f"max_opt_points={config.max_waypoints} selection=adaptive "
+            f"init_nonpenetrating={nonpenetrating_init} init_acceptable={acceptable_init} "
             f"maxiter={config.maxiter} stride={config.constraint_point_stride} "
             f"endpoint_relax={config.endpoint_relax_waypoints} endpoint_scale={config.endpoint_safe_distance_scale:.2f}"
         )
@@ -381,12 +379,12 @@ def run_sdf_trajopt(
                 f"[SDF-TrajOpt] Adaptive compression remained penetrating up to {selected_count - 1} points; "
                 f"falling back to full nonpenetrating seed with {len(q_seed)} points."
             )
-        if not nonpenetrating_init and selected_count == waypoint_counts[-1] and selected_count < len(q_seed):
+        if not acceptable_init and selected_count == waypoint_counts[-1] and selected_count < len(q_seed):
             logger(
                 f"[SDF-TrajOpt] Initial resampled path is still penetrating at capped waypoint count {selected_count}; "
                 f"full seed has {len(q_seed)} points."
             )
-        if not nonpenetrating_init and not full_seed_nonpenetrating:
+        if not acceptable_init and not full_seed_initially_acceptable:
             logger(
                 "[SDF-TrajOpt] Full RRT seed is also penetrating under SDF evaluation; "
                 "this indicates an RRT-vs-SDF feasibility mismatch rather than waypoint compression loss."
