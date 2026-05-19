@@ -2513,15 +2513,7 @@ def main() -> None:
                     f"failed during RRT planning; trying next transition. Last error: {exc}"
                 )
                 continue
-            q_seed_parts: list[np.ndarray] = [q_start]
-            if not np.allclose(q_rrt_start, q_start, atol=1e-6):
-                q_seed_parts.append(q_rrt_start)
-            for q_mid in q_anchor_seed_path[1:-1]:
-                q_seed_parts.append(q_mid)
-            if not np.allclose(q_rrt_goal, q_goal, atol=1e-6):
-                q_seed_parts.append(q_rrt_goal)
-            q_seed_parts.append(q_goal)
-            q_seed_path = np.vstack(q_seed_parts)
+            q_seed_path = q_anchor_seed_path
             plan_time = time.perf_counter() - t0
             q_plan = q_seed_path
             trajopt_success = False
@@ -2597,6 +2589,10 @@ def main() -> None:
             planned_segments.append(
                 {
                     "targets": targets,
+                    "q_start": q_start,
+                    "q_goal": q_goal,
+                    "q_rrt_start": q_rrt_start,
+                    "q_rrt_goal": q_rrt_goal,
                     "q_seed_path": q_seed_path,
                     "q_plan": q_plan,
                     "q_playback": q_playback,
@@ -2610,6 +2606,7 @@ def main() -> None:
                 f"[demo] Planned transition {targets['prev_weld_index']} -> {targets['next_weld_index']}: "
                 f"{len(q_seed_path)} RRT waypoints, {len(q_plan)} optimized waypoints, "
                 f"{len(q_playback)} playback points in {plan_time:.2f}s "
+                f"(endpoint_qs_excluded_from_trajopt=True) "
                 f"(trajopt={'accepted' if trajopt_success else 'skipped'})"
             )
             if not args.plan_all_transitions:
