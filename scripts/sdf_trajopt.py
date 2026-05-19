@@ -314,6 +314,11 @@ def run_sdf_trajopt(
         return q_seed, False
 
     config = evaluator.config
+    full_seed_summary = evaluator.summarize_trajectory(q_seed)
+    full_seed_nonpenetrating = (
+        full_seed_summary["arm_min_global"] >= evaluator.config.penetration_tol
+        and full_seed_summary["tool_min_global"] >= evaluator.config.penetration_tol
+    )
     waypoint_counts = _candidate_waypoint_counts(
         len(q_seed),
         requested=max(3, int(config.num_waypoints)),
@@ -333,6 +338,19 @@ def run_sdf_trajopt(
         q_init = candidate
         q_init_summary = candidate_summary
         selected_count = count
+    selected_from_full_seed = False
+    if (
+        not (
+            q_init_summary["arm_min_global"] >= evaluator.config.penetration_tol
+            and q_init_summary["tool_min_global"] >= evaluator.config.penetration_tol
+        )
+        and full_seed_nonpenetrating
+        and len(q_seed) > len(q_init)
+    ):
+        q_init = q_seed.copy()
+        q_init_summary = full_seed_summary
+        selected_count = len(q_seed)
+        selected_from_full_seed = True
     q_start = q_init[0]
     q_goal = q_init[-1]
     x0 = q_init[1:-1].reshape(-1)
@@ -358,10 +376,20 @@ def run_sdf_trajopt(
             f"maxiter={config.maxiter} stride={config.constraint_point_stride} "
             f"endpoint_relax={config.endpoint_relax_waypoints} endpoint_scale={config.endpoint_safe_distance_scale:.2f}"
         )
+        if selected_from_full_seed:
+            logger(
+                f"[SDF-TrajOpt] Adaptive compression remained penetrating up to {selected_count - 1} points; "
+                f"falling back to full nonpenetrating seed with {len(q_seed)} points."
+            )
         if not nonpenetrating_init and selected_count == waypoint_counts[-1] and selected_count < len(q_seed):
             logger(
                 f"[SDF-TrajOpt] Initial resampled path is still penetrating at capped waypoint count {selected_count}; "
                 f"full seed has {len(q_seed)} points."
+            )
+        if not nonpenetrating_init and not full_seed_nonpenetrating:
+            logger(
+                "[SDF-TrajOpt] Full RRT seed is also penetrating under SDF evaluation; "
+                "this indicates an RRT-vs-SDF feasibility mismatch rather than waypoint compression loss."
             )
 
     constraints = [
