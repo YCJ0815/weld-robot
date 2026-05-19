@@ -214,7 +214,7 @@ def run_sdf_trajopt(
         return q_seed, False
 
     config = evaluator.config
-    num_waypoints = max(3, int(config.num_waypoints))
+    num_waypoints = max(3, int(config.num_waypoints), len(q_seed))
     q_init = _resample_trajectory(q_seed, num_waypoints)
     q_start = q_init[0]
     q_goal = q_init[-1]
@@ -232,7 +232,8 @@ def run_sdf_trajopt(
     if logger is not None:
         logger(
             f"[SDF-TrajOpt] Starting optimization: seed_points={len(q_seed)} "
-            f"opt_points={len(q_init)} maxiter={config.maxiter} stride={config.constraint_point_stride} "
+            f"requested_opt_points={config.num_waypoints} actual_opt_points={len(q_init)} "
+            f"maxiter={config.maxiter} stride={config.constraint_point_stride} "
             f"endpoint_relax={config.endpoint_relax_waypoints} endpoint_scale={config.endpoint_safe_distance_scale:.2f}"
         )
 
