@@ -215,7 +215,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-trajopt", dest="trajopt", action="store_false", help="Skip TrajOpt smoothing and replay the raw RRT path.")
     parser.add_argument("--trajopt-waypoints", type=int, default=12, help="Number of waypoints used by TrajOpt resampling.")
     parser.add_argument("--trajopt-max-waypoints", type=int, default=16, help="Upper bound on SDF TrajOpt resampling waypoints; 0 disables the cap.")
-    parser.add_argument("--trajopt-maxiter", type=int, default=800, help="Maximum SLSQP iterations for TrajOpt.")
+    parser.add_argument("--trajopt-maxiter", type=int, default=300, help="Maximum SLSQP iterations for TrajOpt.")
     parser.add_argument(
         "--trajopt-retries",
         type=int,
