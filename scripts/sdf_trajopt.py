@@ -29,6 +29,8 @@ class SDFTrajOptConfig:
     tool_step_size: float = 0.01
     constraint_point_stride: int = 8
     dense_check_resolution: float = 0.025
+    endpoint_relax_waypoints: int = 2
+    endpoint_safe_distance_scale: float = 0.0
 
 
 def _interpolate_edge(q_from: np.ndarray, q_to: np.ndarray, resolution: float) -> np.ndarray:
@@ -60,6 +62,18 @@ def _collision_penalty_from_distances(dist_arr: np.ndarray, d_safe: float) -> fl
     if len(dist_arr) == 0:
         return 0.0
     return float(np.sum(np.square(np.maximum(0.0, d_safe - dist_arr))))
+
+
+def _endpoint_safe_distance_scale(path_index: int, num_points: int, config: SDFTrajOptConfig) -> float:
+    relax_waypoints = max(0, int(config.endpoint_relax_waypoints))
+    if relax_waypoints <= 0 or num_points <= 2:
+        return 1.0
+    distance_from_endpoint = min(path_index, num_points - 1 - path_index)
+    if distance_from_endpoint >= relax_waypoints:
+        return 1.0
+    alpha = float(distance_from_endpoint) / float(relax_waypoints)
+    endpoint_scale = float(np.clip(config.endpoint_safe_distance_scale, 0.0, 1.0))
+    return endpoint_scale + (1.0 - endpoint_scale) * alpha
 
 
 def _reconstruct_path(x: np.ndarray, q_start: np.ndarray, q_goal: np.ndarray, n_dof: int) -> np.ndarray:
@@ -144,15 +158,16 @@ def _trajopt_objective(
         smoothness_cost = float(np.sum(np.square(q_dd)))
     path_length_cost = float(np.sum(np.linalg.norm(np.diff(path, axis=0), axis=1)))
     collision_cost = 0.0
-    for q in path:
+    for path_index, q in enumerate(path):
+        safe_scale = _endpoint_safe_distance_scale(path_index, len(path), config)
         arm_pts, tool_pts = evaluator.sample_points(q)
         collision_cost += _collision_penalty_from_distances(
             evaluator.sdf_layer.get_distances(arm_pts),
-            config.arm_safe_distance,
+            config.arm_safe_distance * safe_scale,
         )
         collision_cost += _collision_penalty_from_distances(
             evaluator.sdf_layer.get_distances(tool_pts),
-            config.tool_safe_distance,
+            config.tool_safe_distance * safe_scale,
         )
     return (
         config.collision_weight * collision_cost
@@ -217,7 +232,8 @@ def run_sdf_trajopt(
     if logger is not None:
         logger(
             f"[SDF-TrajOpt] Starting optimization: seed_points={len(q_seed)} "
-            f"opt_points={len(q_init)} maxiter={config.maxiter} stride={config.constraint_point_stride}"
+            f"opt_points={len(q_init)} maxiter={config.maxiter} stride={config.constraint_point_stride} "
+            f"endpoint_relax={config.endpoint_relax_waypoints} endpoint_scale={config.endpoint_safe_distance_scale:.2f}"
         )
 
     constraints = [
