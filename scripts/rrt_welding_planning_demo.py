@@ -171,6 +171,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trajopt", dest="trajopt", action="store_true", default=True, help="Run TrajOpt-style smoothing after RRT. Enabled by default.")
     parser.add_argument("--no-trajopt", dest="trajopt", action="store_false", help="Skip TrajOpt smoothing and replay the raw RRT path.")
     parser.add_argument("--trajopt-waypoints", type=int, default=12, help="Number of waypoints used by TrajOpt resampling.")
+    parser.add_argument("--trajopt-max-waypoints", type=int, default=24, help="Upper bound on SDF TrajOpt resampling waypoints; 0 disables the cap.")
     parser.add_argument("--trajopt-maxiter", type=int, default=5000, help="Maximum SLSQP iterations for TrajOpt.")
     parser.add_argument("--trajopt-smoothness-weight", type=float, default=5.0, help="Smoothness weight for TrajOpt.")
     parser.add_argument("--trajopt-path-length-weight", type=float, default=1.0, help="Path-length weight for TrajOpt.")
@@ -185,7 +186,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-sdf-voxelize-max-iter", type=int, default=64, help="Maximum subdivision iterations used by trimesh voxelization for cached workpiece SDF generation.")
     parser.add_argument("--sdf-collision-weight", type=float, default=2.0e8, help="Collision penalty weight for SDF TrajOpt.")
     parser.add_argument("--sdf-arm-safe-distance", type=float, default=0.01, help="Safe distance in meters for arm sample points in SDF TrajOpt.")
-    parser.add_argument("--sdf-tool-safe-distance", type=float, default=0.001, help="Safe distance in meters for tool sample points in SDF TrajOpt.")
+    parser.add_argument("--sdf-tool-safe-distance", type=float, default=0.000, help="Safe distance in meters for tool sample points in SDF TrajOpt.")
     parser.add_argument("--sdf-penetration-tol", type=float, default=-0.001, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
     parser.add_argument("--sdf-arm-step-size", type=float, default=0.02, help="Sampling resolution in meters along robot links for SDF evaluation.")
     parser.add_argument("--sdf-tool-step-size", type=float, default=0.01, help="Sampling resolution in meters along the tool segment for SDF evaluation.")
@@ -2184,6 +2185,7 @@ def main() -> None:
                 sdf_layer=sdf_layer,
                 config=SDFTrajOptConfig(
                     num_waypoints=args.trajopt_waypoints,
+                    max_waypoints=args.trajopt_max_waypoints,
                     maxiter=args.trajopt_maxiter,
                     collision_weight=args.sdf_collision_weight,
                     smoothness_weight=args.trajopt_smoothness_weight,
@@ -2408,6 +2410,7 @@ def main() -> None:
                         sdf_layer=sdf_layer,
                         config=SDFTrajOptConfig(
                             num_waypoints=args.trajopt_waypoints,
+                            max_waypoints=args.trajopt_max_waypoints,
                             maxiter=args.trajopt_maxiter,
                             collision_weight=args.sdf_collision_weight,
                             smoothness_weight=args.trajopt_smoothness_weight,

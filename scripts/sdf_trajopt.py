@@ -18,6 +18,7 @@ Logger = Callable[[str], None]
 @dataclass(frozen=True)
 class SDFTrajOptConfig:
     num_waypoints: int = 20
+    max_waypoints: int = 24
     maxiter: int = 500
     collision_weight: float = 2.0e8
     smoothness_weight: float = 8.0
@@ -80,6 +81,21 @@ def _reconstruct_path(x: np.ndarray, q_start: np.ndarray, q_goal: np.ndarray, n_
     if len(x) == 0:
         return np.vstack([q_start, q_goal])
     return np.vstack([q_start, x.reshape(-1, n_dof), q_goal])
+
+
+def _candidate_waypoint_counts(seed_len: int, requested: int, max_waypoints: int) -> list[int]:
+    if seed_len <= 0:
+        return [max(3, requested)]
+    upper_bound = seed_len if max_waypoints <= 0 else min(seed_len, max(max_waypoints, requested))
+    current = max(3, min(requested, upper_bound))
+    counts = [current]
+    while current < upper_bound:
+        remaining = upper_bound - current
+        step = max(1, int(math.ceil(remaining * 0.5)))
+        current = min(upper_bound, current + step)
+        if current != counts[-1]:
+            counts.append(current)
+    return counts
 
 
 class KinematicSDFCollisionEvaluator:
@@ -214,8 +230,25 @@ def run_sdf_trajopt(
         return q_seed, False
 
     config = evaluator.config
-    num_waypoints = max(3, int(config.num_waypoints), len(q_seed))
-    q_init = _resample_trajectory(q_seed, num_waypoints)
+    waypoint_counts = _candidate_waypoint_counts(
+        len(q_seed),
+        requested=max(3, int(config.num_waypoints)),
+        max_waypoints=int(config.max_waypoints),
+    )
+    q_init = _resample_trajectory(q_seed, waypoint_counts[0])
+    q_init_summary = evaluator.summarize_trajectory(q_init)
+    selected_count = waypoint_counts[0]
+    for count in waypoint_counts[1:]:
+        if (
+            q_init_summary["arm_min_global"] >= evaluator.config.penetration_tol
+            and q_init_summary["tool_min_global"] >= evaluator.config.penetration_tol
+        ):
+            break
+        candidate = _resample_trajectory(q_seed, count)
+        candidate_summary = evaluator.summarize_trajectory(candidate)
+        q_init = candidate
+        q_init_summary = candidate_summary
+        selected_count = count
     q_start = q_init[0]
     q_goal = q_init[-1]
     x0 = q_init[1:-1].reshape(-1)
@@ -230,12 +263,22 @@ def run_sdf_trajopt(
             bounds.append((float(low), float(high)))
 
     if logger is not None:
+        nonpenetrating_init = (
+            q_init_summary["arm_min_global"] >= evaluator.config.penetration_tol
+            and q_init_summary["tool_min_global"] >= evaluator.config.penetration_tol
+        )
         logger(
             f"[SDF-TrajOpt] Starting optimization: seed_points={len(q_seed)} "
             f"requested_opt_points={config.num_waypoints} actual_opt_points={len(q_init)} "
+            f"max_opt_points={config.max_waypoints} init_nonpenetrating={nonpenetrating_init} "
             f"maxiter={config.maxiter} stride={config.constraint_point_stride} "
             f"endpoint_relax={config.endpoint_relax_waypoints} endpoint_scale={config.endpoint_safe_distance_scale:.2f}"
         )
+        if not nonpenetrating_init and selected_count == waypoint_counts[-1] and selected_count < len(q_seed):
+            logger(
+                f"[SDF-TrajOpt] Initial resampled path is still penetrating at capped waypoint count {selected_count}; "
+                f"full seed has {len(q_seed)} points."
+            )
 
     constraints = [
         {
