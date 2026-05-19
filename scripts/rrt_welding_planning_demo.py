@@ -150,12 +150,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--endpoint-ik-max-iters", type=int, default=160, help="Maximum IK iterations per seed during endpoint solving.")
     parser.add_argument("--endpoint-yaw-samples", type=int, default=12, help="TCP rotations around weld normal per endpoint retreat attempt.")
     parser.add_argument("--endpoint-ik-rot-weight", type=float, default=0.12, help="IK orientation weight for endpoint solving.")
+    parser.add_argument(
+        "--planning-anchor-max-extra-steps",
+        type=int,
+        default=6,
+        help="Maximum additional retreat steps used to find free-space RRT anchor poses beyond the accepted weld endpoints.",
+    )
+    parser.add_argument(
+        "--planning-anchor-escape-step",
+        type=float,
+        default=0.04,
+        help="Joint-space probe step used to verify that an RRT anchor can expand away from its root.",
+    )
     parser.add_argument("--rrt-step-size", type=float, default=0.08, help="RRT joint-space step size.")
     parser.add_argument("--edge-resolution", type=float, default=0.08, help="Joint-space edge collision resolution.")
     parser.add_argument("--playback-resolution", type=float, default=0.025, help="Joint-space playback interpolation resolution.")
     parser.add_argument("--max-iter", type=int, default=50000, help="Maximum RRT-Connect iterations per restart.")
     parser.add_argument("--rrt-restarts", type=int, default=4, help="Number of RRT-Connect restarts.")
-    parser.add_argument("--goal-bias", type=float, default=0.35, help="Probability of sampling q_goal.")
+    parser.add_argument("--goal-bias", type=float, default=0.45, help="Probability of sampling q_goal.")
     parser.add_argument("--trajopt", dest="trajopt", action="store_true", default=True, help="Run TrajOpt-style smoothing after RRT. Enabled by default.")
     parser.add_argument("--no-trajopt", dest="trajopt", action="store_false", help="Skip TrajOpt smoothing and replay the raw RRT path.")
     parser.add_argument("--trajopt-waypoints", type=int, default=10, help="Number of waypoints used by TrajOpt resampling.")
@@ -1532,6 +1544,123 @@ def solve_valid_endpoint(
     )
 
 
+def checker_edge_valid(checker: Any, qa: np.ndarray, qb: np.ndarray, resolution: float) -> bool:
+    for q in interpolate_edge(qa, qb, resolution)[1:]:
+        if not checker.is_state_valid(q):
+            return False
+    return True
+
+
+def has_rrt_root_escape(
+    q_root: np.ndarray,
+    lower: np.ndarray,
+    upper: np.ndarray,
+    checker: Any,
+    edge_resolution: float,
+    escape_step: float,
+) -> bool:
+    for dof_idx in range(len(q_root)):
+        for sign in (-1.0, 1.0):
+            q_probe = q_root.copy()
+            q_probe[dof_idx] = float(np.clip(q_probe[dof_idx] + sign * escape_step, lower[dof_idx], upper[dof_idx]))
+            if np.allclose(q_probe, q_root, atol=1e-9):
+                continue
+            if not checker.is_state_valid(q_probe):
+                continue
+            if checker_edge_valid(checker, q_root, q_probe, edge_resolution):
+                return True
+    return False
+
+
+def solve_planning_anchor(
+    label: str,
+    kinematics: URDFKinematics,
+    checker: Any,
+    endpoint_q: np.ndarray,
+    base_xyz: np.ndarray,
+    normal: np.ndarray,
+    tangent: np.ndarray,
+    tcp_offset: float,
+    retreat_step: float,
+    accepted_retreat_index: int,
+    max_extra_retreat_steps: int,
+    ik_rot_weight: float,
+    ik_max_iters: int,
+    rng: np.random.Generator,
+    edge_resolution: float,
+    escape_step: float,
+) -> tuple[np.ndarray, np.ndarray, int]:
+    if checker.is_state_valid(endpoint_q) and has_rrt_root_escape(
+        endpoint_q,
+        kinematics.lower,
+        kinematics.upper,
+        checker,
+        edge_resolution=edge_resolution,
+        escape_step=escape_step,
+    ):
+        return (
+            retreated_target_tf(base_xyz, normal, tangent, tcp_offset, retreat_step, accepted_retreat_index, yaw_about_normal=0.0),
+            endpoint_q.copy(),
+            accepted_retreat_index,
+        )
+
+    last_error: Exception | None = None
+    total_max_index = accepted_retreat_index + max(0, int(max_extra_retreat_steps))
+    for retreat_index in range(accepted_retreat_index + 1, total_max_index + 1):
+        target_tf = retreated_target_tf(
+            base_xyz,
+            normal,
+            tangent,
+            tcp_offset,
+            retreat_step,
+            retreat_index,
+            yaw_about_normal=0.0,
+        )
+        seed_pool = build_endpoint_seed_pool(
+            [endpoint_q],
+            kinematics.lower,
+            kinematics.upper,
+            rng,
+            random_count=0,
+        )
+        try:
+            q_anchor = kinematics.solve_ik(
+                target_tf,
+                seed_pool,
+                max_iters=ik_max_iters,
+                rot_weight=ik_rot_weight,
+            )
+        except RuntimeError as exc:
+            last_error = exc
+            continue
+        if not checker.is_state_valid(q_anchor):
+            last_error = RuntimeError(f"{label} anchor collides at retreat_index={retreat_index}")
+            continue
+        if not checker_edge_valid(checker, endpoint_q, q_anchor, edge_resolution):
+            last_error = RuntimeError(f"{label} anchor edge back to endpoint collides at retreat_index={retreat_index}")
+            continue
+        if not has_rrt_root_escape(
+            q_anchor,
+            kinematics.lower,
+            kinematics.upper,
+            checker,
+            edge_resolution=edge_resolution,
+            escape_step=escape_step,
+        ):
+            last_error = RuntimeError(f"{label} anchor still cannot expand from root at retreat_index={retreat_index}")
+            continue
+        log(
+            f"[endpoint] {label} planning anchor retreated to {retreat_step * retreat_index:.3f} m "
+            f"(accepted endpoint was {retreat_step * accepted_retreat_index:.3f} m)."
+        )
+        return target_tf, q_anchor, retreat_index
+
+    raise RuntimeError(
+        f"Could not find an expandable RRT anchor for {label} after {max_extra_retreat_steps} extra retreat steps. "
+        f"Last error: {last_error}"
+    )
+
+
 def draw_curve(
     stage: Any,
     prim_path: str,
@@ -2184,18 +2313,62 @@ def main() -> None:
                 world.step(render=True)
 
             collision_check_resolution = min(args.edge_resolution, args.playback_resolution)
-
             def is_edge_valid(qa: np.ndarray, qb: np.ndarray) -> bool:
-                for q in interpolate_edge(qa, qb, collision_check_resolution)[1:]:
-                    if not checker.is_state_valid(q):
-                        return False
-                return True
+                return checker_edge_valid(checker, qa, qb, collision_check_resolution)
+
+            try:
+                rrt_start_tf, q_rrt_start, rrt_start_retreat_steps = solve_planning_anchor(
+                    label="start",
+                    kinematics=kinematics,
+                    checker=checker,
+                    endpoint_q=q_start,
+                    base_xyz=targets["start_xyz"],
+                    normal=targets["start_normal"],
+                    tangent=targets["tangent"],
+                    tcp_offset=args.tcp_normal_offset,
+                    retreat_step=args.endpoint_retreat_step,
+                    accepted_retreat_index=start_retreat_steps,
+                    max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
+                    ik_rot_weight=args.endpoint_ik_rot_weight,
+                    ik_max_iters=args.endpoint_ik_max_iters,
+                    rng=rng,
+                    edge_resolution=collision_check_resolution,
+                    escape_step=args.planning_anchor_escape_step,
+                )
+                rrt_goal_tf, q_rrt_goal, rrt_goal_retreat_steps = solve_planning_anchor(
+                    label="goal",
+                    kinematics=kinematics,
+                    checker=checker,
+                    endpoint_q=q_goal,
+                    base_xyz=targets["end_xyz"],
+                    normal=targets["end_normal"],
+                    tangent=targets["tangent"],
+                    tcp_offset=args.tcp_normal_offset,
+                    retreat_step=args.endpoint_retreat_step,
+                    accepted_retreat_index=goal_retreat_steps,
+                    max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
+                    ik_rot_weight=args.endpoint_ik_rot_weight,
+                    ik_max_iters=args.endpoint_ik_max_iters,
+                    rng=rng,
+                    edge_resolution=collision_check_resolution,
+                    escape_step=args.planning_anchor_escape_step,
+                )
+            except RuntimeError as exc:
+                log(
+                    f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+                    f"has no expandable RRT anchors; trying next transition. Last error: {exc}"
+                )
+                continue
+            log(
+                f"[demo] RRT anchors ready: start_retreat_steps={rrt_start_retreat_steps}, "
+                f"goal_retreat_steps={rrt_goal_retreat_steps}"
+            )
 
             t0 = time.perf_counter()
             try:
-                q_seed_path = rrt_connect_plan_with_restarts(
-                    q_start=q_start,
-                    q_goal=q_goal,
+                q_anchor_seed_path = rrt_connect_plan_with_restarts(
+                    q_start=q_rrt_start,
+                    q_goal=q_rrt_goal,
                     lower=kinematics.lower,
                     upper=kinematics.upper,
                     is_state_valid=checker.is_state_valid,
@@ -2213,6 +2386,15 @@ def main() -> None:
                     f"failed during RRT planning; trying next transition. Last error: {exc}"
                 )
                 continue
+            q_seed_parts: list[np.ndarray] = [q_start]
+            if not np.allclose(q_rrt_start, q_start, atol=1e-6):
+                q_seed_parts.append(q_rrt_start)
+            for q_mid in q_anchor_seed_path[1:-1]:
+                q_seed_parts.append(q_mid)
+            if not np.allclose(q_rrt_goal, q_goal, atol=1e-6):
+                q_seed_parts.append(q_rrt_goal)
+            q_seed_parts.append(q_goal)
+            q_seed_path = np.vstack(q_seed_parts)
             plan_time = time.perf_counter() - t0
             q_plan = q_seed_path
             trajopt_success = False
