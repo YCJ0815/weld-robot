@@ -187,12 +187,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sdf-collision-weight", type=float, default=2.0e8, help="Collision penalty weight for SDF TrajOpt.")
     parser.add_argument("--sdf-arm-safe-distance", type=float, default=0.01, help="Safe distance in meters for arm sample points in SDF TrajOpt.")
     parser.add_argument("--sdf-tool-safe-distance", type=float, default=0.000, help="Safe distance in meters for tool sample points in SDF TrajOpt.")
-    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.0011, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
+    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.0015, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
     parser.add_argument(
         "--sdf-initial-penetration-tol",
         type=float,
         default=-0.0025,
         help="Allowed signed-distance penetration tolerance in meters for accepting the initial SDF TrajOpt seed before optimization starts.",
+    )
+    parser.add_argument(
+        "--sdf-seed-fallback-penetration-tol",
+        type=float,
+        default=-0.0045,
+        help="More relaxed signed-distance penetration tolerance in meters for falling back to the full RRT seed as the initial SDF TrajOpt seed.",
     )
     parser.add_argument("--sdf-arm-step-size", type=float, default=0.02, help="Sampling resolution in meters along robot links for SDF evaluation.")
     parser.add_argument("--sdf-tool-step-size", type=float, default=0.01, help="Sampling resolution in meters along the tool segment for SDF evaluation.")
@@ -2325,6 +2331,7 @@ def main() -> None:
                     tool_safe_distance=args.sdf_tool_safe_distance,
                     penetration_tol=args.sdf_penetration_tol,
                     initial_penetration_tol=args.sdf_initial_penetration_tol,
+                    seed_fallback_penetration_tol=args.sdf_seed_fallback_penetration_tol,
                     arm_step_size=args.sdf_arm_step_size,
                     tool_step_size=args.sdf_tool_step_size,
                     constraint_point_stride=args.sdf_constraint_point_stride,
@@ -2543,6 +2550,7 @@ def main() -> None:
                             tool_safe_distance=args.sdf_tool_safe_distance,
                             penetration_tol=args.sdf_penetration_tol,
                             initial_penetration_tol=args.sdf_initial_penetration_tol,
+                            seed_fallback_penetration_tol=args.sdf_seed_fallback_penetration_tol,
                             arm_step_size=args.sdf_arm_step_size,
                             tool_step_size=args.sdf_tool_step_size,
                             constraint_point_stride=args.sdf_constraint_point_stride,
