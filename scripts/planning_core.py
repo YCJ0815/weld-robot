@@ -439,6 +439,7 @@ def optimize_path(
     trajopt_runner: TrajOptRunner | None = None,
 ) -> tuple[np.ndarray, dict[str, Any]]:
     current = q_seed.copy()
+    trajopt_seed = q_seed.copy()
     stages: list[str] = ["rrt_seed"]
     accepted_stages: list[str] = ["rrt_seed"]
     validation_resolution = max(1e-6, float(config.validation_resolution))
@@ -496,7 +497,12 @@ def optimize_path(
             logger=logger,
         )
     else:
-        q_trajopt, trajopt_success = trajopt_runner(current, logger)
+        if logger is not None and len(trajopt_seed) != len(current):
+            logger(
+                f"[PathOpt] Using conservative RRT seed for external trajopt: "
+                f"rrt_waypoints={len(trajopt_seed)} geometric_waypoints={len(current)}"
+            )
+        q_trajopt, trajopt_success = trajopt_runner(trajopt_seed, logger)
     if trajopt_success:
         current = accept_if_safe(q_trajopt, "trajopt")
         stages.append("trajopt")
