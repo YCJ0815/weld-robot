@@ -219,7 +219,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--sdf-arm-safe-distance", type=float, default=0.01, help="Safe distance in meters for arm sample points in SDF TrajOpt.")
     parser.add_argument("--sdf-tool-safe-distance", type=float, default=0.000, help="Safe distance in meters for tool sample points in SDF TrajOpt.")
-    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.0015, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
+    parser.add_argument("--sdf-penetration-tol", type=float, default=-0.002, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
     parser.add_argument(
         "--sdf-initial-penetration-tol",
         type=float,
