@@ -59,6 +59,23 @@ def _resample_trajectory(path: np.ndarray, num_waypoints: int) -> np.ndarray:
     return np.column_stack([np.interp(target_s, cum_len, path[:, j]) for j in range(path.shape[1])])
 
 
+def _normalized_curvature_scores(path: np.ndarray) -> np.ndarray:
+    scores = np.zeros(len(path), dtype=float)
+    if len(path) <= 2:
+        return scores
+    for i in range(1, len(path) - 1):
+        prev_step = path[i] - path[i - 1]
+        next_step = path[i + 1] - path[i]
+        denom = float(np.linalg.norm(prev_step) + np.linalg.norm(next_step))
+        if denom < 1e-9:
+            continue
+        scores[i] = float(np.linalg.norm(path[i + 1] - 2.0 * path[i] + path[i - 1]) / denom)
+    max_score = float(np.max(scores))
+    if max_score > 1e-12:
+        scores /= max_score
+    return scores
+
+
 def _collision_penalty_from_distances(dist_arr: np.ndarray, d_safe: float) -> float:
     if len(dist_arr) == 0:
         return 0.0
@@ -157,6 +174,60 @@ class KinematicSDFCollisionEvaluator:
         }
 
 
+def _adaptive_select_waypoints(
+    path: np.ndarray,
+    num_waypoints: int,
+    evaluator: KinematicSDFCollisionEvaluator,
+) -> np.ndarray:
+    if len(path) <= num_waypoints:
+        return path.copy()
+
+    num_waypoints = max(2, int(num_waypoints))
+    curvature_scores = _normalized_curvature_scores(path)
+    clearance_scores = np.zeros(len(path), dtype=float)
+    target_clearance = max(
+        1e-6,
+        float(max(evaluator.config.arm_safe_distance, evaluator.config.tool_safe_distance)),
+    )
+    for i, q in enumerate(path):
+        state_eval = evaluator.evaluate_state(q)
+        clearance = float(min(state_eval["arm_min"], state_eval["tool_min"]))
+        clearance_scores[i] = max(0.0, target_clearance - clearance) / target_clearance
+
+    selected = {0, len(path) - 1}
+    num_uniform_anchors = min(num_waypoints, max(2, int(math.ceil(num_waypoints * 0.35))))
+    uniform_indices = np.linspace(0, len(path) - 1, num_uniform_anchors).round().astype(int)
+    selected.update(int(idx) for idx in uniform_indices.tolist())
+
+    importance = 1.5 * clearance_scores + curvature_scores
+    ranked_indices = np.argsort(-importance)
+    for idx in ranked_indices.tolist():
+        if len(selected) >= num_waypoints:
+            break
+        selected.add(int(idx))
+
+    if len(selected) < num_waypoints:
+        for idx in range(len(path)):
+            if len(selected) >= num_waypoints:
+                break
+            selected.add(idx)
+
+    ordered_indices = np.array(sorted(selected), dtype=int)
+    if len(ordered_indices) > num_waypoints:
+        keep_mask = np.zeros(len(ordered_indices), dtype=bool)
+        keep_mask[0] = True
+        keep_mask[-1] = True
+        interior = ordered_indices[1:-1]
+        interior_scores = importance[interior]
+        remaining = num_waypoints - 2
+        if remaining > 0 and len(interior) > 0:
+            top_positions = np.argsort(-interior_scores)[:remaining]
+            keep_mask[1 + np.sort(top_positions)] = True
+        ordered_indices = ordered_indices[keep_mask]
+        ordered_indices.sort()
+    return path[ordered_indices]
+
+
 def _trajopt_objective(
     x: np.ndarray,
     q_start: np.ndarray,
@@ -235,7 +306,7 @@ def run_sdf_trajopt(
         requested=max(3, int(config.num_waypoints)),
         max_waypoints=int(config.max_waypoints),
     )
-    q_init = _resample_trajectory(q_seed, waypoint_counts[0])
+    q_init = _adaptive_select_waypoints(q_seed, waypoint_counts[0], evaluator)
     q_init_summary = evaluator.summarize_trajectory(q_init)
     selected_count = waypoint_counts[0]
     for count in waypoint_counts[1:]:
@@ -244,7 +315,7 @@ def run_sdf_trajopt(
             and q_init_summary["tool_min_global"] >= evaluator.config.penetration_tol
         ):
             break
-        candidate = _resample_trajectory(q_seed, count)
+        candidate = _adaptive_select_waypoints(q_seed, count, evaluator)
         candidate_summary = evaluator.summarize_trajectory(candidate)
         q_init = candidate
         q_init_summary = candidate_summary
@@ -270,7 +341,7 @@ def run_sdf_trajopt(
         logger(
             f"[SDF-TrajOpt] Starting optimization: seed_points={len(q_seed)} "
             f"requested_opt_points={config.num_waypoints} actual_opt_points={len(q_init)} "
-            f"max_opt_points={config.max_waypoints} init_nonpenetrating={nonpenetrating_init} "
+            f"max_opt_points={config.max_waypoints} selection=adaptive init_nonpenetrating={nonpenetrating_init} "
             f"maxiter={config.maxiter} stride={config.constraint_point_stride} "
             f"endpoint_relax={config.endpoint_relax_waypoints} endpoint_scale={config.endpoint_safe_distance_scale:.2f}"
         )
