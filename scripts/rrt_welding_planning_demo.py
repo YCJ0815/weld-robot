@@ -2636,7 +2636,7 @@ def process_job(
     planned_segments: list[dict[str, Any]] = []
     transition_records: list[dict[str, Any]] = []
     found_noncoincident_transition = False
-    scan_all_transitions = args.auto_first_transition or args.plan_all_transitions
+    scan_all_transitions = args.auto_first_transition or args.plan_all_transitions or args.all_jobs
 
     for targets in iter_transition_targets(
         job_dir,
@@ -3026,7 +3026,7 @@ def process_job(
             f"(endpoint_qs_excluded_from_trajopt=True) "
             f"(trajopt={'accepted' if segment_to_store['trajopt_success'] else 'failed_fallback_rrt'})"
         )
-        if not args.plan_all_transitions:
+        if not args.plan_all_transitions and not args.all_jobs:
             break
 
     summary: dict[str, Any] = {
