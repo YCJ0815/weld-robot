@@ -229,7 +229,7 @@ def parse_args() -> argparse.Namespace:
         help="SLSQP convergence tolerance for the legacy non-SDF TrajOpt.",
     )
     parser.add_argument("--trajopt-smoothness-weight", type=float, default=5.0, help="Smoothness weight for TrajOpt.")
-    parser.add_argument("--trajopt-path-length-weight", type=float, default=1.0, help="Path-length weight for TrajOpt.")
+    parser.add_argument("--trajopt-path-length-weight", type=float, default=0.5, help="Path-length weight for TrajOpt.")
     parser.add_argument("--trajopt-seed-weight", type=float, default=0.05, help="Seed-adherence weight for TrajOpt.")
     parser.add_argument("--sdf-trajopt", dest="sdf_trajopt", action="store_true", default=True, help="Use cached workpiece SDF for trajectory optimization. Enabled by default.")
     parser.add_argument("--no-sdf-trajopt", dest="sdf_trajopt", action="store_false", help="Use the legacy non-SDF TrajOpt fallback.")
@@ -243,7 +243,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sdf-trajopt-ftol",
         type=float,
-        default=1e-3,
+        default=2e-3,
         help="SLSQP convergence tolerance for SDF TrajOpt.",
     )
     parser.add_argument("--sdf-arm-safe-distance", type=float, default=0.01, help="Safe distance in meters for arm sample points in SDF TrajOpt.")
@@ -292,7 +292,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--shortcut-passes", type=int, default=6, help="Number of shortcut smoothing passes.")
     parser.add_argument("--average-passes", type=int, default=8, help="Number of local averaging smoothing passes.")
     parser.add_argument("--average-blend", type=float, default=0.4, help="Blend factor for local averaging smoothing.")
-    parser.add_argument("--collision-padding", type=float, default=0.015, help="AABB padding for PhysX overlap queries.")
+    parser.add_argument("--collision-padding", type=float, default=0.005, help="AABB padding for PhysX overlap queries.")
     parser.add_argument(
         "--robot-collision-approximation",
         type=str,
