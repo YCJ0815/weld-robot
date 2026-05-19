@@ -171,8 +171,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--trajopt", dest="trajopt", action="store_true", default=True, help="Run TrajOpt-style smoothing after RRT. Enabled by default.")
     parser.add_argument("--no-trajopt", dest="trajopt", action="store_false", help="Skip TrajOpt smoothing and replay the raw RRT path.")
     parser.add_argument("--trajopt-waypoints", type=int, default=12, help="Number of waypoints used by TrajOpt resampling.")
-    parser.add_argument("--trajopt-max-waypoints", type=int, default=24, help="Upper bound on SDF TrajOpt resampling waypoints; 0 disables the cap.")
-    parser.add_argument("--trajopt-maxiter", type=int, default=5000, help="Maximum SLSQP iterations for TrajOpt.")
+    parser.add_argument("--trajopt-max-waypoints", type=int, default=16, help="Upper bound on SDF TrajOpt resampling waypoints; 0 disables the cap.")
+    parser.add_argument("--trajopt-maxiter", type=int, default=800, help="Maximum SLSQP iterations for TrajOpt.")
     parser.add_argument("--trajopt-smoothness-weight", type=float, default=5.0, help="Smoothness weight for TrajOpt.")
     parser.add_argument("--trajopt-path-length-weight", type=float, default=1.0, help="Path-length weight for TrajOpt.")
     parser.add_argument("--trajopt-seed-weight", type=float, default=0.05, help="Seed-adherence weight for TrajOpt.")
@@ -190,7 +190,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--sdf-penetration-tol", type=float, default=-0.001, help="Allowed signed-distance penetration tolerance in meters for SDF TrajOpt.")
     parser.add_argument("--sdf-arm-step-size", type=float, default=0.02, help="Sampling resolution in meters along robot links for SDF evaluation.")
     parser.add_argument("--sdf-tool-step-size", type=float, default=0.01, help="Sampling resolution in meters along the tool segment for SDF evaluation.")
-    parser.add_argument("--sdf-constraint-point-stride", type=int, default=8, help="Stride for sampled points used in SDF non-penetration constraints.")
+    parser.add_argument("--sdf-constraint-point-stride", type=int, default=12, help="Stride for sampled points used in SDF non-penetration constraints.")
     parser.add_argument(
         "--sdf-endpoint-relax-waypoints",
         type=int,
