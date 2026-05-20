@@ -78,6 +78,26 @@ def configure_log_filters(args: argparse.Namespace) -> None:
         log(f"[demo] Failed to configure log filters: {exc}")
 
 
+def configure_render_settings(args: argparse.Namespace) -> None:
+    try:
+        import carb.settings
+
+        settings = carb.settings.get_settings()
+        if args.disable_shadows:
+            settings.set("/rtx/shadows/enabled", False)
+            settings.set("/rtx/raytracing/shadows/enabled", False)
+        if args.disable_ambient_occlusion:
+            settings.set("/rtx/ambientOcclusion/enabled", False)
+        if args.disable_shadows or args.disable_ambient_occlusion:
+            log(
+                "[demo] Render overrides: "
+                f"disable_shadows={args.disable_shadows}, "
+                f"disable_ambient_occlusion={args.disable_ambient_occlusion}"
+            )
+    except Exception as exc:
+        log(f"[demo] Failed to configure render settings: {exc}")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Run an Isaac Sim RRT welding path-planning demo.")
     parser.add_argument("--job-dir", type=Path, default=DEFAULT_JOB_DIR, help="Generated job directory.")
@@ -163,6 +183,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--visual-ground-size", type=float, default=2.0, help="Size of the collidable visual ground plane.")
     parser.add_argument("--visual-ground-z", type=float, default=-0.002, help="Z height of the collidable visual ground plane.")
     parser.add_argument("--visual-ground-opacity", type=float, default=0.18, help="Visual opacity for the collidable ground plane.")
+    parser.add_argument(
+        "--disable-shadows",
+        action="store_true",
+        help="Disable RTX shadow rendering to check whether apparent gaps are caused by lighting.",
+    )
+    parser.add_argument(
+        "--disable-ambient-occlusion",
+        action="store_true",
+        help="Disable ambient occlusion to reduce contact-darkening artifacts in the Isaac Sim render.",
+    )
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="STL and weld xyz scale, mm to m.")
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.5, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
@@ -492,18 +522,6 @@ def prepare_job_recording_paths(args: argparse.Namespace, job_dir: Path) -> tupl
             raise FileExistsError(f"Frames directory already exists. Use --overwrite: {frames_dir}")
     frames_dir.mkdir(parents=True, exist_ok=True)
     return output_path, frames_dir
-
-
-def resolve_workpiece_mesh_path(job_dir: Path) -> Path:
-    sim_stl = job_dir / "workpiece_sim.stl"
-    if sim_stl.exists():
-        return sim_stl
-    stl = job_dir / "workpiece.stl"
-    if stl.exists():
-        return stl
-    raise FileNotFoundError(
-        f"No workpiece mesh found under {job_dir} (expected workpiece_sim.stl or workpiece.stl)."
-    )
 
 
 def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
@@ -2661,11 +2679,9 @@ def process_job(
     job_dir = job_dir.resolve()
     log(f"[demo] Starting job: {job_dir}")
     clear_job_prims(stage)
-    workpiece_mesh_path = resolve_workpiece_mesh_path(job_dir)
-    log(f"[demo] Using workpiece mesh for simulation: {workpiece_mesh_path.name}")
     workpiece_info = import_collision_stl(
         stage,
-        stl_path=workpiece_mesh_path,
+        stl_path=job_dir / "workpiece.stl",
         prim_path="/World/Workpiece",
         scale=args.workpiece_scale,
         z_offset=args.workpiece_z_offset,
@@ -2681,7 +2697,7 @@ def process_job(
             else (job_dir / "workpiece_sdf.npz").resolve()
         )
         sdf_layer, sdf_npz_path = load_or_build_workpiece_sdf(
-            stl_path=workpiece_mesh_path.resolve(),
+            stl_path=(job_dir / "workpiece.stl").resolve(),
             scale=args.workpiece_scale,
             z_offset=args.workpiece_z_offset,
             local_offset=tuple(float(v) for v in args.workpiece_offset),
@@ -3243,6 +3259,7 @@ def main() -> None:
     simulation_app = SimulationApp({"headless": args.headless, "enable_cameras": needs_replicator})
     try:
         configure_log_filters(args)
+        configure_render_settings(args)
         try:
             from isaacsim.core.api import World
         except ImportError:
@@ -3276,11 +3293,9 @@ def main() -> None:
             sdf_resolution=args.robot_sdf_resolution,
             sdf_subgrid_resolution=args.robot_sdf_subgrid_resolution,
         )
-        workpiece_mesh_path = resolve_workpiece_mesh_path(args.job_dir.resolve())
-        log(f"[demo] Using workpiece mesh for simulation: {workpiece_mesh_path.name}")
         workpiece_info = import_collision_stl(
             stage,
-            stl_path=workpiece_mesh_path,
+            stl_path=args.job_dir / "workpiece.stl",
             prim_path="/World/Workpiece",
             scale=args.workpiece_scale,
             z_offset=args.workpiece_z_offset,
@@ -3296,7 +3311,7 @@ def main() -> None:
                 else (args.job_dir / "workpiece_sdf.npz").resolve()
             )
             sdf_layer, sdf_npz_path = load_or_build_workpiece_sdf(
-                stl_path=workpiece_mesh_path.resolve(),
+                stl_path=(args.job_dir / "workpiece.stl").resolve(),
                 scale=args.workpiece_scale,
                 z_offset=args.workpiece_z_offset,
                 local_offset=tuple(float(v) for v in args.workpiece_offset),
@@ -3872,6 +3887,7 @@ def main_v2() -> None:
     simulation_app = SimulationApp({"headless": args.headless, "enable_cameras": needs_replicator})
     try:
         configure_log_filters(args)
+        configure_render_settings(args)
         try:
             from isaacsim.core.api import World
         except ImportError:
