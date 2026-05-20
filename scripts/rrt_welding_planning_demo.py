@@ -115,17 +115,17 @@ def parse_args() -> argparse.Namespace:
         "--transition-xyz-tol",
         type=float,
         default=1e-6,
-        help="Skip planning when consecutive weld endpoint/startpoint xyz are already coincident within this tolerance.",
+        help="Skip planning when a sampled weld-end to weld-start pair is already coincident within this tolerance.",
     )
     parser.add_argument(
         "--auto-first-transition",
         action="store_true",
-        help="Scan consecutive weld pairs and plan only the first transition whose endpoint/startpoint xyz do not coincide.",
+        help="Randomly sample weld-end to weld-start pairs and plan only the first valid non-coincident transition.",
     )
     parser.add_argument(
         "--plan-all-transitions",
         action="store_true",
-        help="Plan and optimize every valid transition from weld_index onward instead of stopping at the first successful one.",
+        help="Plan and optimize every valid sampled weld-end to weld-start transition instead of stopping at the first successful one.",
     )
     parser.add_argument("--seed", type=int, default=7, help="RRT random seed.")
     parser.add_argument("--headless", action="store_true", help="Run Isaac Sim headless.")
@@ -1316,6 +1316,75 @@ def _world_xyz(xyz: list[float], scale: float, offset: list[float], z_offset: fl
     return point
 
 
+def load_welds_data(job_dir: Path) -> tuple[Path, list[dict[str, Any]]]:
+    vector_path = job_dir / "weld_vectors.json"
+    with vector_path.open("r", encoding="utf-8") as f:
+        welds = json.load(f)["welds"]
+    return vector_path, welds
+
+
+def build_transition_targets_from_pair(
+    vector_path: Path,
+    welds: list[dict[str, Any]],
+    from_weld_index: int,
+    to_weld_index: int,
+    scale: float,
+    offset: list[float],
+    z_offset: float,
+    tcp_offset: float,
+    transition_xyz_tol: float,
+) -> dict[str, Any]:
+    if from_weld_index < 0 or from_weld_index >= len(welds):
+        raise IndexError(f"from_weld_index {from_weld_index} out of range 0..{len(welds) - 1}")
+    if to_weld_index < 0 or to_weld_index >= len(welds):
+        raise IndexError(f"to_weld_index {to_weld_index} out of range 0..{len(welds) - 1}")
+    if from_weld_index == to_weld_index:
+        raise ValueError("Transition pairs must use two different welds.")
+
+    from_weld = welds[from_weld_index]
+    to_weld = welds[to_weld_index]
+
+    from_start_xyz = _world_xyz(from_weld["start"]["xyz"], scale, offset, z_offset)
+    from_end_xyz = _world_xyz(from_weld["end"]["xyz"], scale, offset, z_offset)
+    to_start_xyz = _world_xyz(to_weld["start"]["xyz"], scale, offset, z_offset)
+    to_end_xyz = _world_xyz(to_weld["end"]["xyz"], scale, offset, z_offset)
+
+    from_tangent = normalize(from_end_xyz - from_start_xyz)
+    to_tangent = normalize(to_end_xyz - to_start_xyz)
+
+    start_xyz = from_end_xyz
+    goal_xyz = to_start_xyz
+    transition_distance = float(np.linalg.norm(goal_xyz - start_xyz))
+    if transition_distance <= transition_xyz_tol:
+        return {
+            "vector_path": vector_path,
+            "skip_planning": True,
+            "transition_distance": transition_distance,
+            "start_xyz": start_xyz,
+            "end_xyz": goal_xyz,
+            "prev_weld_index": from_weld_index,
+            "next_weld_index": to_weld_index,
+        }
+
+    start_normal = resolve_pose_normal(from_weld["end"].get("pose"), "source weld end", from_tangent)
+    goal_normal = resolve_pose_normal(to_weld["start"].get("pose"), "target weld start", to_tangent)
+    transition_tangent = normalize(goal_xyz - start_xyz)
+    return {
+        "vector_path": vector_path,
+        "skip_planning": False,
+        "transition_distance": transition_distance,
+        "prev_weld_index": from_weld_index,
+        "next_weld_index": to_weld_index,
+        "start_tf": target_frame_from_weld(start_xyz, start_normal, from_tangent, tcp_offset),
+        "goal_tf": target_frame_from_weld(goal_xyz, goal_normal, to_tangent, tcp_offset),
+        "start_xyz": start_xyz,
+        "end_xyz": goal_xyz,
+        "start_normal": start_normal,
+        "end_normal": goal_normal,
+        "tangent": transition_tangent,
+    }
+
+
 def load_weld_targets(
     job_dir: Path,
     weld_index: int,
@@ -1325,53 +1394,20 @@ def load_weld_targets(
     tcp_offset: float,
     transition_xyz_tol: float,
 ):
-    vector_path = job_dir / "weld_vectors.json"
-    with vector_path.open("r", encoding="utf-8") as f:
-        welds = json.load(f)["welds"]
+    vector_path, welds = load_welds_data(job_dir)
     if weld_index < 0 or weld_index + 1 >= len(welds):
         raise IndexError(f"--weld-index {weld_index} out of range 0..{len(welds) - 2} for consecutive-weld transition planning")
-
-    prev_weld = welds[weld_index]
-    next_weld = welds[weld_index + 1]
-
-    prev_start_xyz = _world_xyz(prev_weld["start"]["xyz"], scale, offset, z_offset)
-    prev_end_xyz = _world_xyz(prev_weld["end"]["xyz"], scale, offset, z_offset)
-    next_start_xyz = _world_xyz(next_weld["start"]["xyz"], scale, offset, z_offset)
-    next_end_xyz = _world_xyz(next_weld["end"]["xyz"], scale, offset, z_offset)
-
-    prev_tangent = normalize(prev_end_xyz - prev_start_xyz)
-    next_tangent = normalize(next_end_xyz - next_start_xyz)
-
-    start_xyz = prev_end_xyz
-    goal_xyz = next_start_xyz
-    transition_distance = float(np.linalg.norm(goal_xyz - start_xyz))
-    if transition_distance <= transition_xyz_tol:
-        return {
-            "vector_path": vector_path,
-            "skip_planning": True,
-            "transition_distance": transition_distance,
-            "start_xyz": start_xyz,
-            "end_xyz": goal_xyz,
-            "prev_weld_index": weld_index,
-            "next_weld_index": weld_index + 1,
-        }
-
-    start_normal = resolve_pose_normal(prev_weld["end"].get("pose"), "previous weld end", prev_tangent)
-    goal_normal = resolve_pose_normal(next_weld["start"].get("pose"), "next weld start", next_tangent)
-    return {
-        "vector_path": vector_path,
-        "skip_planning": False,
-        "transition_distance": transition_distance,
-        "prev_weld_index": weld_index,
-        "next_weld_index": weld_index + 1,
-        "start_tf": target_frame_from_weld(start_xyz, start_normal, prev_tangent, tcp_offset),
-        "goal_tf": target_frame_from_weld(goal_xyz, goal_normal, next_tangent, tcp_offset),
-        "start_xyz": start_xyz,
-        "end_xyz": goal_xyz,
-        "start_normal": start_normal,
-        "end_normal": goal_normal,
-        "tangent": normalize(goal_xyz - start_xyz),
-    }
+    return build_transition_targets_from_pair(
+        vector_path=vector_path,
+        welds=welds,
+        from_weld_index=weld_index,
+        to_weld_index=weld_index + 1,
+        scale=scale,
+        offset=offset,
+        z_offset=z_offset,
+        tcp_offset=tcp_offset,
+        transition_xyz_tol=transition_xyz_tol,
+    )
 
 
 def iter_transition_targets(
@@ -1382,35 +1418,45 @@ def iter_transition_targets(
     z_offset: float,
     tcp_offset: float,
     transition_xyz_tol: float,
-    auto_first_transition: bool,
+    scan_all_transitions: bool,
+    rng: np.random.Generator,
 ) -> dict[str, Any]:
-    if not auto_first_transition:
-        yield load_weld_targets(
-            job_dir,
-            weld_index,
-            scale,
-            offset,
-            z_offset,
-            tcp_offset,
-            transition_xyz_tol,
-        )
+    vector_path, welds = load_welds_data(job_dir)
+    candidate_pairs: list[tuple[int, int]] = []
+    for from_weld_index in range(len(welds)):
+        for to_weld_index in range(len(welds)):
+            if from_weld_index == to_weld_index:
+                continue
+            candidate_pairs.append((from_weld_index, to_weld_index))
+
+    if not candidate_pairs:
         return
 
-    vector_path = job_dir / "weld_vectors.json"
-    with vector_path.open("r", encoding="utf-8") as f:
-        weld_count = len(json.load(f)["welds"])
-
-    for candidate_index in range(max(0, weld_index), max(0, weld_count - 1)):
-        targets = load_weld_targets(
-            job_dir,
-            candidate_index,
-            scale,
-            offset,
-            z_offset,
-            tcp_offset,
-            transition_xyz_tol,
+    rng.shuffle(candidate_pairs)
+    seen_pairs: set[tuple[int, int]] = set()
+    yielded = 0
+    for from_weld_index, to_weld_index in candidate_pairs:
+        pair = (from_weld_index, to_weld_index)
+        if pair in seen_pairs:
+            continue
+        seen_pairs.add(pair)
+        targets = build_transition_targets_from_pair(
+            vector_path=vector_path,
+            welds=welds,
+            from_weld_index=from_weld_index,
+            to_weld_index=to_weld_index,
+            scale=scale,
+            offset=offset,
+            z_offset=z_offset,
+            tcp_offset=tcp_offset,
+            transition_xyz_tol=transition_xyz_tol,
         )
+        if targets.get("skip_planning", False):
+            continue
         yield targets
+        yielded += 1
+        if not scan_all_transitions and yielded >= 1:
+            break
 
 
 def retreated_target_tf(
@@ -2085,6 +2131,26 @@ def has_rrt_root_escape(
     return False
 
 
+def can_use_endpoint_as_rrt_anchor(
+    endpoint_q: np.ndarray,
+    kinematics: URDFKinematics,
+    checker: Any,
+    edge_resolution: float,
+    escape_step: float,
+) -> bool:
+    return bool(
+        checker.is_state_valid(endpoint_q)
+        and has_rrt_root_escape(
+            endpoint_q,
+            kinematics.lower,
+            kinematics.upper,
+            checker,
+            edge_resolution=edge_resolution,
+            escape_step=escape_step,
+        )
+    )
+
+
 def solve_planning_anchor(
     label: str,
     kinematics: URDFKinematics,
@@ -2103,11 +2169,10 @@ def solve_planning_anchor(
     edge_resolution: float,
     escape_step: float,
 ) -> tuple[np.ndarray, np.ndarray, int]:
-    if checker.is_state_valid(endpoint_q) and has_rrt_root_escape(
-        endpoint_q,
-        kinematics.lower,
-        kinematics.upper,
-        checker,
+    if can_use_endpoint_as_rrt_anchor(
+        endpoint_q=endpoint_q,
+        kinematics=kinematics,
+        checker=checker,
         edge_resolution=edge_resolution,
         escape_step=escape_step,
     ):
@@ -2666,6 +2731,7 @@ def process_job(
         args.tcp_normal_offset,
         args.transition_xyz_tol,
         scan_all_transitions,
+        rng,
     ):
         transition_record: dict[str, Any] = {
             "prev_weld_index": int(targets["prev_weld_index"]),
@@ -2682,7 +2748,7 @@ def process_job(
             transition_record["status"] = "skipped_coincident"
             transition_records.append(transition_record)
             log(
-                f"[demo] Consecutive weld endpoint/startpoint already coincide within "
+                f"[demo] Candidate weld endpoint/startpoint already coincide within "
                 f"{args.transition_xyz_tol:.2e} m; continuing to next transition."
             )
             continue
@@ -2744,42 +2810,64 @@ def process_job(
             return checker_edge_valid(checker, qa, qb, collision_check_resolution)
 
         try:
-            _, q_rrt_start, rrt_start_retreat_steps = solve_planning_anchor(
-                label="start",
-                kinematics=kinematics,
-                checker=checker,
+            if can_use_endpoint_as_rrt_anchor(
                 endpoint_q=q_start,
-                base_xyz=targets["start_xyz"],
-                normal=targets["start_normal"],
-                tangent=targets["tangent"],
-                tcp_offset=args.tcp_normal_offset,
-                retreat_step=args.endpoint_retreat_step,
-                accepted_retreat_index=start_retreat_steps,
-                max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
-                ik_rot_weight=args.endpoint_ik_rot_weight,
-                ik_max_iters=args.endpoint_ik_max_iters,
-                rng=rng,
-                edge_resolution=collision_check_resolution,
-                escape_step=args.planning_anchor_escape_step,
-            )
-            _, q_rrt_goal, rrt_goal_retreat_steps = solve_planning_anchor(
-                label="goal",
                 kinematics=kinematics,
                 checker=checker,
-                endpoint_q=q_goal,
-                base_xyz=targets["end_xyz"],
-                normal=targets["end_normal"],
-                tangent=targets["tangent"],
-                tcp_offset=args.tcp_normal_offset,
-                retreat_step=args.endpoint_retreat_step,
-                accepted_retreat_index=goal_retreat_steps,
-                max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
-                ik_rot_weight=args.endpoint_ik_rot_weight,
-                ik_max_iters=args.endpoint_ik_max_iters,
-                rng=rng,
                 edge_resolution=collision_check_resolution,
                 escape_step=args.planning_anchor_escape_step,
-            )
+            ):
+                q_rrt_start = q_start.copy()
+                rrt_start_retreat_steps = start_retreat_steps
+                log("[endpoint] start endpoint already satisfies RRT anchor conditions; skipping anchor retreat search.")
+            else:
+                _, q_rrt_start, rrt_start_retreat_steps = solve_planning_anchor(
+                    label="start",
+                    kinematics=kinematics,
+                    checker=checker,
+                    endpoint_q=q_start,
+                    base_xyz=targets["start_xyz"],
+                    normal=targets["start_normal"],
+                    tangent=targets["tangent"],
+                    tcp_offset=args.tcp_normal_offset,
+                    retreat_step=args.endpoint_retreat_step,
+                    accepted_retreat_index=start_retreat_steps,
+                    max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
+                    ik_rot_weight=args.endpoint_ik_rot_weight,
+                    ik_max_iters=args.endpoint_ik_max_iters,
+                    rng=rng,
+                    edge_resolution=collision_check_resolution,
+                    escape_step=args.planning_anchor_escape_step,
+                )
+            if can_use_endpoint_as_rrt_anchor(
+                endpoint_q=q_goal,
+                kinematics=kinematics,
+                checker=checker,
+                edge_resolution=collision_check_resolution,
+                escape_step=args.planning_anchor_escape_step,
+            ):
+                q_rrt_goal = q_goal.copy()
+                rrt_goal_retreat_steps = goal_retreat_steps
+                log("[endpoint] goal endpoint already satisfies RRT anchor conditions; skipping anchor retreat search.")
+            else:
+                _, q_rrt_goal, rrt_goal_retreat_steps = solve_planning_anchor(
+                    label="goal",
+                    kinematics=kinematics,
+                    checker=checker,
+                    endpoint_q=q_goal,
+                    base_xyz=targets["end_xyz"],
+                    normal=targets["end_normal"],
+                    tangent=targets["tangent"],
+                    tcp_offset=args.tcp_normal_offset,
+                    retreat_step=args.endpoint_retreat_step,
+                    accepted_retreat_index=goal_retreat_steps,
+                    max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
+                    ik_rot_weight=args.endpoint_ik_rot_weight,
+                    ik_max_iters=args.endpoint_ik_max_iters,
+                    rng=rng,
+                    edge_resolution=collision_check_resolution,
+                    escape_step=args.planning_anchor_escape_step,
+                )
         except RuntimeError as exc:
             transition_record["status"] = "anchor_failed"
             transition_record["error"] = str(exc)
@@ -3286,6 +3374,7 @@ def main() -> None:
             args.tcp_normal_offset,
             args.transition_xyz_tol,
             scan_all_transitions,
+            rng,
         ):
             log(
                 f"[demo] Loaded weld transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
@@ -3297,7 +3386,7 @@ def main() -> None:
             )
             if targets.get("skip_planning", False):
                 log(
-                    f"[demo] Consecutive weld endpoint/startpoint already coincide within "
+                    f"[demo] Candidate weld endpoint/startpoint already coincide within "
                     f"{args.transition_xyz_tol:.2e} m; continuing to next transition."
                 )
                 continue
@@ -3385,42 +3474,82 @@ def main() -> None:
                 return checker_edge_valid(checker, qa, qb, collision_check_resolution)
 
             try:
-                rrt_start_tf, q_rrt_start, rrt_start_retreat_steps = solve_planning_anchor(
-                    label="start",
-                    kinematics=kinematics,
-                    checker=checker,
+                if can_use_endpoint_as_rrt_anchor(
                     endpoint_q=q_start,
-                    base_xyz=targets["start_xyz"],
-                    normal=targets["start_normal"],
-                    tangent=targets["tangent"],
-                    tcp_offset=args.tcp_normal_offset,
-                    retreat_step=args.endpoint_retreat_step,
-                    accepted_retreat_index=start_retreat_steps,
-                    max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
-                    ik_rot_weight=args.endpoint_ik_rot_weight,
-                    ik_max_iters=args.endpoint_ik_max_iters,
-                    rng=rng,
-                    edge_resolution=collision_check_resolution,
-                    escape_step=args.planning_anchor_escape_step,
-                )
-                rrt_goal_tf, q_rrt_goal, rrt_goal_retreat_steps = solve_planning_anchor(
-                    label="goal",
                     kinematics=kinematics,
                     checker=checker,
-                    endpoint_q=q_goal,
-                    base_xyz=targets["end_xyz"],
-                    normal=targets["end_normal"],
-                    tangent=targets["tangent"],
-                    tcp_offset=args.tcp_normal_offset,
-                    retreat_step=args.endpoint_retreat_step,
-                    accepted_retreat_index=goal_retreat_steps,
-                    max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
-                    ik_rot_weight=args.endpoint_ik_rot_weight,
-                    ik_max_iters=args.endpoint_ik_max_iters,
-                    rng=rng,
                     edge_resolution=collision_check_resolution,
                     escape_step=args.planning_anchor_escape_step,
-                )
+                ):
+                    rrt_start_tf = retreated_target_tf(
+                        targets["start_xyz"],
+                        targets["start_normal"],
+                        targets["tangent"],
+                        args.tcp_normal_offset,
+                        args.endpoint_retreat_step,
+                        start_retreat_steps,
+                        yaw_about_normal=0.0,
+                    )
+                    q_rrt_start = q_start.copy()
+                    rrt_start_retreat_steps = start_retreat_steps
+                    log("[endpoint] start endpoint already satisfies RRT anchor conditions; skipping anchor retreat search.")
+                else:
+                    rrt_start_tf, q_rrt_start, rrt_start_retreat_steps = solve_planning_anchor(
+                        label="start",
+                        kinematics=kinematics,
+                        checker=checker,
+                        endpoint_q=q_start,
+                        base_xyz=targets["start_xyz"],
+                        normal=targets["start_normal"],
+                        tangent=targets["tangent"],
+                        tcp_offset=args.tcp_normal_offset,
+                        retreat_step=args.endpoint_retreat_step,
+                        accepted_retreat_index=start_retreat_steps,
+                        max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
+                        ik_rot_weight=args.endpoint_ik_rot_weight,
+                        ik_max_iters=args.endpoint_ik_max_iters,
+                        rng=rng,
+                        edge_resolution=collision_check_resolution,
+                        escape_step=args.planning_anchor_escape_step,
+                    )
+                if can_use_endpoint_as_rrt_anchor(
+                    endpoint_q=q_goal,
+                    kinematics=kinematics,
+                    checker=checker,
+                    edge_resolution=collision_check_resolution,
+                    escape_step=args.planning_anchor_escape_step,
+                ):
+                    rrt_goal_tf = retreated_target_tf(
+                        targets["end_xyz"],
+                        targets["end_normal"],
+                        targets["tangent"],
+                        args.tcp_normal_offset,
+                        args.endpoint_retreat_step,
+                        goal_retreat_steps,
+                        yaw_about_normal=0.0,
+                    )
+                    q_rrt_goal = q_goal.copy()
+                    rrt_goal_retreat_steps = goal_retreat_steps
+                    log("[endpoint] goal endpoint already satisfies RRT anchor conditions; skipping anchor retreat search.")
+                else:
+                    rrt_goal_tf, q_rrt_goal, rrt_goal_retreat_steps = solve_planning_anchor(
+                        label="goal",
+                        kinematics=kinematics,
+                        checker=checker,
+                        endpoint_q=q_goal,
+                        base_xyz=targets["end_xyz"],
+                        normal=targets["end_normal"],
+                        tangent=targets["tangent"],
+                        tcp_offset=args.tcp_normal_offset,
+                        retreat_step=args.endpoint_retreat_step,
+                        accepted_retreat_index=goal_retreat_steps,
+                        max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
+                        ik_rot_weight=args.endpoint_ik_rot_weight,
+                        ik_max_iters=args.endpoint_ik_max_iters,
+                        rng=rng,
+                        edge_resolution=collision_check_resolution,
+                        escape_step=args.planning_anchor_escape_step,
+                    )
             except RuntimeError as exc:
                 log(
                     f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "

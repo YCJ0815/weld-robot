@@ -16,7 +16,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--job-glob", type=str, default="job_*", help="Glob pattern for selecting job directories.")
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="Scale applied to workpiece STL coordinates.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra Z offset in meters for the workpiece mesh.")
-    parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.45, 0.0, 0.0], help="World offset in meters for the workpiece mesh.")
+    parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.5, 0.0, 0.0], help="World offset in meters for the workpiece mesh.")
     parser.add_argument("--sdf-pitch", type=float, default=0.004, help="Voxel pitch in meters for the cached workpiece SDF.")
     parser.add_argument("--sdf-margin", type=float, default=0.03, help="Extra world-space margin in meters around the SDF grid.")
     parser.add_argument("--sdf-voxelize-method", type=str, default="subdivide", choices=["subdivide", "ray"], help="Trimesh voxelization method.")

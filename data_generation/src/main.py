@@ -800,7 +800,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate random STEP models, extract welds, sort weld sequences, and save one JSON per STEP."
     )
-    parser.add_argument("--count", type=int, default=1, help="Number of random models to generate.")
+    parser.add_argument("--count", type=int, default=10, help="Number of random models to generate.")
     parser.add_argument("--model-dir", type=Path, default=MODEL_OUTPUT_DIR, help="Generated STEP/STL output directory.")
     parser.add_argument("--extract-dir", type=Path, default=EXTRACT_OUTPUT_DIR, help="Intermediate extraction directory.")
     parser.add_argument("--final-dir", type=Path, default=FINAL_OUTPUT_DIR, help="Final sequence JSON output directory.")

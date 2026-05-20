@@ -3,16 +3,16 @@
   "description": "Generated workpiece/path jobs for Isaac Sim parallel welding simulation.",
   "path_resolution": "relative_to_manifest_directory",
   "jobs_dir": ".",
-  "job_count": 9,
-  "layout": "grid",
-  "spacing": 4.0,
-  "grid_cols": 3,
+  "job_count": 10,
+  "layout": "line",
+  "spacing": 2.0,
+  "grid_cols": null,
   "default_frame": "workpiece",
   "default_units": "mm",
   "jobs": [
     {
       "id": "job_000",
-      "source_stem": "random_plate_0_double_side_ribs",
+      "source_stem": "random_plate_0",
       "workpiece_asset": "job_000/workpiece.stl",
       "path_json": "job_000/path.json",
       "origin": [
@@ -21,7 +21,7 @@
         0.0
       ],
       "workpiece_offset": [
-        0.7,
+        0.45,
         0.0,
         0.0
       ],
@@ -38,12 +38,12 @@
       "workpiece_asset": "job_001/workpiece.stl",
       "path_json": "job_001/path.json",
       "origin": [
-        4.0,
+        2.0,
         0.0,
         0.0
       ],
       "workpiece_offset": [
-        0.7,
+        0.45,
         0.0,
         0.0
       ],
@@ -60,12 +60,12 @@
       "workpiece_asset": "job_002/workpiece.stl",
       "path_json": "job_002/path.json",
       "origin": [
-        8.0,
+        4.0,
         0.0,
         0.0
       ],
       "workpiece_offset": [
-        0.7,
+        0.45,
         0.0,
         0.0
       ],
@@ -82,12 +82,12 @@
       "workpiece_asset": "job_003/workpiece.stl",
       "path_json": "job_003/path.json",
       "origin": [
+        6.0,
         0.0,
-        4.0,
         0.0
       ],
       "workpiece_offset": [
-        0.7,
+        0.45,
         0.0,
         0.0
       ],
@@ -104,12 +104,12 @@
       "workpiece_asset": "job_004/workpiece.stl",
       "path_json": "job_004/path.json",
       "origin": [
-        4.0,
-        4.0,
+        8.0,
+        0.0,
         0.0
       ],
       "workpiece_offset": [
-        0.7,
+        0.45,
         0.0,
         0.0
       ],
@@ -122,16 +122,16 @@
     },
     {
       "id": "job_005",
-      "source_stem": "random_plate_5",
+      "source_stem": "random_plate_5_double_side_ribs",
       "workpiece_asset": "job_005/workpiece.stl",
       "path_json": "job_005/path.json",
       "origin": [
-        8.0,
-        4.0,
+        10.0,
+        0.0,
         0.0
       ],
       "workpiece_offset": [
-        0.7,
+        0.45,
         0.0,
         0.0
       ],
@@ -144,16 +144,16 @@
     },
     {
       "id": "job_006",
-      "source_stem": "random_plate_6",
+      "source_stem": "random_plate_6_double_side_ribs",
       "workpiece_asset": "job_006/workpiece.stl",
       "path_json": "job_006/path.json",
       "origin": [
+        12.0,
         0.0,
-        8.0,
         0.0
       ],
       "workpiece_offset": [
-        0.7,
+        0.45,
         0.0,
         0.0
       ],
@@ -166,16 +166,16 @@
     },
     {
       "id": "job_007",
-      "source_stem": "random_plate_7_double_side_ribs",
+      "source_stem": "random_plate_7",
       "workpiece_asset": "job_007/workpiece.stl",
       "path_json": "job_007/path.json",
       "origin": [
-        4.0,
-        8.0,
+        14.0,
+        0.0,
         0.0
       ],
       "workpiece_offset": [
-        0.7,
+        0.45,
         0.0,
         0.0
       ],
@@ -192,12 +192,12 @@
       "workpiece_asset": "job_008/workpiece.stl",
       "path_json": "job_008/path.json",
       "origin": [
-        8.0,
-        8.0,
+        16.0,
+        0.0,
         0.0
       ],
       "workpiece_offset": [
-        0.7,
+        0.45,
         0.0,
         0.0
       ],
@@ -207,6 +207,28 @@
       "stl_asset": "job_008/workpiece.stl",
       "vector_json": "job_008/weld_vectors.json",
       "raw_topology_json": "job_008/raw_weld_topology.json"
+    },
+    {
+      "id": "job_009",
+      "source_stem": "random_plate_9",
+      "workpiece_asset": "job_009/workpiece.stl",
+      "path_json": "job_009/path.json",
+      "origin": [
+        18.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.45,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_009/workpiece.step",
+      "stl_asset": "job_009/workpiece.stl",
+      "vector_json": "job_009/weld_vectors.json",
+      "raw_topology_json": "job_009/raw_weld_topology.json"
     }
   ]
 }

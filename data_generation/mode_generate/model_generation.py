@@ -15,23 +15,23 @@ MODEL_GEN_PARAMS = {
     },
     "main_rib": {
         "orientation_choices": ["X", "Y"],  # 主肋板可选朝向
-        "thickness_min": 2,  # 主肋板最小厚度（mm）
-        "thickness_max": 6,  # 主肋板最大厚度（mm）
+        "thickness_min": 5,  # 主肋板最小厚度（mm）
+        "thickness_max": 7,  # 主肋板最大厚度（mm）
         "height_min": 30,  # 主肋板最小高度（mm）
-        "height_max": 60,  # 主肋板最大高度（mm）
+        "height_max": 50,  # 主肋板最大高度（mm）
         "length_ratio_min": 0.8,  # 主肋板长度相对底板边长的最小比例
         "length_ratio_max": 1.0,  # 主肋板长度相对底板边长的最大比例
         "dual_side_center_band_divisor": 6,  # 主肋板位于中间区域时两侧都生成副肋板：[-尺寸/divisor, +尺寸/divisor]
     },
     "side_rib": {
-        "min_spacing": 35,  # 副肋板之间的最小净间距阈值（mm）
+        "min_spacing": 50,  # 副肋板之间的最小净间距阈值（mm）
         "min_space_for_rib": 10,  # 某一侧允许放置副肋板的最小可用空间（mm）
         "thickness_min": 2,  # 副肋板最小厚度（mm）
         "thickness_max": 4,  # 副肋板最大厚度（mm）
         "height_min": 25,  # 副肋板最小高度（mm）
-        "length_min": 60,  # 副肋板最小长度（沿垂直于主肋板方向，mm）
+        "length_min": 45,  # 副肋板最小长度（沿垂直于主肋板方向，mm）
         "corner_hole_radius": 5,  # 副肋板-主肋板-底板交界处扇形孔半径（mm）
-        "num_ribs_min": 3,  # 每侧尝试生成副肋板的最小数量
+        "num_ribs_min": 2,  # 每侧尝试生成副肋板的最小数量
         "num_ribs_max": 5,  # 每侧尝试生成副肋板的最大数量
         "placement_attempts": 100,  # 单根副肋板的最大重试次数
     },
@@ -41,8 +41,8 @@ MODEL_GEN_PARAMS = {
         "thickness_max": 4,  # 连接肋板最大厚度（mm）
         "height_min": 20,  # 连接肋板最小高度（mm）
         "corner_hole_radius": 5,  # 连接肋板-副肋板-底板接触处扇形孔半径（mm）
-        "min_clearance_from_main": 50,  # 连接肋板相对主肋板的最小离开距离（mm）
-        "interior_connect_probability": 0.65,  # 内部连接肋板生成概率
+        "min_clearance_from_main": 60,  # 连接肋板相对主肋板的最小离开距离（mm）
+        "interior_connect_probability": 0.5,  # 内部连接肋板生成概率
         "open_rib_probability": 0.6,  # 端部开放肋板生成概率
         "open_rib_min_extension": 10,  # 开放肋板最小外伸长度（mm）
         "open_rib_max_extension": 35,  # 开放肋板最大外伸长度（mm）

@@ -55,6 +55,56 @@ class SDFCollisionLayer:
         )
 
 
+def _as_scalar(data: np.lib.npyio.NpzFile, key: str, default: float | None = None) -> float | None:
+    if key not in data:
+        return default
+    value = np.asarray(data[key], dtype=float)
+    if value.size == 0:
+        return default
+    return float(value.reshape(-1)[0])
+
+
+def _as_vec3(data: np.lib.npyio.NpzFile, key: str) -> np.ndarray | None:
+    if key not in data:
+        return None
+    value = np.asarray(data[key], dtype=float).reshape(-1)
+    if value.size != 3:
+        return None
+    return value
+
+
+def _cached_sdf_matches(
+    npz_path: Path,
+    scale: float,
+    z_offset: float,
+    local_offset: tuple[float, float, float],
+    config: SDFBuildConfig,
+) -> tuple[bool, str]:
+    try:
+        data = np.load(npz_path)
+    except Exception as exc:
+        return False, f"failed to read cached SDF metadata ({exc})"
+
+    cached_scale = _as_scalar(data, "workpiece_scale")
+    cached_z_offset = _as_scalar(data, "workpiece_z_offset")
+    cached_pitch = _as_scalar(data, "voxel_pitch")
+    cached_margin = _as_scalar(data, "margin")
+    cached_offset = _as_vec3(data, "workpiece_offset")
+
+    if cached_scale is None or not np.isclose(cached_scale, float(scale), atol=1e-12):
+        return False, f"scale mismatch: cached={cached_scale}, requested={scale}"
+    if cached_z_offset is None or not np.isclose(cached_z_offset, float(z_offset), atol=1e-12):
+        return False, f"z_offset mismatch: cached={cached_z_offset}, requested={z_offset}"
+    if cached_pitch is None or not np.isclose(cached_pitch, float(config.voxel_pitch), atol=1e-12):
+        return False, f"voxel_pitch mismatch: cached={cached_pitch}, requested={config.voxel_pitch}"
+    if cached_margin is None or not np.isclose(cached_margin, float(config.margin), atol=1e-12):
+        return False, f"margin mismatch: cached={cached_margin}, requested={config.margin}"
+    requested_offset = np.asarray(local_offset, dtype=float).reshape(3)
+    if cached_offset is None or not np.allclose(cached_offset, requested_offset, atol=1e-12):
+        return False, f"workpiece_offset mismatch: cached={cached_offset}, requested={requested_offset}"
+    return True, "metadata matches"
+
+
 def _world_transform_mesh(
     stl_path: Path,
     scale: float,
@@ -131,7 +181,18 @@ def build_sdf_from_workpiece_mesh(
     sdf[occupancy] = -inside[occupancy]
 
     npz_path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(npz_path, sdf=sdf, x=x, y=y, z=z)
+    np.savez_compressed(
+        npz_path,
+        sdf=sdf,
+        x=x,
+        y=y,
+        z=z,
+        workpiece_scale=np.array([float(scale)], dtype=float),
+        workpiece_z_offset=np.array([float(z_offset)], dtype=float),
+        workpiece_offset=np.asarray(local_offset, dtype=float).reshape(3),
+        voxel_pitch=np.array([pitch], dtype=float),
+        margin=np.array([margin], dtype=float),
+    )
     if logger is not None:
         logger(
             f"[SDF] Built workpiece SDF at {npz_path} "
@@ -151,7 +212,24 @@ def load_or_build_workpiece_sdf(
     logger: Logger | None = None,
     rebuild: bool = False,
 ) -> tuple[SDFCollisionLayer, Path]:
-    if rebuild or not npz_path.exists():
+    needs_rebuild = bool(rebuild) or not npz_path.exists()
+    if not needs_rebuild:
+        metadata_ok, reason = _cached_sdf_matches(
+            npz_path=npz_path,
+            scale=scale,
+            z_offset=z_offset,
+            local_offset=local_offset,
+            config=config,
+        )
+        if not metadata_ok:
+            needs_rebuild = True
+            if logger is not None:
+                logger(
+                    f"[SDF] Cached workpiece SDF at {npz_path} does not match current workpiece transform/config; "
+                    f"rebuilding ({reason})."
+                )
+
+    if needs_rebuild:
         build_sdf_from_workpiece_mesh(
             stl_path=stl_path,
             scale=scale,
