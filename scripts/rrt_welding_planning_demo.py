@@ -1,14 +1,10 @@
-"""RRT-Connect welding path-planning demo in Isaac Sim.
+"""Isaac Sim welding-transition planner with RRT and optional TrajOpt.
 
-This is a single-robot/single-workpiece demo that mirrors the structure of
-``data_generation/path_planning/rrt_trajopt.py``:
-
-1. Read one weld segment from ``weld_vectors.json``.
-2. Convert the start/end xyz and pose normal into world-frame TCP targets.
-3. Solve six-axis UR5e IK for the start and goal.
-4. Run joint-space RRT-Connect to find a collision-free seed path.
-5. Run TrajOpt-style smoothing on the seed path while preserving collision validity.
-6. Replay and record the optimized trajectory by default.
+The script supports both single-job execution and batch processing over many
+generated jobs. For each job it samples weld-end to weld-start transitions,
+solves endpoint IK, plans a collision-free RRT seed, optionally refines the
+path with TrajOpt/SDF-TrajOpt, saves structured results, and can replay or
+record the final motion.
 """
 
 from __future__ import annotations
@@ -26,7 +22,7 @@ import traceback
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import numpy as np
 
@@ -129,7 +125,7 @@ def parse_args() -> argparse.Namespace:
         "--weld-index",
         type=int,
         default=0,
-        help="Transition start weld index: plan from weld_index end to weld_index+1 start.",
+        help="Deprecated in random transition mode; retained for backward-compatible CLI parsing and currently ignored.",
     )
     parser.add_argument(
         "--transition-xyz-tol",
@@ -153,7 +149,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-record", dest="record", action="store_false", help="Replay without writing frames or MP4.")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT, help="MP4 output path.")
     parser.add_argument("--frames-dir", type=Path, default=None, help="Temporary RGB frame directory.")
-    parser.add_argument("--failure-screenshot-dir", type=Path, default=None, help="Directory for a planning-failure PNG screenshot.")
     parser.add_argument("--ik-screenshot-dir", type=Path, default=None, help="Directory for pre-RRT start/goal IK PNG screenshots.")
     parser.add_argument(
         "--save-ik-screenshots",
@@ -249,13 +244,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--trajopt-retries",
         type=int,
-        default=3,
+        default=4,
         help="Maximum number of TrajOpt parameter-adjustment retries after an RRT seed has been selected.",
     )
     parser.add_argument(
         "--trajopt-ftol",
         type=float,
-        default=5e-3,
+        default=1e-3,
         help="SLSQP convergence tolerance for the legacy non-SDF TrajOpt.",
     )
     parser.add_argument("--trajopt-smoothness-weight", type=float, default=5.0, help="Smoothness weight for TrajOpt.")
@@ -392,20 +387,17 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def prepare_recording_paths(args: argparse.Namespace) -> Path:
-    args.output = args.output.resolve()
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    if args.frames_dir is None:
-        args.frames_dir = args.output.parent / f"{args.output.stem}_frames"
-    args.frames_dir = args.frames_dir.resolve()
-    if args.output.exists() and not args.overwrite:
-        raise FileExistsError(f"Output already exists. Use --overwrite: {args.output}")
-    if args.frames_dir.exists():
-        if not args.overwrite:
-            raise FileExistsError(f"Frames directory already exists. Use --overwrite: {args.frames_dir}")
-        shutil.rmtree(args.frames_dir)
-    args.frames_dir.mkdir(parents=True, exist_ok=True)
-    return args.frames_dir
+@dataclass
+class RuntimeContext:
+    simulation_app: Any
+    world: Any
+    stage: Any
+    rep: Any | None
+    ground_prim_path: str
+    kinematics: "URDFKinematics"
+    robot_prim_path: str
+    robot: Any
+    dof_indices: list[int]
 
 
 def resolve_job_dirs(args: argparse.Namespace) -> list[Path]:
@@ -522,6 +514,89 @@ def prepare_job_recording_paths(args: argparse.Namespace, job_dir: Path) -> tupl
             raise FileExistsError(f"Frames directory already exists. Use --overwrite: {frames_dir}")
     frames_dir.mkdir(parents=True, exist_ok=True)
     return output_path, frames_dir
+
+
+def initialize_runtime(args: argparse.Namespace, needs_replicator: bool) -> RuntimeContext:
+    try:
+        from isaacsim import SimulationApp
+    except ImportError:
+        from omni.isaac.kit import SimulationApp
+
+    simulation_app = SimulationApp({"headless": args.headless, "enable_cameras": needs_replicator})
+    try:
+        configure_log_filters(args)
+        configure_render_settings(args)
+
+        try:
+            from isaacsim.core.api import World
+        except ImportError:
+            from omni.isaac.core import World
+
+        from omni.usd import get_context
+
+        if needs_replicator:
+            import omni.replicator.core as rep
+        else:
+            rep = None
+
+        world = World(physics_dt=1.0 / 60.0, rendering_dt=1.0 / args.fps, stage_units_in_meters=1.0)
+        stage = get_context().get_stage()
+        ensure_xform(stage, "/World/Debug")
+        ground_prim_path = add_visual_ground(
+            stage,
+            size=args.visual_ground_size,
+            z=args.visual_ground_z,
+            opacity=args.visual_ground_opacity,
+        )
+        add_scene_lighting(stage)
+
+        resolved_urdf = make_resolved_urdf(args.urdf)
+        kinematics = URDFKinematics(resolved_urdf, include_tool_collision=args.include_tool_collision)
+        robot_prim_path = import_single_robot(stage, resolved_urdf)
+        add_urdf_collision_stl_proxies(
+            stage=stage,
+            robot_prim_path=robot_prim_path,
+            resolved_urdf=resolved_urdf,
+            include_tool_collision=args.include_tool_collision,
+            show_collision_proxies=args.show_collision_proxies,
+            collision_approximation=args.robot_collision_approximation,
+            sdf_resolution=args.robot_sdf_resolution,
+            sdf_subgrid_resolution=args.robot_sdf_subgrid_resolution,
+        )
+
+        log("[demo] Resetting world and initializing articulation.")
+        world.reset()
+        ensure_physics_sim_view(world, warmup_steps=2)
+        robot = make_articulation(world, robot_prim_path)
+        world.reset()
+        robot.initialize()
+        log(f"[robot] Articulation object type={type(robot).__name__}")
+        warm_up_articulation_state(world, robot)
+        dof_indices = dof_indices_for(robot, kinematics.planning_names)
+        log(f"[demo] Articulation ready: dofs={list(robot.dof_names)} planning_indices={dof_indices}")
+        return RuntimeContext(
+            simulation_app=simulation_app,
+            world=world,
+            stage=stage,
+            rep=rep,
+            ground_prim_path=ground_prim_path,
+            kinematics=kinematics,
+            robot_prim_path=robot_prim_path,
+            robot=robot,
+            dof_indices=dof_indices,
+        )
+    except Exception:
+        simulation_app.close()
+        raise
+
+
+def wait_until_closed_if_interactive(simulation_app: Any, world: Any, args: argparse.Namespace) -> None:
+    if args.record or args.headless:
+        return
+    log("[demo] Replay complete. Close Isaac Sim or press Ctrl+C to stop.")
+    while simulation_app.is_running():
+        world.step(render=True)
+        time.sleep(0.0)
 
 
 def append_dense_segment(segments: list[np.ndarray], path: np.ndarray) -> None:
@@ -1368,22 +1443,6 @@ def target_frame_from_weld(
     return tf
 
 
-def matrix_to_quat_xyzw(rot: np.ndarray) -> tuple[float, float, float, float]:
-    trace = float(np.trace(rot))
-    if trace > 0.0:
-        s = math.sqrt(trace + 1.0) * 2.0
-        return ((rot[2, 1] - rot[1, 2]) / s, (rot[0, 2] - rot[2, 0]) / s, (rot[1, 0] - rot[0, 1]) / s, 0.25 * s)
-    idx = int(np.argmax(np.diag(rot)))
-    if idx == 0:
-        s = math.sqrt(1.0 + rot[0, 0] - rot[1, 1] - rot[2, 2]) * 2.0
-        return (0.25 * s, (rot[0, 1] + rot[1, 0]) / s, (rot[0, 2] + rot[2, 0]) / s, (rot[2, 1] - rot[1, 2]) / s)
-    if idx == 1:
-        s = math.sqrt(1.0 + rot[1, 1] - rot[0, 0] - rot[2, 2]) * 2.0
-        return ((rot[0, 1] + rot[1, 0]) / s, 0.25 * s, (rot[1, 2] + rot[2, 1]) / s, (rot[0, 2] - rot[2, 0]) / s)
-    s = math.sqrt(1.0 + rot[2, 2] - rot[0, 0] - rot[1, 1]) * 2.0
-    return ((rot[0, 2] + rot[2, 0]) / s, (rot[1, 2] + rot[2, 1]) / s, 0.25 * s, (rot[1, 0] - rot[0, 1]) / s)
-
-
 def _world_xyz(xyz: list[float], scale: float, offset: list[float], z_offset: float) -> np.ndarray:
     point = np.array(xyz, dtype=float) * scale + np.array(offset, dtype=float)
     point[2] += z_offset
@@ -1459,34 +1518,8 @@ def build_transition_targets_from_pair(
     }
 
 
-def load_weld_targets(
-    job_dir: Path,
-    weld_index: int,
-    scale: float,
-    offset: list[float],
-    z_offset: float,
-    tcp_offset: float,
-    transition_xyz_tol: float,
-):
-    vector_path, welds = load_welds_data(job_dir)
-    if weld_index < 0 or weld_index + 1 >= len(welds):
-        raise IndexError(f"--weld-index {weld_index} out of range 0..{len(welds) - 2} for consecutive-weld transition planning")
-    return build_transition_targets_from_pair(
-        vector_path=vector_path,
-        welds=welds,
-        from_weld_index=weld_index,
-        to_weld_index=weld_index + 1,
-        scale=scale,
-        offset=offset,
-        z_offset=z_offset,
-        tcp_offset=tcp_offset,
-        transition_xyz_tol=transition_xyz_tol,
-    )
-
-
 def iter_transition_targets(
     job_dir: Path,
-    weld_index: int,
     scale: float,
     offset: list[float],
     z_offset: float,
@@ -1494,7 +1527,7 @@ def iter_transition_targets(
     transition_xyz_tol: float,
     scan_all_transitions: bool,
     rng: np.random.Generator,
-) -> dict[str, Any]:
+) -> Iterator[dict[str, Any]]:
     vector_path, welds = load_welds_data(job_dir)
     candidate_pairs: list[tuple[int, int]] = []
     for from_weld_index in range(len(welds)):
@@ -2589,61 +2622,6 @@ def write_ik_endpoint_screenshots(
     return saved_paths
 
 
-def failure_camera_poses(workpiece_info: dict[str, Any]) -> list[tuple[str, tuple[float, float, float], tuple[float, float, float]]]:
-    center, span = workpiece_center_and_span(workpiece_info)
-    distance = max(1.1, span * 4.0)
-    target = (float(center[0]), float(center[1]), float(center[2] + 0.12))
-    return [
-        ("front", (float(center[0] + distance), float(center[1] - distance), float(center[2] + 0.75)), target),
-        ("back", (float(center[0] - distance), float(center[1] + distance), float(center[2] + 0.75)), target),
-        ("left", (float(center[0] - distance), float(center[1] - distance), float(center[2] + 0.75)), target),
-        ("right", (float(center[0] + distance), float(center[1] + distance), float(center[2] + 0.75)), target),
-    ]
-
-
-def write_failure_screenshots(
-    rep: Any,
-    world: Any,
-    stage: Any,
-    workpiece_info: dict[str, Any],
-    args: argparse.Namespace,
-) -> list[Path]:
-    screenshot_dir = (
-        args.failure_screenshot_dir
-        if args.failure_screenshot_dir is not None
-        else args.output.resolve().parent / f"{args.output.resolve().stem}_failure_screenshot"
-    )
-    screenshot_dir = screenshot_dir.resolve()
-    if screenshot_dir.exists():
-        shutil.rmtree(screenshot_dir)
-    screenshot_dir.mkdir(parents=True, exist_ok=True)
-
-    try:
-        rep.orchestrator.set_capture_on_play(False)
-    except Exception:
-        pass
-    rig = recording_camera_rig(workpiece_info)
-    render_products = []
-    for index, (view_name, eye, target) in enumerate(failure_camera_poses(workpiece_info)):
-        log(f"[demo] Failure screenshot camera {view_name}: eye={eye}, look_at={target}")
-        camera_prim_path = ensure_recording_camera(stage, rig, f"/World/FailureCamera_{index}")
-        set_camera_pose(stage, camera_prim_path, eye, target)
-        render_products.append(rep.create.render_product(camera_prim_path, resolution=(args.width, args.height)))
-
-    writer = create_basic_writer(rep, screenshot_dir, render_products)
-    world.step(render=True)
-    step_replicator(rep, args)
-    rep.orchestrator.wait_until_complete()
-    writer.detach()
-    pngs = sorted(screenshot_dir.glob("*.png")) or sorted(screenshot_dir.glob("**/*.png"))
-    if not pngs:
-        raise RuntimeError(f"Failed to write planning-failure screenshots under {screenshot_dir}")
-    log("[demo] Planning-failure screenshots saved:")
-    for path in pngs:
-        log(f"  {path}")
-    return pngs
-
-
 def import_single_robot(stage: Any, resolved_urdf: Path) -> str:
     target_path = "/World/UR5ePen"
     imported_path = import_robot_from_urdf(resolved_urdf, target_path, fix_base=True)
@@ -2800,7 +2778,6 @@ def process_job(
 
     for targets in iter_transition_targets(
         job_dir,
-        args.weld_index,
         args.workpiece_scale,
         args.workpiece_offset,
         args.workpiece_z_offset,
@@ -3311,653 +3288,6 @@ def main() -> None:
         log(f"[demo] Video saved to: {args.output}")
         return
 
-    frames_dir = prepare_recording_paths(args) if args.record else None
-    rng = np.random.default_rng(args.seed)
-
-    if args.record and shutil.which("ffmpeg") is None:
-        log(
-            "[demo] WARNING: ffmpeg is not installed. Isaac will still record PNG frames; "
-            "install ffmpeg on the server to encode MP4 automatically."
-        )
-    needs_replicator = args.record or args.save_ik_screenshots
-
-    try:
-        from isaacsim import SimulationApp
-    except ImportError:
-        from omni.isaac.kit import SimulationApp
-
-    simulation_app = SimulationApp({"headless": args.headless, "enable_cameras": needs_replicator})
-    try:
-        configure_log_filters(args)
-        configure_render_settings(args)
-        try:
-            from isaacsim.core.api import World
-        except ImportError:
-            from omni.isaac.core import World
-
-        from omni.usd import get_context
-        if needs_replicator:
-            import omni.replicator.core as rep
-
-        world = World(physics_dt=1.0 / 60.0, rendering_dt=1.0 / args.fps, stage_units_in_meters=1.0)
-        stage = get_context().get_stage()
-        ensure_xform(stage, "/World/Debug")
-        ground_prim_path = add_visual_ground(
-            stage,
-            size=args.visual_ground_size,
-            z=args.visual_ground_z,
-            opacity=args.visual_ground_opacity,
-        )
-        add_scene_lighting(stage)
-
-        resolved_urdf = make_resolved_urdf(args.urdf)
-        kinematics = URDFKinematics(resolved_urdf, include_tool_collision=args.include_tool_collision)
-        robot_prim_path = import_single_robot(stage, resolved_urdf)
-        add_urdf_collision_stl_proxies(
-            stage=stage,
-            robot_prim_path=robot_prim_path,
-            resolved_urdf=resolved_urdf,
-            include_tool_collision=args.include_tool_collision,
-            show_collision_proxies=args.show_collision_proxies,
-            collision_approximation=args.robot_collision_approximation,
-            sdf_resolution=args.robot_sdf_resolution,
-            sdf_subgrid_resolution=args.robot_sdf_subgrid_resolution,
-        )
-        workpiece_mesh_path = resolve_workpiece_mesh_path(args.job_dir.resolve())
-        log(f"[demo] Using workpiece mesh for simulation: {workpiece_mesh_path.name}")
-        workpiece_info = import_collision_stl(
-            stage,
-            stl_path=workpiece_mesh_path,
-            prim_path="/World/Workpiece",
-            scale=args.workpiece_scale,
-            z_offset=args.workpiece_z_offset,
-            local_offset=tuple(float(v) for v in args.workpiece_offset),
-            opacity=args.workpiece_opacity,
-        )
-        sdf_layer = None
-        sdf_npz_path = None
-        if args.trajopt and args.sdf_trajopt:
-            sdf_npz_path = (
-                args.workpiece_sdf_path.resolve()
-                if args.workpiece_sdf_path is not None
-                else (args.job_dir / "workpiece_sdf.npz").resolve()
-            )
-            sdf_layer, sdf_npz_path = load_or_build_workpiece_sdf(
-                stl_path=workpiece_mesh_path.resolve(),
-                scale=args.workpiece_scale,
-                z_offset=args.workpiece_z_offset,
-                local_offset=tuple(float(v) for v in args.workpiece_offset),
-                npz_path=sdf_npz_path,
-                config=SDFBuildConfig(
-                    voxel_pitch=args.workpiece_sdf_pitch,
-                    margin=args.workpiece_sdf_margin,
-                    voxelize_method=args.workpiece_sdf_voxelize_method,
-                    voxelize_max_iter=args.workpiece_sdf_voxelize_max_iter,
-                ),
-                logger=log,
-                rebuild=args.rebuild_workpiece_sdf,
-            )
-            log(f"[SDF] Using workpiece SDF cache: {sdf_npz_path}")
-
-        log("[demo] Resetting world and initializing articulation.")
-        world.reset()
-        ensure_physics_sim_view(world, warmup_steps=2)
-        robot = make_articulation(world, robot_prim_path)
-        world.reset()
-        robot.initialize()
-        log(f"[robot] Articulation object type={type(robot).__name__}")
-        warm_up_articulation_state(world, robot)
-        dof_indices = dof_indices_for(robot, kinematics.planning_names)
-        log(f"[demo] Articulation ready: dofs={list(robot.dof_names)} planning_indices={dof_indices}")
-        q_home = np.array([DEFAULT_INITIAL_JOINT_POS[name] for name in kinematics.planning_names], dtype=float)
-        seeds = [
-            q_home,
-            q_home + np.array([0.25, -0.25, 0.20, 0.0, 0.2, 0.0]),
-            q_home + np.array([-0.35, 0.20, -0.25, 0.2, -0.2, 0.3]),
-            np.zeros(6),
-        ]
-        checker = IsaacCollisionChecker(
-            world=world,
-            stage=stage,
-            robot=robot,
-            robot_prim_path=robot_prim_path,
-            workpiece_prim_path="/World/Workpiece",
-            ground_prim_path=ground_prim_path,
-            dof_indices=dof_indices,
-            padding=args.collision_padding,
-            contact_settle_steps=args.contact_settle_steps,
-            use_bbox_collision=args.use_bbox_collision,
-        )
-        endpoint_accept_validator = checker.is_state_valid
-        if args.trajopt and args.sdf_trajopt and sdf_layer is not None:
-            endpoint_sdf_evaluator = KinematicSDFCollisionEvaluator(
-                kinematics=kinematics,
-                sdf_layer=sdf_layer,
-                config=SDFTrajOptConfig(
-                    num_waypoints=args.trajopt_waypoints,
-                    max_waypoints=args.trajopt_max_waypoints,
-                    maxiter=args.trajopt_maxiter,
-                    ftol=args.sdf_trajopt_ftol,
-                    collision_weight=args.sdf_collision_weight,
-                    arm_collision_weight=args.sdf_arm_collision_weight,
-                    tool_collision_weight=args.sdf_tool_collision_weight,
-                    smoothness_weight=args.trajopt_smoothness_weight,
-                    path_length_weight=args.trajopt_path_length_weight,
-                    arm_safe_distance=args.sdf_arm_safe_distance,
-                    tool_safe_distance=args.sdf_tool_safe_distance,
-                    penetration_tol=args.sdf_penetration_tol,
-                    initial_penetration_tol=args.sdf_initial_penetration_tol,
-                    seed_fallback_penetration_tol=args.sdf_seed_fallback_penetration_tol,
-                    local_repair_passes=args.sdf_local_repair_passes,
-                    local_repair_samples=args.sdf_local_repair_samples,
-                    arm_step_size=args.sdf_arm_step_size,
-                    tool_step_size=args.sdf_tool_step_size,
-                    constraint_point_stride=args.sdf_constraint_point_stride,
-                    dense_check_resolution=min(args.edge_resolution, args.playback_resolution),
-                    endpoint_relax_waypoints=args.sdf_endpoint_relax_waypoints,
-                    endpoint_safe_distance_scale=args.sdf_endpoint_safe_distance_scale,
-                ),
-            )
-            endpoint_accept_validator = endpoint_sdf_evaluator.is_state_nonpenetrating
-            log("[demo] Endpoint SDF check uses non-penetration only; near-contact without negative SDF will not trigger retreat.")
-            log(
-                "[demo] SDF TrajOpt endpoint relaxation: "
-                f"waypoints={args.sdf_endpoint_relax_waypoints}, "
-                f"endpoint_safe_distance_scale={args.sdf_endpoint_safe_distance_scale:.2f}"
-            )
-        planned_segments: list[dict[str, Any]] = []
-        found_noncoincident_transition = False
-        scan_all_transitions = args.auto_first_transition or args.plan_all_transitions
-        for targets in iter_transition_targets(
-            args.job_dir,
-            args.weld_index,
-            args.workpiece_scale,
-            args.workpiece_offset,
-            args.workpiece_z_offset,
-            args.tcp_normal_offset,
-            args.transition_xyz_tol,
-            scan_all_transitions,
-            rng,
-        ):
-            log(
-                f"[demo] Loaded weld transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
-                f"from {targets['vector_path']}"
-            )
-            log(
-                f"[demo] Transition world xyz: {targets['start_xyz']} -> {targets['end_xyz']} "
-                f"(distance={targets['transition_distance']:.6f} m)"
-            )
-            if targets.get("skip_planning", False):
-                log(
-                    f"[demo] Candidate weld endpoint/startpoint already coincide within "
-                    f"{args.transition_xyz_tol:.2e} m; continuing to next transition."
-                )
-                continue
-
-            found_noncoincident_transition = True
-            log("[demo] Solving collision-free IK endpoints.")
-            try:
-                start_tf, q_start, start_retreat_steps = solve_valid_endpoint(
-                    label="start",
-                    kinematics=kinematics,
-                    checker=checker,
-                    base_xyz=targets["start_xyz"],
-                    normal=targets["start_normal"],
-                    tangent=targets["tangent"],
-                    seeds=seeds,
-                    tcp_offset=args.tcp_normal_offset,
-                    retreat_step=args.endpoint_retreat_step,
-                    max_retreat_steps=args.endpoint_retreat_max_steps,
-                    yaw_samples=args.endpoint_yaw_samples,
-                    random_seeds=args.endpoint_random_seeds,
-                    ik_rot_weight=args.endpoint_ik_rot_weight,
-                    ik_max_iters=args.endpoint_ik_max_iters,
-                    rng=rng,
-                    endpoint_accept_validator=endpoint_accept_validator,
-                )
-                goal_tf, q_goal, goal_retreat_steps = solve_valid_endpoint(
-                    label="goal",
-                    kinematics=kinematics,
-                    checker=checker,
-                    base_xyz=targets["end_xyz"],
-                    normal=targets["end_normal"],
-                    tangent=targets["tangent"],
-                    seeds=[q_start, q_home, np.zeros(6)],
-                    tcp_offset=args.tcp_normal_offset,
-                    retreat_step=args.endpoint_retreat_step,
-                    max_retreat_steps=args.endpoint_retreat_max_steps,
-                    yaw_samples=args.endpoint_yaw_samples,
-                    random_seeds=args.endpoint_random_seeds,
-                    ik_rot_weight=args.endpoint_ik_rot_weight,
-                    ik_max_iters=args.endpoint_ik_max_iters,
-                    rng=rng,
-                    endpoint_accept_validator=endpoint_accept_validator,
-                )
-            except RuntimeError as exc:
-                log(
-                    f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
-                    f"has no collision-free IK endpoints; trying next transition. Last error: {exc}"
-                )
-                continue
-
-            targets["start_tf"] = start_tf
-            targets["goal_tf"] = goal_tf
-            log(f"[IK] q_start shape={np.asarray(q_start).shape}, q_goal shape={np.asarray(q_goal).shape}")
-            log(f"[IK] q_start={np.round(q_start, 4)} retreat_steps={start_retreat_steps}")
-            log(f"[IK] q_goal ={np.round(q_goal, 4)} retreat_steps={goal_retreat_steps}")
-            draw_target_markers(
-                stage=stage,
-                weld_start=targets["start_xyz"],
-                weld_goal=targets["end_xyz"],
-                start_normal=targets["start_normal"],
-                goal_normal=targets["end_normal"],
-                tcp_start=targets["start_tf"][:3, 3],
-                tcp_goal=targets["goal_tf"][:3, 3],
-                path_points=np.array([targets["start_tf"][:3, 3], targets["goal_tf"][:3, 3]]),
-            )
-            if args.save_ik_screenshots and not planned_segments:
-                write_ik_endpoint_screenshots(
-                    rep=rep,
-                    world=world,
-                    stage=stage,
-                    robot=robot,
-                    dof_indices=dof_indices,
-                    q_start=q_start,
-                    q_goal=q_goal,
-                    workpiece_info=workpiece_info,
-                    args=args,
-                )
-                refresh_articulation_view(world, robot, warmup_steps=2)
-                set_robot_q(robot, dof_indices, q_start)
-                zero_robot_velocities(robot)
-                world.step(render=True)
-
-            collision_check_resolution = min(args.edge_resolution, args.playback_resolution)
-            def is_edge_valid(qa: np.ndarray, qb: np.ndarray) -> bool:
-                return checker_edge_valid(checker, qa, qb, collision_check_resolution)
-
-            try:
-                if can_use_endpoint_as_rrt_anchor(
-                    endpoint_q=q_start,
-                    kinematics=kinematics,
-                    checker=checker,
-                    edge_resolution=collision_check_resolution,
-                    escape_step=args.planning_anchor_escape_step,
-                ):
-                    rrt_start_tf = retreated_target_tf(
-                        targets["start_xyz"],
-                        targets["start_normal"],
-                        targets["tangent"],
-                        args.tcp_normal_offset,
-                        args.endpoint_retreat_step,
-                        start_retreat_steps,
-                        yaw_about_normal=0.0,
-                    )
-                    q_rrt_start = q_start.copy()
-                    rrt_start_retreat_steps = start_retreat_steps
-                    log("[endpoint] start endpoint already satisfies RRT anchor conditions; skipping anchor retreat search.")
-                else:
-                    rrt_start_tf, q_rrt_start, rrt_start_retreat_steps = solve_planning_anchor(
-                        label="start",
-                        kinematics=kinematics,
-                        checker=checker,
-                        endpoint_q=q_start,
-                        base_xyz=targets["start_xyz"],
-                        normal=targets["start_normal"],
-                        tangent=targets["tangent"],
-                        tcp_offset=args.tcp_normal_offset,
-                        retreat_step=args.endpoint_retreat_step,
-                        accepted_retreat_index=start_retreat_steps,
-                        max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
-                        ik_rot_weight=args.endpoint_ik_rot_weight,
-                        ik_max_iters=args.endpoint_ik_max_iters,
-                        rng=rng,
-                        edge_resolution=collision_check_resolution,
-                        escape_step=args.planning_anchor_escape_step,
-                    )
-                if can_use_endpoint_as_rrt_anchor(
-                    endpoint_q=q_goal,
-                    kinematics=kinematics,
-                    checker=checker,
-                    edge_resolution=collision_check_resolution,
-                    escape_step=args.planning_anchor_escape_step,
-                ):
-                    rrt_goal_tf = retreated_target_tf(
-                        targets["end_xyz"],
-                        targets["end_normal"],
-                        targets["tangent"],
-                        args.tcp_normal_offset,
-                        args.endpoint_retreat_step,
-                        goal_retreat_steps,
-                        yaw_about_normal=0.0,
-                    )
-                    q_rrt_goal = q_goal.copy()
-                    rrt_goal_retreat_steps = goal_retreat_steps
-                    log("[endpoint] goal endpoint already satisfies RRT anchor conditions; skipping anchor retreat search.")
-                else:
-                    rrt_goal_tf, q_rrt_goal, rrt_goal_retreat_steps = solve_planning_anchor(
-                        label="goal",
-                        kinematics=kinematics,
-                        checker=checker,
-                        endpoint_q=q_goal,
-                        base_xyz=targets["end_xyz"],
-                        normal=targets["end_normal"],
-                        tangent=targets["tangent"],
-                        tcp_offset=args.tcp_normal_offset,
-                        retreat_step=args.endpoint_retreat_step,
-                        accepted_retreat_index=goal_retreat_steps,
-                        max_extra_retreat_steps=args.planning_anchor_max_extra_steps,
-                        ik_rot_weight=args.endpoint_ik_rot_weight,
-                        ik_max_iters=args.endpoint_ik_max_iters,
-                        rng=rng,
-                        edge_resolution=collision_check_resolution,
-                        escape_step=args.planning_anchor_escape_step,
-                    )
-            except RuntimeError as exc:
-                log(
-                    f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
-                    f"has no expandable RRT anchors; trying next transition. Last error: {exc}"
-                )
-                continue
-            log(
-                f"[demo] RRT anchors ready: start_retreat_steps={rrt_start_retreat_steps}, "
-                f"goal_retreat_steps={rrt_goal_retreat_steps}"
-            )
-
-            t0 = time.perf_counter()
-            if args.auto_rrt_adapt:
-                rrt_candidates = build_rrt_candidate_configs(
-                    base_step_size=args.rrt_step_size,
-                    base_goal_bias=args.goal_bias,
-                    max_candidates=args.rrt_auto_max_candidates,
-                )
-            else:
-                rrt_candidates = [(float(args.rrt_step_size), float(args.goal_bias))]
-            q_anchor_seed_path = None
-            selected_rrt_step = None
-            selected_rrt_goal_bias = None
-            last_rrt_error: Exception | None = None
-            for candidate_index, (candidate_step_size, candidate_goal_bias) in enumerate(rrt_candidates, start=1):
-                log(
-                    f"[demo] RRT candidate {candidate_index}/{len(rrt_candidates)}: "
-                    f"step_size={candidate_step_size:.4f}, goal_bias={candidate_goal_bias:.2f}"
-                )
-                try:
-                    q_anchor_seed_path = rrt_connect_plan_with_restarts(
-                        q_start=q_rrt_start,
-                        q_goal=q_rrt_goal,
-                        lower=kinematics.lower,
-                        upper=kinematics.upper,
-                        is_state_valid=checker.is_state_valid,
-                        is_edge_valid=is_edge_valid,
-                        step_size=candidate_step_size,
-                        max_iter=args.max_iter,
-                        restarts=args.rrt_restarts,
-                        goal_bias=candidate_goal_bias,
-                        rng=rng,
-                        logger=log,
-                    )
-                    selected_rrt_step = candidate_step_size
-                    selected_rrt_goal_bias = candidate_goal_bias
-                    break
-                except RuntimeError as exc:
-                    last_rrt_error = exc
-                    log(
-                        f"[demo] RRT candidate {candidate_index}/{len(rrt_candidates)} failed: "
-                        f"step_size={candidate_step_size:.4f}, goal_bias={candidate_goal_bias:.2f}, error={exc}"
-                    )
-            if q_anchor_seed_path is None:
-                log(
-                    f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
-                    f"failed during RRT planning; trying next transition. Last error: {last_rrt_error}"
-                )
-                continue
-            q_seed_path = q_anchor_seed_path
-            plan_time = time.perf_counter() - t0
-            log(
-                f"[demo] Selected RRT parameters: step_size={selected_rrt_step:.4f}, "
-                f"goal_bias={selected_rrt_goal_bias:.2f}"
-            )
-            q_plan = q_seed_path
-            trajopt_success = False
-            if args.trajopt:
-                trajopt_runner = None
-                if args.sdf_trajopt:
-                    if sdf_layer is None:
-                        raise RuntimeError("SDF TrajOpt requested but workpiece SDF failed to load.")
-                    sdf_evaluator = KinematicSDFCollisionEvaluator(
-                        kinematics=kinematics,
-                        sdf_layer=sdf_layer,
-                        config=SDFTrajOptConfig(
-                            num_waypoints=args.trajopt_waypoints,
-                            max_waypoints=args.trajopt_max_waypoints,
-                            maxiter=args.trajopt_maxiter,
-                            ftol=args.sdf_trajopt_ftol,
-                            collision_weight=args.sdf_collision_weight,
-                            arm_collision_weight=args.sdf_arm_collision_weight,
-                            tool_collision_weight=args.sdf_tool_collision_weight,
-                            smoothness_weight=args.trajopt_smoothness_weight,
-                            path_length_weight=args.trajopt_path_length_weight,
-                            arm_safe_distance=args.sdf_arm_safe_distance,
-                            tool_safe_distance=args.sdf_tool_safe_distance,
-                            penetration_tol=args.sdf_penetration_tol,
-                            initial_penetration_tol=args.sdf_initial_penetration_tol,
-                            seed_fallback_penetration_tol=args.sdf_seed_fallback_penetration_tol,
-                            local_repair_passes=args.sdf_local_repair_passes,
-                            local_repair_samples=args.sdf_local_repair_samples,
-                            arm_step_size=args.sdf_arm_step_size,
-                            tool_step_size=args.sdf_tool_step_size,
-                            constraint_point_stride=args.sdf_constraint_point_stride,
-                            dense_check_resolution=collision_check_resolution,
-                            endpoint_relax_waypoints=args.sdf_endpoint_relax_waypoints,
-                            endpoint_safe_distance_scale=args.sdf_endpoint_safe_distance_scale,
-                        ),
-                    )
-
-                    def trajopt_runner(q_seed_current: np.ndarray, logger: Any) -> tuple[np.ndarray, bool]:
-                        return run_sdf_trajopt(
-                            q_seed=q_seed_current,
-                            lower=kinematics.lower,
-                            upper=kinematics.upper,
-                            evaluator=sdf_evaluator,
-                            logger=logger,
-                        )
-
-                q_plan, optimization_info = optimize_path(
-                    q_seed=q_seed_path,
-                    lower=kinematics.lower,
-                    upper=kinematics.upper,
-                    is_state_valid=checker.is_state_valid,
-                    is_edge_valid=is_edge_valid,
-                    config=TrajOptConfig(
-                        num_waypoints=args.trajopt_waypoints,
-                        maxiter=args.trajopt_maxiter,
-                        ftol=args.trajopt_ftol,
-                        smoothness_weight=args.trajopt_smoothness_weight,
-                        path_length_weight=args.trajopt_path_length_weight,
-                        seed_weight=args.trajopt_seed_weight,
-                        constraint_edge_resolution=args.edge_resolution,
-                        shortcut_iterations=args.shortcut_iterations,
-                        shortcut_passes=args.shortcut_passes,
-                        averaging_passes=args.average_passes,
-                        averaging_blend=args.average_blend,
-                        validation_resolution=collision_check_resolution,
-                    ),
-                    rng=rng,
-                    logger=log,
-                    trajopt_runner=trajopt_runner,
-                )
-                trajopt_success = bool(optimization_info.get("trajopt_success", False))
-            q_rrt_core_playback = densify_path(q_seed_path, args.playback_resolution)
-            rrt_playback_collision = next((q for q in q_rrt_core_playback if not checker.is_state_valid(q)), None)
-            if rrt_playback_collision is not None:
-                log(
-                    f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
-                    f"rejected before comparison playback: RRT playback collision at sample={np.round(rrt_playback_collision, 4)}"
-                )
-                continue
-            q_core_playback = densify_path(q_plan, args.playback_resolution)
-            playback_collision = next((q for q in q_core_playback if not checker.is_state_valid(q)), None)
-            if playback_collision is not None:
-                log(
-                    f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
-                    f"rejected after optimization: playback collision at sample={np.round(playback_collision, 4)}"
-                )
-                continue
-            q_rrt_playback = build_endpoint_inclusive_playback(
-                q_start=q_start,
-                q_rrt_start=q_rrt_start,
-                q_core_playback=q_rrt_core_playback,
-                q_rrt_goal=q_rrt_goal,
-                q_goal=q_goal,
-                resolution=args.playback_resolution,
-            )
-            q_playback = build_endpoint_inclusive_playback(
-                q_start=q_start,
-                q_rrt_start=q_rrt_start,
-                q_core_playback=q_core_playback,
-                q_rrt_goal=q_rrt_goal,
-                q_goal=q_goal,
-                resolution=args.playback_resolution,
-            )
-            tcp_points = np.array([kinematics.forward(q)[:3, 3] for q in q_playback])
-            planned_segments.append(
-                {
-                    "targets": targets,
-                    "q_start": q_start,
-                    "q_goal": q_goal,
-                    "q_rrt_start": q_rrt_start,
-                    "q_rrt_goal": q_rrt_goal,
-                    "rrt_step_size": selected_rrt_step,
-                    "rrt_goal_bias": selected_rrt_goal_bias,
-                    "q_seed_path": q_seed_path,
-                    "q_plan": q_plan,
-                    "q_rrt_playback": q_rrt_playback,
-                    "q_playback": q_playback,
-                    "tcp_points": tcp_points,
-                    "trajopt_success": trajopt_success,
-                    "plan_time": plan_time,
-                    "collision_check_resolution": collision_check_resolution,
-                }
-            )
-            log(
-                f"[demo] Planned transition {targets['prev_weld_index']} -> {targets['next_weld_index']}: "
-                f"{len(q_seed_path)} RRT waypoints, {len(q_plan)} optimized waypoints, "
-                f"{len(q_playback)} playback points in {plan_time:.2f}s "
-                f"(endpoint_qs_excluded_from_trajopt=True) "
-                f"(trajopt={'accepted' if trajopt_success else 'skipped'})"
-            )
-            if not args.plan_all_transitions:
-                break
-
-        if not planned_segments:
-            if not scan_all_transitions:
-                raise RuntimeError(
-                    f"Selected transition {args.weld_index} -> {args.weld_index + 1} could not be planned."
-                )
-            if not found_noncoincident_transition:
-                raise RuntimeError(
-                    "No transition requires planning: all consecutive weld endpoint/startpoint pairs "
-                    f"coincide within tolerance {args.transition_xyz_tol:.2e} m."
-                )
-            raise RuntimeError("No valid transition could be fully planned and optimized.")
-
-        playback_segments: list[tuple[str, np.ndarray]] = []
-        compare_order = ["RRT", "Optimized"] if args.compare_playback_order == "rrt_first" else ["Optimized", "RRT"]
-        for segment in planned_segments:
-            if args.compare_playback:
-                for label in compare_order:
-                    if label == "RRT":
-                        playback_segments.append((f"RRT transition {segment['targets']['prev_weld_index']}->{segment['targets']['next_weld_index']}", segment["q_rrt_playback"]))
-                    else:
-                        optimized_label = "TrajOpt" if segment["trajopt_success"] else "Fallback"
-                        playback_segments.append((f"{optimized_label} transition {segment['targets']['prev_weld_index']}->{segment['targets']['next_weld_index']}", segment["q_playback"]))
-            else:
-                playback_segments.append(
-                    (
-                        f"Final transition {segment['targets']['prev_weld_index']}->{segment['targets']['next_weld_index']}",
-                        segment["q_playback"],
-                    )
-                )
-        tcp_points = np.vstack([segment["tcp_points"] for segment in planned_segments])
-        first_targets = planned_segments[0]["targets"]
-        last_targets = planned_segments[-1]["targets"]
-        draw_target_markers(
-            stage=stage,
-            weld_start=first_targets["start_xyz"],
-            weld_goal=last_targets["end_xyz"],
-            start_normal=first_targets["start_normal"],
-            goal_normal=last_targets["end_normal"],
-            tcp_start=first_targets["start_tf"][:3, 3],
-            tcp_goal=last_targets["goal_tf"][:3, 3],
-            path_points=tcp_points,
-        )
-        log(
-            f"[demo] Planned {len(planned_segments)} transition segments, "
-            f"{sum(len(path) for _, path in playback_segments)} total playback points."
-        )
-        if args.compare_playback:
-            log(
-                f"[demo] Compare playback enabled: order={args.compare_playback_order}, "
-                "replaying both raw RRT and final optimized trajectories."
-            )
-
-        recording_session = None
-        if args.record and frames_dir is not None:
-            recording_session = start_recording_session(
-                rep=rep,
-                world=world,
-                stage=stage,
-                workpiece_info=workpiece_info,
-                frames_dir=frames_dir,
-                args=args,
-            )
-            refresh_articulation_view(world, robot, warmup_steps=1)
-            log(f"[demo] Recording frames to: {frames_dir}")
-
-        run_playback_segments(world, stage, robot, dof_indices, playback_segments, args, recording_session)
-
-        if recording_session is not None and frames_dir is not None:
-            finish_recording_session(recording_session, frames_dir)
-
-        if not args.record and not args.headless:
-            log("[demo] Replay complete. Close Isaac Sim or press Ctrl+C to stop.")
-            while simulation_app.is_running():
-                world.step(render=True)
-                time.sleep(0.0)
-
-    except Exception:
-        log("[demo] Fatal error during planning or recording:")
-        traceback.print_exc()
-        raise
-    finally:
-        simulation_app.close()
-
-    if args.record and frames_dir is not None:
-        try:
-            encode_video(frames_dir, args.output, args.fps)
-        except Exception as exc:
-            log(f"[demo] {exc}")
-            log(f"[demo] Keeping frames for manual encoding: {frames_dir}")
-            if not args.allow_frames_only:
-                raise
-            return
-        if not args.keep_frames:
-            shutil.rmtree(frames_dir)
-        log(f"[demo] Video saved to: {args.output}")
-
-
-def main_v2() -> None:
-    args = parse_args()
-    if args.encode_only:
-        args.output = args.output.resolve()
-        if args.frames_dir is None:
-            args.frames_dir = args.output.parent / f"{args.output.stem}_frames"
-        frames_dir = args.frames_dir.resolve()
-        encode_video(frames_dir, args.output, args.fps)
-        log(f"[demo] Video saved to: {args.output}")
-        return
-
     job_dirs = resolve_job_dirs(args)
     rng = np.random.default_rng(args.seed)
     if args.record and shutil.which("ffmpeg") is None:
@@ -3966,62 +3296,8 @@ def main_v2() -> None:
             "install ffmpeg on the server to encode MP4 automatically."
         )
     needs_replicator = args.record or args.save_ik_screenshots
-
     try:
-        from isaacsim import SimulationApp
-    except ImportError:
-        from omni.isaac.kit import SimulationApp
-
-    simulation_app = SimulationApp({"headless": args.headless, "enable_cameras": needs_replicator})
-    try:
-        configure_log_filters(args)
-        configure_render_settings(args)
-        try:
-            from isaacsim.core.api import World
-        except ImportError:
-            from omni.isaac.core import World
-
-        from omni.usd import get_context
-        if needs_replicator:
-            import omni.replicator.core as rep
-        else:
-            rep = None
-
-        world = World(physics_dt=1.0 / 60.0, rendering_dt=1.0 / args.fps, stage_units_in_meters=1.0)
-        stage = get_context().get_stage()
-        ensure_xform(stage, "/World/Debug")
-        ground_prim_path = add_visual_ground(
-            stage,
-            size=args.visual_ground_size,
-            z=args.visual_ground_z,
-            opacity=args.visual_ground_opacity,
-        )
-        add_scene_lighting(stage)
-
-        resolved_urdf = make_resolved_urdf(args.urdf)
-        kinematics = URDFKinematics(resolved_urdf, include_tool_collision=args.include_tool_collision)
-        robot_prim_path = import_single_robot(stage, resolved_urdf)
-        add_urdf_collision_stl_proxies(
-            stage=stage,
-            robot_prim_path=robot_prim_path,
-            resolved_urdf=resolved_urdf,
-            include_tool_collision=args.include_tool_collision,
-            show_collision_proxies=args.show_collision_proxies,
-            collision_approximation=args.robot_collision_approximation,
-            sdf_resolution=args.robot_sdf_resolution,
-            sdf_subgrid_resolution=args.robot_sdf_subgrid_resolution,
-        )
-
-        log("[demo] Resetting world and initializing articulation.")
-        world.reset()
-        ensure_physics_sim_view(world, warmup_steps=2)
-        robot = make_articulation(world, robot_prim_path)
-        world.reset()
-        robot.initialize()
-        log(f"[robot] Articulation object type={type(robot).__name__}")
-        warm_up_articulation_state(world, robot)
-        dof_indices = dof_indices_for(robot, kinematics.planning_names)
-        log(f"[demo] Articulation ready: dofs={list(robot.dof_names)} planning_indices={dof_indices}")
+        runtime = initialize_runtime(args, needs_replicator)
 
         job_summaries = []
         for job_dir in job_dirs:
@@ -4029,15 +3305,15 @@ def main_v2() -> None:
                 job_summary = process_job(
                     job_dir=job_dir,
                     args=args,
-                    world=world,
-                    stage=stage,
-                    robot=robot,
-                    robot_prim_path=robot_prim_path,
-                    dof_indices=dof_indices,
-                    kinematics=kinematics,
-                    ground_prim_path=ground_prim_path,
+                    world=runtime.world,
+                    stage=runtime.stage,
+                    robot=runtime.robot,
+                    robot_prim_path=runtime.robot_prim_path,
+                    dof_indices=runtime.dof_indices,
+                    kinematics=runtime.kinematics,
+                    ground_prim_path=runtime.ground_prim_path,
                     rng=rng,
-                    rep=rep,
+                    rep=runtime.rep,
                 )
             except Exception as exc:
                 log(f"[demo] Job failed but batch will continue: job={job_dir}, error={exc}")
@@ -4047,20 +3323,16 @@ def main_v2() -> None:
 
         completed = sum(1 for item in job_summaries if item.get("planned_transition_count", 0) > 0)
         log(f"[demo] Batch complete: jobs={len(job_summaries)}, jobs_with_plans={completed}")
-
-        if not args.record and not args.headless:
-            log("[demo] Replay complete. Close Isaac Sim or press Ctrl+C to stop.")
-            while simulation_app.is_running():
-                world.step(render=True)
-                time.sleep(0.0)
+        wait_until_closed_if_interactive(runtime.simulation_app, runtime.world, args)
 
     except Exception:
         log("[demo] Fatal error during planning or recording:")
         traceback.print_exc()
         raise
     finally:
-        simulation_app.close()
+        if "runtime" in locals():
+            runtime.simulation_app.close()
 
 
 if __name__ == "__main__":
-    main_v2()
+    main()
