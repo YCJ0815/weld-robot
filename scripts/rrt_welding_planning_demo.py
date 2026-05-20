@@ -22,7 +22,7 @@ import traceback
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import numpy as np
 
@@ -53,8 +53,35 @@ from sdf_trajopt import KinematicSDFCollisionEvaluator, SDFTrajOptConfig, run_sd
 from workpiece_sdf import SDFBuildConfig, load_or_build_workpiece_sdf  # noqa: E402
 
 
+_STATUS_LINE = ""
+
+
+def _clear_status_line() -> None:
+    if not _STATUS_LINE:
+        return
+    print("\r\033[2K", end="", flush=True)
+
+
+def set_status_line(message: str) -> None:
+    global _STATUS_LINE
+    _STATUS_LINE = message.strip()
+    if not _STATUS_LINE:
+        return
+    print(f"\r\033[2K{_STATUS_LINE}", end="", flush=True)
+
+
+def clear_status_line() -> None:
+    global _STATUS_LINE
+    if _STATUS_LINE:
+        print("\r\033[2K", end="", flush=True)
+    _STATUS_LINE = ""
+
+
 def log(message: str) -> None:
+    _clear_status_line()
     print(message, flush=True)
+    if _STATUS_LINE:
+        print(f"\r\033[2K{_STATUS_LINE}", end="", flush=True)
 
 
 def configure_log_filters(args: argparse.Namespace) -> None:
@@ -1518,16 +1545,15 @@ def build_transition_targets_from_pair(
     }
 
 
-def iter_transition_targets(
+def collect_transition_targets(
     job_dir: Path,
     scale: float,
     offset: list[float],
     z_offset: float,
     tcp_offset: float,
     transition_xyz_tol: float,
-    scan_all_transitions: bool,
     rng: np.random.Generator,
-) -> Iterator[dict[str, Any]]:
+) -> list[dict[str, Any]]:
     vector_path, welds = load_welds_data(job_dir)
     candidate_pairs: list[tuple[int, int]] = []
     for from_weld_index in range(len(welds)):
@@ -1537,16 +1563,11 @@ def iter_transition_targets(
             candidate_pairs.append((from_weld_index, to_weld_index))
 
     if not candidate_pairs:
-        return
+        return []
 
     rng.shuffle(candidate_pairs)
-    seen_pairs: set[tuple[int, int]] = set()
-    yielded = 0
+    targets_list: list[dict[str, Any]] = []
     for from_weld_index, to_weld_index in candidate_pairs:
-        pair = (from_weld_index, to_weld_index)
-        if pair in seen_pairs:
-            continue
-        seen_pairs.add(pair)
         targets = build_transition_targets_from_pair(
             vector_path=vector_path,
             welds=welds,
@@ -1560,10 +1581,8 @@ def iter_transition_targets(
         )
         if targets.get("skip_planning", False):
             continue
-        yield targets
-        yielded += 1
-        if not scan_all_transitions and yielded >= 1:
-            break
+        targets_list.append(targets)
+    return targets_list
 
 
 def retreated_target_tf(
@@ -2699,6 +2718,7 @@ def process_job(
     rep: Any | None,
 ) -> dict[str, Any]:
     job_dir = job_dir.resolve()
+    clear_status_line()
     log(f"[demo] Starting job: {job_dir}")
     clear_job_prims(stage)
     workpiece_mesh_path = resolve_workpiece_mesh_path(job_dir)
@@ -2775,17 +2795,31 @@ def process_job(
     transition_records: list[dict[str, Any]] = []
     found_noncoincident_transition = False
     scan_all_transitions = args.auto_first_transition or args.plan_all_transitions or args.all_jobs
-
-    for targets in iter_transition_targets(
+    transition_targets = collect_transition_targets(
         job_dir,
         args.workpiece_scale,
         args.workpiece_offset,
         args.workpiece_z_offset,
         args.tcp_normal_offset,
         args.transition_xyz_tol,
-        scan_all_transitions,
         rng,
-    ):
+    )
+    total_transition_candidates = len(transition_targets)
+    total_welds = len(load_welds_data(job_dir)[1])
+    log(
+        f"[demo] Job transition progress: welds={total_welds}, "
+        f"valid_candidates={total_transition_candidates}"
+    )
+
+    transition_iteration_limit = total_transition_candidates if scan_all_transitions else min(total_transition_candidates, 1)
+    for transition_index, targets in enumerate(transition_targets[:transition_iteration_limit], start=1):
+        set_status_line(
+            "[progress] "
+            f"job={job_dir.name} "
+            f"transition={transition_index}/{transition_iteration_limit} "
+            f"pair={targets['prev_weld_index']}->{targets['next_weld_index']} "
+            "stage=loading"
+        )
         transition_record: dict[str, Any] = {
             "prev_weld_index": int(targets["prev_weld_index"]),
             "next_weld_index": int(targets["next_weld_index"]),
@@ -2794,19 +2828,19 @@ def process_job(
             "status": "pending",
         }
         log(
-            f"[demo] Loaded weld transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
+            f"[demo] Transition progress {transition_index}/{transition_iteration_limit}: "
+            f"{targets['prev_weld_index']} -> {targets['next_weld_index']} "
             f"from {targets['vector_path']}"
         )
-        if targets.get("skip_planning", False):
-            transition_record["status"] = "skipped_coincident"
-            transition_records.append(transition_record)
-            log(
-                f"[demo] Candidate weld endpoint/startpoint already coincide within "
-                f"{args.transition_xyz_tol:.2e} m; continuing to next transition."
-            )
-            continue
 
         found_noncoincident_transition = True
+        set_status_line(
+            "[progress] "
+            f"job={job_dir.name} "
+            f"transition={transition_index}/{transition_iteration_limit} "
+            f"pair={targets['prev_weld_index']}->{targets['next_weld_index']} "
+            "stage=endpoint_ik"
+        )
         log("[demo] Solving collision-free IK endpoints.")
         try:
             start_tf, q_start, start_retreat_steps = solve_valid_endpoint(
@@ -2863,6 +2897,13 @@ def process_job(
             return checker_edge_valid(checker, qa, qb, collision_check_resolution)
 
         try:
+            set_status_line(
+                "[progress] "
+                f"job={job_dir.name} "
+                f"transition={transition_index}/{transition_iteration_limit} "
+                f"pair={targets['prev_weld_index']}->{targets['next_weld_index']} "
+                "stage=anchor_search"
+            )
             if can_use_endpoint_as_rrt_anchor(
                 endpoint_q=q_start,
                 kinematics=kinematics,
@@ -2941,6 +2982,13 @@ def process_job(
         selected_segment: dict[str, Any] | None = None
         rrt_attempts: list[dict[str, Any]] = []
         for candidate_index, (candidate_step_size, candidate_goal_bias) in enumerate(rrt_candidates, start=1):
+            set_status_line(
+                "[progress] "
+                f"job={job_dir.name} "
+                f"transition={transition_index}/{transition_iteration_limit} "
+                f"pair={targets['prev_weld_index']}->{targets['next_weld_index']} "
+                f"stage=rrt candidate={candidate_index}/{len(rrt_candidates)}"
+            )
             log(
                 f"[demo] RRT candidate {candidate_index}/{len(rrt_candidates)}: "
                 f"step_size={candidate_step_size:.4f}, goal_bias={candidate_goal_bias:.2f}"
@@ -2984,6 +3032,13 @@ def process_job(
                 if args.sdf_trajopt:
                     retry_reason: str | None = None
                     for retry_index, retry_cfg in enumerate(build_sdf_trajopt_retry_configs(args, retry_reason), start=1):
+                        set_status_line(
+                            "[progress] "
+                            f"job={job_dir.name} "
+                            f"transition={transition_index}/{transition_iteration_limit} "
+                            f"pair={targets['prev_weld_index']}->{targets['next_weld_index']} "
+                            f"stage=trajopt retry={retry_index}/{int(args.trajopt_retries)}"
+                        )
                         sdf_evaluator = KinematicSDFCollisionEvaluator(
                             kinematics=kinematics,
                             sdf_layer=sdf_layer,
@@ -3041,6 +3096,13 @@ def process_job(
                             optimization_info = optimization_candidate_info
                             trajopt_success = False
                 else:
+                    set_status_line(
+                        "[progress] "
+                        f"job={job_dir.name} "
+                        f"transition={transition_index}/{transition_iteration_limit} "
+                        f"pair={targets['prev_weld_index']}->{targets['next_weld_index']} "
+                        "stage=trajopt"
+                    )
                     q_plan, optimization_info = optimize_path(
                         q_seed=q_seed_path,
                         lower=kinematics.lower,
@@ -3203,6 +3265,13 @@ def process_job(
         )
         transition_records.append(transition_record)
         planned_segments.append(segment_to_store)
+        set_status_line(
+            "[progress] "
+            f"job={job_dir.name} "
+            f"transition={transition_index}/{transition_iteration_limit} "
+            f"pair={targets['prev_weld_index']}->{targets['next_weld_index']} "
+            f"stage=planned trajopt={'yes' if segment_to_store['trajopt_success'] else 'fallback'}"
+        )
         log(
             f"[demo] Planned transition {targets['prev_weld_index']} -> {targets['next_weld_index']}: "
             f"{len(segment_to_store['q_seed_path'])} RRT waypoints, {len(segment_to_store['q_plan'])} optimized waypoints, "
@@ -3223,6 +3292,7 @@ def process_job(
     frames_dir = None
     output_path = None
     if planned_segments and args.record:
+        set_status_line(f"[progress] job={job_dir.name} stage=recording_setup")
         output_path, frames_dir = prepare_job_recording_paths(args, job_dir)
         recording_session = start_recording_session(
             rep=rep,
@@ -3235,6 +3305,7 @@ def process_job(
         refresh_articulation_view(world, robot, warmup_steps=1)
         log(f"[demo] Recording frames to: {frames_dir}")
     if planned_segments:
+        set_status_line(f"[progress] job={job_dir.name} stage=playback segments={len(planned_segments)}")
         playback_segments: list[tuple[str, np.ndarray]] = []
         compare_order = ["RRT", "Optimized"] if args.compare_playback_order == "rrt_first" else ["Optimized", "RRT"]
         for segment in planned_segments:
@@ -3256,6 +3327,7 @@ def process_job(
         if recording_session is not None and frames_dir is not None:
             finish_recording_session(recording_session, frames_dir)
             try:
+                set_status_line(f"[progress] job={job_dir.name} stage=encoding_video")
                 assert output_path is not None
                 encode_video(frames_dir, output_path, args.fps)
                 summary["video_path"] = str(output_path)
@@ -3274,6 +3346,7 @@ def process_job(
             summary["status"] = "all_transitions_coincident"
     summary_path = save_job_summary(job_dir, args.results_subdir, summary)
     summary["summary_path"] = str(summary_path)
+    clear_status_line()
     return summary
 
 
@@ -3299,8 +3372,11 @@ def main() -> None:
     try:
         runtime = initialize_runtime(args, needs_replicator)
 
+        total_jobs = len(job_dirs)
         job_summaries = []
-        for job_dir in job_dirs:
+        for job_index, job_dir in enumerate(job_dirs, start=1):
+            set_status_line(f"[progress] jobs={job_index}/{total_jobs} current_job={job_dir.name} stage=starting")
+            log(f"[demo] Job progress {job_index}/{total_jobs}: {job_dir}")
             try:
                 job_summary = process_job(
                     job_dir=job_dir,
@@ -3320,8 +3396,18 @@ def main() -> None:
                 save_job_summary(job_dir, args.results_subdir, {"job_dir": str(job_dir), "status": "job_failed", "error": str(exc)})
                 job_summary = {"job_dir": str(job_dir), "status": "job_failed", "error": str(exc)}
             job_summaries.append(job_summary)
+            set_status_line(
+                f"[progress] jobs={job_index}/{total_jobs} current_job={job_dir.name} "
+                f"stage=finished planned={job_summary.get('planned_transition_count', 0)}"
+            )
+            log(
+                f"[demo] Job finished {job_index}/{total_jobs}: "
+                f"planned_transition_count={job_summary.get('planned_transition_count', 0)}, "
+                f"status={job_summary.get('status', 'ok')}"
+            )
 
         completed = sum(1 for item in job_summaries if item.get("planned_transition_count", 0) > 0)
+        set_status_line(f"[progress] jobs={total_jobs}/{total_jobs} stage=batch_complete jobs_with_plans={completed}")
         log(f"[demo] Batch complete: jobs={len(job_summaries)}, jobs_with_plans={completed}")
         wait_until_closed_if_interactive(runtime.simulation_app, runtime.world, args)
 
@@ -3330,6 +3416,7 @@ def main() -> None:
         traceback.print_exc()
         raise
     finally:
+        clear_status_line()
         if "runtime" in locals():
             runtime.simulation_app.close()
 
