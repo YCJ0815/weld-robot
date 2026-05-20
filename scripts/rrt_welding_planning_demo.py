@@ -494,6 +494,18 @@ def prepare_job_recording_paths(args: argparse.Namespace, job_dir: Path) -> tupl
     return output_path, frames_dir
 
 
+def resolve_workpiece_mesh_path(job_dir: Path) -> Path:
+    sim_stl = job_dir / "workpiece_sim.stl"
+    if sim_stl.exists():
+        return sim_stl
+    stl = job_dir / "workpiece.stl"
+    if stl.exists():
+        return stl
+    raise FileNotFoundError(
+        f"No workpiece mesh found under {job_dir} (expected workpiece_sim.stl or workpiece.stl)."
+    )
+
+
 def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is None:
@@ -2649,9 +2661,11 @@ def process_job(
     job_dir = job_dir.resolve()
     log(f"[demo] Starting job: {job_dir}")
     clear_job_prims(stage)
+    workpiece_mesh_path = resolve_workpiece_mesh_path(job_dir)
+    log(f"[demo] Using workpiece mesh for simulation: {workpiece_mesh_path.name}")
     workpiece_info = import_collision_stl(
         stage,
-        stl_path=job_dir / "workpiece.stl",
+        stl_path=workpiece_mesh_path,
         prim_path="/World/Workpiece",
         scale=args.workpiece_scale,
         z_offset=args.workpiece_z_offset,
@@ -2667,7 +2681,7 @@ def process_job(
             else (job_dir / "workpiece_sdf.npz").resolve()
         )
         sdf_layer, sdf_npz_path = load_or_build_workpiece_sdf(
-            stl_path=(job_dir / "workpiece.stl").resolve(),
+            stl_path=workpiece_mesh_path.resolve(),
             scale=args.workpiece_scale,
             z_offset=args.workpiece_z_offset,
             local_offset=tuple(float(v) for v in args.workpiece_offset),
@@ -3262,9 +3276,11 @@ def main() -> None:
             sdf_resolution=args.robot_sdf_resolution,
             sdf_subgrid_resolution=args.robot_sdf_subgrid_resolution,
         )
+        workpiece_mesh_path = resolve_workpiece_mesh_path(args.job_dir.resolve())
+        log(f"[demo] Using workpiece mesh for simulation: {workpiece_mesh_path.name}")
         workpiece_info = import_collision_stl(
             stage,
-            stl_path=args.job_dir / "workpiece.stl",
+            stl_path=workpiece_mesh_path,
             prim_path="/World/Workpiece",
             scale=args.workpiece_scale,
             z_offset=args.workpiece_z_offset,
@@ -3280,7 +3296,7 @@ def main() -> None:
                 else (args.job_dir / "workpiece_sdf.npz").resolve()
             )
             sdf_layer, sdf_npz_path = load_or_build_workpiece_sdf(
-                stl_path=(args.job_dir / "workpiece.stl").resolve(),
+                stl_path=workpiece_mesh_path.resolve(),
                 scale=args.workpiece_scale,
                 z_offset=args.workpiece_z_offset,
                 local_offset=tuple(float(v) for v in args.workpiece_offset),
