@@ -72,6 +72,50 @@ def copy_if_exists(source: Path, destination: Path) -> Path | None:
     return destination
 
 
+def build_simulation_stl_from_step(
+    step_file: Path,
+    output_stl: Path,
+    embed_mm: float = 0.05,
+) -> Path:
+    try:
+        import cadquery as cq
+    except Exception as exc:
+        raise RuntimeError(
+            "cadquery is required to build simulation STL assets from STEP files."
+        ) from exc
+
+    imported = cq.importers.importStep(str(step_file))
+    shapes = list(imported.vals())
+    if not shapes:
+        raise RuntimeError(f"STEP file contains no shapes: {step_file}")
+
+    embed = max(0.0, float(embed_mm))
+    moved_shapes = []
+    zmins: list[float] = []
+    for shape in shapes:
+        bbox = shape.BoundingBox()
+        zmins.append(float(bbox.zmin))
+    base_index = int(min(range(len(zmins)), key=zmins.__getitem__))
+
+    for index, shape in enumerate(shapes):
+        if index == base_index or embed <= 0.0:
+            moved_shapes.append(shape)
+        else:
+            moved_shapes.append(shape.translate((0.0, 0.0, -embed)))
+
+    fused = moved_shapes[0]
+    for shape in moved_shapes[1:]:
+        fused = fused.fuse(shape)
+    try:
+        fused = fused.clean()
+    except Exception:
+        pass
+
+    output_stl.parent.mkdir(parents=True, exist_ok=True)
+    cq.exporters.export(cq.Workplane("XY").newObject([fused]), str(output_stl))
+    return output_stl
+
+
 def build_sim_path_json(vector_json: Path, output_json: Path) -> Path:
     with vector_json.open("r", encoding="utf-8") as f:
         vector_obj = json.load(f)
@@ -628,11 +672,14 @@ def build_simulation_jobs(
 
         step_asset = copy_if_exists(step_source, job_dir / "workpiece.step")
         stl_asset = copy_if_exists(stl_source, job_dir / "workpiece.stl")
+        sim_stl_asset: Path | None = None
+        if step_asset is not None:
+            sim_stl_asset = build_simulation_stl_from_step(step_asset, job_dir / "workpiece_sim.stl")
         raw_path_json = copy_if_exists(sequence_output, job_dir / "raw_weld_topology.json")
         vector_json = copy_if_exists(vector_source, job_dir / "weld_vectors.json")
         path_json = build_sim_path_json(vector_json, job_dir / "path.json") if vector_json is not None else raw_path_json
 
-        workpiece_asset = stl_asset or step_asset
+        workpiece_asset = sim_stl_asset or stl_asset or step_asset
         if workpiece_asset is None:
             raise RuntimeError(f"No workpiece asset was produced for {job_id}: {model_info}")
         if path_json is None:
@@ -663,6 +710,8 @@ def build_simulation_jobs(
             job["step_asset"] = relative_to_directory(step_asset, jobs_dir)
         if stl_asset is not None:
             job["stl_asset"] = relative_to_directory(stl_asset, jobs_dir)
+        if sim_stl_asset is not None:
+            job["sim_stl_asset"] = relative_to_directory(sim_stl_asset, jobs_dir)
         if vector_json is not None:
             job["vector_json"] = relative_to_directory(vector_json, jobs_dir)
         if raw_path_json is not None:
