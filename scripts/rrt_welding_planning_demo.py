@@ -1556,11 +1556,12 @@ def collect_transition_targets(
 ) -> list[dict[str, Any]]:
     vector_path, welds = load_welds_data(job_dir)
     candidate_pairs: list[tuple[int, int]] = []
-    for from_weld_index in range(len(welds)):
-        for to_weld_index in range(len(welds)):
-            if from_weld_index == to_weld_index:
-                continue
-            candidate_pairs.append((from_weld_index, to_weld_index))
+    for first_weld_index in range(len(welds)):
+        for second_weld_index in range(first_weld_index + 1, len(welds)):
+            if rng.random() < 0.5:
+                candidate_pairs.append((first_weld_index, second_weld_index))
+            else:
+                candidate_pairs.append((second_weld_index, first_weld_index))
 
     if not candidate_pairs:
         return []
