@@ -524,6 +524,38 @@ def prepare_job_recording_paths(args: argparse.Namespace, job_dir: Path) -> tupl
     return output_path, frames_dir
 
 
+def append_dense_segment(segments: list[np.ndarray], path: np.ndarray) -> None:
+    arr = np.asarray(path, dtype=float)
+    if arr.size == 0:
+        return
+    if not segments:
+        segments.append(arr)
+        return
+    if np.allclose(segments[-1][-1], arr[0], atol=1e-9):
+        segments.append(arr[1:])
+    else:
+        segments.append(arr)
+
+
+def build_endpoint_inclusive_playback(
+    q_start: np.ndarray,
+    q_rrt_start: np.ndarray,
+    q_core_playback: np.ndarray,
+    q_rrt_goal: np.ndarray,
+    q_goal: np.ndarray,
+    resolution: float,
+) -> np.ndarray:
+    dense_segments: list[np.ndarray] = []
+    if not np.allclose(q_start, q_rrt_start, atol=1e-9):
+        append_dense_segment(dense_segments, densify_path(np.vstack([q_start, q_rrt_start]), resolution))
+    append_dense_segment(dense_segments, q_core_playback)
+    if not np.allclose(q_rrt_goal, q_goal, atol=1e-9):
+        append_dense_segment(dense_segments, densify_path(np.vstack([q_rrt_goal, q_goal]), resolution))
+    if not dense_segments:
+        return np.asarray(q_core_playback, dtype=float)
+    return np.vstack([segment for segment in dense_segments if len(segment) > 0])
+
+
 def resolve_workpiece_mesh_path(job_dir: Path) -> Path:
     sim_stl = job_dir / "workpiece_sim.stl"
     if sim_stl.exists():
@@ -3059,8 +3091,8 @@ def process_job(
                     trajopt_success = bool(optimization_info.get("trajopt_success", False))
                     trajopt_attempts = [json_safe(optimization_info.get("trajopt_info", {}))]
 
-            q_rrt_playback = densify_path(q_seed_path, args.playback_resolution)
-            if next((q for q in q_rrt_playback if not checker.is_state_valid(q)), None) is not None:
+            q_rrt_core_playback = densify_path(q_seed_path, args.playback_resolution)
+            if next((q for q in q_rrt_core_playback if not checker.is_state_valid(q)), None) is not None:
                 try_next_rrt_candidate = True
             if try_next_rrt_candidate:
                 rrt_attempts.append(
@@ -3073,7 +3105,15 @@ def process_job(
                     }
                 )
                 if best_fallback_segment is None or len(q_seed_path) < len(best_fallback_segment["q_seed_path"]):
-                    q_candidate_playback = densify_path(q_seed_path, args.playback_resolution)
+                    q_candidate_core_playback = densify_path(q_seed_path, args.playback_resolution)
+                    q_candidate_playback = build_endpoint_inclusive_playback(
+                        q_start=q_start,
+                        q_rrt_start=q_rrt_start,
+                        q_core_playback=q_candidate_core_playback,
+                        q_rrt_goal=q_rrt_goal,
+                        q_goal=q_goal,
+                        resolution=args.playback_resolution,
+                    )
                     best_fallback_segment = {
                         "targets": targets,
                         "q_start": q_start,
@@ -3095,8 +3135,8 @@ def process_job(
                     }
                 continue
 
-            q_playback = densify_path(q_plan, args.playback_resolution)
-            playback_collision = next((q for q in q_playback if not checker.is_state_valid(q)), None)
+            q_core_playback = densify_path(q_plan, args.playback_resolution)
+            playback_collision = next((q for q in q_core_playback if not checker.is_state_valid(q)), None)
             if playback_collision is not None:
                 rrt_attempts.append(
                     {
@@ -3109,6 +3149,22 @@ def process_job(
                     }
                 )
                 continue
+            q_rrt_playback = build_endpoint_inclusive_playback(
+                q_start=q_start,
+                q_rrt_start=q_rrt_start,
+                q_core_playback=q_rrt_core_playback,
+                q_rrt_goal=q_rrt_goal,
+                q_goal=q_goal,
+                resolution=args.playback_resolution,
+            )
+            q_playback = build_endpoint_inclusive_playback(
+                q_start=q_start,
+                q_rrt_start=q_rrt_start,
+                q_core_playback=q_core_playback,
+                q_rrt_goal=q_rrt_goal,
+                q_goal=q_goal,
+                resolution=args.playback_resolution,
+            )
 
             selected_segment = {
                 "targets": targets,
@@ -3732,22 +3788,38 @@ def main() -> None:
                     trajopt_runner=trajopt_runner,
                 )
                 trajopt_success = bool(optimization_info.get("trajopt_success", False))
-            q_rrt_playback = densify_path(q_seed_path, args.playback_resolution)
-            rrt_playback_collision = next((q for q in q_rrt_playback if not checker.is_state_valid(q)), None)
+            q_rrt_core_playback = densify_path(q_seed_path, args.playback_resolution)
+            rrt_playback_collision = next((q for q in q_rrt_core_playback if not checker.is_state_valid(q)), None)
             if rrt_playback_collision is not None:
                 log(
                     f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
                     f"rejected before comparison playback: RRT playback collision at sample={np.round(rrt_playback_collision, 4)}"
                 )
                 continue
-            q_playback = densify_path(q_plan, args.playback_resolution)
-            playback_collision = next((q for q in q_playback if not checker.is_state_valid(q)), None)
+            q_core_playback = densify_path(q_plan, args.playback_resolution)
+            playback_collision = next((q for q in q_core_playback if not checker.is_state_valid(q)), None)
             if playback_collision is not None:
                 log(
                     f"[demo] Transition {targets['prev_weld_index']} -> {targets['next_weld_index']} "
                     f"rejected after optimization: playback collision at sample={np.round(playback_collision, 4)}"
                 )
                 continue
+            q_rrt_playback = build_endpoint_inclusive_playback(
+                q_start=q_start,
+                q_rrt_start=q_rrt_start,
+                q_core_playback=q_rrt_core_playback,
+                q_rrt_goal=q_rrt_goal,
+                q_goal=q_goal,
+                resolution=args.playback_resolution,
+            )
+            q_playback = build_endpoint_inclusive_playback(
+                q_start=q_start,
+                q_rrt_start=q_rrt_start,
+                q_core_playback=q_core_playback,
+                q_rrt_goal=q_rrt_goal,
+                q_goal=q_goal,
+                resolution=args.playback_resolution,
+            )
             tcp_points = np.array([kinematics.forward(q)[:3, 3] for q in q_playback])
             planned_segments.append(
                 {
