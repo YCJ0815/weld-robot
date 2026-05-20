@@ -197,7 +197,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.5, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
     parser.add_argument("--workpiece-opacity", type=float, default=1.0, help="Visual opacity for the workpiece mesh.")
-    parser.add_argument("--tcp-normal-offset", type=float, default=0.035, help="Retreat distance along weld normal in m.")
+    parser.add_argument("--tcp-normal-offset", type=float, default=0.0, help="Retreat distance along weld normal in m.")
     parser.add_argument("--endpoint-retreat-step", type=float, default=0.01, help="Additional endpoint retreat step along weld normal in m.")
     parser.add_argument("--endpoint-retreat-max-steps", type=int, default=4, help="Maximum endpoint retreat attempts if IK state collides.")
     parser.add_argument("--endpoint-random-seeds", type=int, default=16, help="Random IK seeds per endpoint retreat attempt.")
