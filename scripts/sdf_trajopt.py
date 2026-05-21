@@ -419,11 +419,10 @@ def run_sdf_trajopt(
         selected_count = count
     selected_from_full_seed = False
     selected_from_full_seed_with_fallback_tol = False
-    full_seed_within_cap = len(repaired_full_seed) <= max(3, int(config.max_waypoints))
+    blocked_relaxed_full_seed_fallback = False
     if (
         not _summary_within_tolerance(q_init_summary, evaluator.config.initial_penetration_tol)
         and full_seed_initially_acceptable
-        and full_seed_within_cap
         and len(q_seed) > len(q_init)
     ):
         q_init = repaired_full_seed.copy()
@@ -433,14 +432,9 @@ def run_sdf_trajopt(
     elif (
         not _summary_within_tolerance(q_init_summary, evaluator.config.initial_penetration_tol)
         and full_seed_fallback_acceptable
-        and full_seed_within_cap
         and len(q_seed) > len(q_init)
     ):
-        q_init = repaired_full_seed.copy()
-        q_init_summary = full_seed_summary
-        selected_count = len(repaired_full_seed)
-        selected_from_full_seed = True
-        selected_from_full_seed_with_fallback_tol = True
+        blocked_relaxed_full_seed_fallback = True
     q_start = q_init[0]
     q_goal = q_init[-1]
     x0 = q_init[1:-1].reshape(-1)
@@ -484,20 +478,41 @@ def run_sdf_trajopt(
                 f"[SDF-TrajOpt] Initial resampled path is still penetrating at capped waypoint count {selected_count}; "
                 f"full seed has {len(q_seed)} points."
             )
-        if (
-            not selected_from_full_seed
-            and not full_seed_within_cap
-            and (full_seed_initially_acceptable or full_seed_fallback_acceptable)
-        ):
+        if blocked_relaxed_full_seed_fallback:
             logger(
-                f"[SDF-TrajOpt] Full seed fallback disabled because seed_points={len(q_seed)} exceeds "
-                f"max_opt_points={config.max_waypoints}; handing control back to outer RRT step-size retries."
+                f"[SDF-TrajOpt] Adaptive compression remained penetrating at capped waypoint count {selected_count}; "
+                f"full-seed fallback with relaxed initial tolerance {config.seed_fallback_penetration_tol:.4f} "
+                "is disabled, handing control back to outer RRT step-size retries."
             )
         if not fallback_acceptable_init and not full_seed_fallback_acceptable:
             logger(
                 "[SDF-TrajOpt] Full RRT seed is also penetrating beyond the relaxed fallback tolerance under SDF evaluation; "
                 "this indicates an RRT-vs-SDF feasibility mismatch rather than waypoint compression loss."
             )
+    if blocked_relaxed_full_seed_fallback:
+        info = {
+            "optimizer_success": False,
+            "accepted": False,
+            "failure_reason": "seed_infeasible_under_sdf",
+            "status": -1,
+            "nit": -1,
+            "fun": float("nan"),
+            "seed_points": int(len(q_seed)),
+            "requested_opt_points": int(config.num_waypoints),
+            "actual_opt_points": int(len(q_init)),
+            "max_opt_points": int(config.max_waypoints),
+            "init_nonpenetrating": bool(_summary_within_tolerance(q_init_summary, evaluator.config.penetration_tol)),
+            "init_acceptable": bool(_summary_within_tolerance(q_init_summary, evaluator.config.initial_penetration_tol)),
+            "init_fallback_acceptable": bool(_summary_within_tolerance(q_init_summary, evaluator.config.seed_fallback_penetration_tol)),
+            "selected_from_full_seed": False,
+            "selected_from_full_seed_with_fallback_tol": False,
+            "blocked_relaxed_full_seed_fallback": True,
+            "penetration_count": int(q_init_summary["penetration_count"]),
+            "near_count": int(q_init_summary["near_count"]),
+            "arm_min_global": float(q_init_summary["arm_min_global"]),
+            "tool_min_global": float(q_init_summary["tool_min_global"]),
+        }
+        return q_seed, False, info
 
     constraints = [
         {
@@ -545,7 +560,7 @@ def run_sdf_trajopt(
         "init_fallback_acceptable": bool(fallback_acceptable_init),
         "selected_from_full_seed": bool(selected_from_full_seed),
         "selected_from_full_seed_with_fallback_tol": bool(selected_from_full_seed_with_fallback_tol),
-        "full_seed_within_cap": bool(full_seed_within_cap),
+        "blocked_relaxed_full_seed_fallback": bool(blocked_relaxed_full_seed_fallback),
         "penetration_count": int(summary["penetration_count"]),
         "near_count": int(summary["near_count"]),
         "arm_min_global": float(summary["arm_min_global"]),
