@@ -203,7 +203,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=720, help="Recording height.")
     parser.add_argument("--rt-subframes", type=int, default=8, help="Replicator render subframes per captured frame.")
     parser.add_argument("--visual-ground-size", type=float, default=2.0, help="Size of the collidable visual ground plane.")
-    parser.add_argument("--visual-ground-z", type=float, default=-0.002, help="Z height of the collidable visual ground plane.")
+    parser.add_argument("--visual-ground-z", type=float, default=-0.006, help="Z height of the collidable visual ground plane.")
     parser.add_argument("--visual-ground-opacity", type=float, default=0.18, help="Visual opacity for the collidable ground plane.")
     parser.add_argument(
         "--disable-shadows",
@@ -218,6 +218,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-scale", type=float, default=0.001, help="STL and weld xyz scale, mm to m.")
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.5, 0.0, 0.0], help="Workpiece offset in m.")
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra STL and weld z offset in m.")
+    parser.add_argument("--workpiece-sim-embed-mm", type=float, default=0.05, help="Downward embed applied to non-base STL components before simulation import, in raw STL units.")
     parser.add_argument("--workpiece-opacity", type=float, default=1.0, help="Visual opacity for the workpiece mesh.")
     parser.add_argument("--tcp-normal-offset", type=float, default=0.0, help="Retreat distance along weld normal in m.")
     parser.add_argument("--endpoint-retreat-step", type=float, default=0.01, help="Additional endpoint retreat step along weld normal in m.")
@@ -445,6 +446,48 @@ def job_results_dir(job_dir: Path, results_subdir: str) -> Path:
     return path
 
 
+def results_dir_has_existing_outputs(path: Path) -> bool:
+    if not path.exists():
+        return False
+    markers = (
+        "planning_summary.json",
+        "planning_replay.mp4",
+        "planning_replay_frames",
+    )
+    if any((path / marker).exists() for marker in markers):
+        return True
+    return any(path.glob("transition_*.json")) or any(path.glob("transition_*.npz"))
+
+
+def get_job_results_subdir(args: argparse.Namespace, job_dir: Path) -> str:
+    cache = getattr(args, "_resolved_results_subdirs", None)
+    if cache is None:
+        cache = {}
+        setattr(args, "_resolved_results_subdirs", cache)
+    job_key = str(job_dir.resolve())
+    cached = cache.get(job_key)
+    if cached is not None:
+        return cached
+
+    base_dir = (job_dir / args.results_subdir).resolve()
+    resolved_dir = base_dir
+    if results_dir_has_existing_outputs(base_dir):
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        resolved_dir = base_dir / f"run_{timestamp}"
+        suffix = 1
+        while resolved_dir.exists():
+            resolved_dir = base_dir / f"run_{timestamp}_{suffix:02d}"
+            suffix += 1
+        log(
+            f"[demo] Results directory already contains prior outputs. "
+            f"Writing this run to isolated directory: {resolved_dir}"
+        )
+
+    resolved_dir.mkdir(parents=True, exist_ok=True)
+    cache[job_key] = str(resolved_dir)
+    return cache[job_key]
+
+
 def json_safe(value: Any) -> Any:
     if isinstance(value, Path):
         return str(value)
@@ -519,8 +562,8 @@ def clear_job_prims(stage: Any) -> None:
     ensure_xform(stage, "/World/Debug")
 
 
-def prepare_job_recording_paths(args: argparse.Namespace, job_dir: Path) -> tuple[Path, Path]:
-    results_dir = job_results_dir(job_dir, args.results_subdir)
+def prepare_job_recording_paths(args: argparse.Namespace, job_dir: Path, results_subdir: str) -> tuple[Path, Path]:
+    results_dir = job_results_dir(job_dir, results_subdir)
     if args.all_jobs:
         output_path = results_dir / "planning_replay.mp4"
         frames_dir = results_dir / "planning_replay_frames"
@@ -709,6 +752,43 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
     if not list(encode_dir.glob("frame_*.png")):
         raise RuntimeError(f"No PNG frames were written under: {frames_dir}")
 
+    def run_encoder(command: list[str]) -> tuple[int, str]:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        assert process.stdout is not None
+        output_lines: list[str] = []
+        progress_fields: dict[str, str] = {}
+        last_progress_line = ""
+        for raw_line in process.stdout:
+            line = raw_line.rstrip()
+            output_lines.append(raw_line)
+            if "=" not in line:
+                if line:
+                    log(f"[demo] ffmpeg: {line}")
+                continue
+            key, value = line.split("=", 1)
+            progress_fields[key.strip()] = value.strip()
+            if progress_fields.get("progress") != "continue":
+                continue
+            frame = progress_fields.get("frame", "?")
+            fps_value = progress_fields.get("fps", "?")
+            timestamp = progress_fields.get("out_time", "?")
+            speed = progress_fields.get("speed", "?")
+            current_progress_line = (
+                f"[progress] stage=encoding_video frame={frame} fps={fps_value} time={timestamp} speed={speed}"
+            )
+            if current_progress_line != last_progress_line:
+                set_status_line(current_progress_line)
+                last_progress_line = current_progress_line
+        returncode = process.wait()
+        clear_status_line()
+        return returncode, "".join(output_lines)
+
     commands = [
         [
             ffmpeg,
@@ -717,6 +797,9 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
             str(fps),
             "-i",
             str(encode_dir / "frame_%06d.png"),
+            "-progress",
+            "pipe:1",
+            "-nostats",
             "-c:v",
             "libx264",
             "-pix_fmt",
@@ -732,6 +815,9 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
             str(fps),
             "-i",
             str(encode_dir / "frame_%06d.png"),
+            "-progress",
+            "pipe:1",
+            "-nostats",
             "-c:v",
             "mpeg4",
             "-q:v",
@@ -742,17 +828,11 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
     errors = []
     for command in commands:
         log("[demo] Running encoder: " + " ".join(command))
-        result = subprocess.run(
-            command,
-            check=False,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-        if result.returncode == 0:
+        returncode, output = run_encoder(command)
+        if returncode == 0:
             break
-        errors.append(result.stdout[-4000:])
-        log(f"[demo] Encoder failed with code {result.returncode}. Trying fallback codec if available.")
+        errors.append(output[-4000:])
+        log(f"[demo] Encoder failed with code {returncode}. Trying fallback codec if available.")
     else:
         raise RuntimeError("ffmpeg failed to encode MP4. Last ffmpeg output:\n" + "\n".join(errors[-1:]))
 
@@ -803,6 +883,71 @@ def load_stl_mesh(stl_path: Path) -> tuple[list[tuple[float, float, float]], lis
     except UnicodeDecodeError:
         return parse_binary_stl(data)
     return parse_ascii_stl(text) if text.lstrip().lower().startswith("solid") else parse_binary_stl(data)
+
+
+def embed_non_base_stl_components(
+    points: list[tuple[float, float, float]],
+    face_counts: list[int],
+    face_indices: list[int],
+    embed_mm: float,
+) -> tuple[list[tuple[float, float, float]], int]:
+    embed = max(0.0, float(embed_mm))
+    if embed <= 0.0 or len(face_counts) <= 1:
+        return points, 0
+
+    face_ranges = []
+    offset = 0
+    for count in face_counts:
+        face_ranges.append((offset, offset + count))
+        offset += count
+
+    parent = list(range(len(face_counts)))
+
+    def find(index: int) -> int:
+        while parent[index] != index:
+            parent[index] = parent[parent[index]]
+            index = parent[index]
+        return index
+
+    def union(left: int, right: int) -> None:
+        left_root = find(left)
+        right_root = find(right)
+        if left_root != right_root:
+            parent[right_root] = left_root
+
+    faces_by_point: dict[tuple[float, float, float], int] = {}
+    for face_index, (start, end) in enumerate(face_ranges):
+        for point_index in face_indices[start:end]:
+            key = points[point_index]
+            previous_face = faces_by_point.get(key)
+            if previous_face is None:
+                faces_by_point[key] = face_index
+            else:
+                union(face_index, previous_face)
+
+    components: dict[int, set[int]] = {}
+    for face_index, (start, end) in enumerate(face_ranges):
+        root = find(face_index)
+        component_points = components.setdefault(root, set())
+        component_points.update(face_indices[start:end])
+
+    if len(components) <= 1:
+        return points, 0
+
+    base_root = min(
+        components,
+        key=lambda root: min(points[point_index][2] for point_index in components[root]),
+    )
+    moved_points = list(points)
+    moved_components = 0
+    for root, component_points in components.items():
+        if root == base_root:
+            continue
+        moved_components += 1
+        for point_index in component_points:
+            x, y, z = moved_points[point_index]
+            moved_points[point_index] = (x, y, z - embed)
+    return moved_points, moved_components
 
 
 def parse_urdf_vec(value: str | None, default: tuple[float, float, float]) -> np.ndarray:
@@ -1015,10 +1160,22 @@ def import_collision_stl(
     z_offset: float,
     local_offset: tuple[float, float, float],
     opacity: float,
+    component_embed_mm: float,
 ) -> dict[str, Any]:
     from pxr import Gf, Sdf, UsdGeom, UsdPhysics, UsdShade
 
     points, face_counts, face_indices = load_stl_mesh(stl_path)
+    points, embedded_component_count = embed_non_base_stl_components(
+        points,
+        face_counts,
+        face_indices,
+        component_embed_mm,
+    )
+    if embedded_component_count:
+        log(
+            f"[demo] Embedded {embedded_component_count} non-base STL components by "
+            f"{component_embed_mm:.4f} raw units before USD import."
+        )
     scaled_points = [(p[0] * scale, p[1] * scale, p[2] * scale + z_offset) for p in points]
     min_point = tuple(min(point[axis] for point in scaled_points) for axis in range(3))
     max_point = tuple(max(point[axis] for point in scaled_points) for axis in range(3))
@@ -2719,8 +2876,10 @@ def process_job(
     rep: Any | None,
 ) -> dict[str, Any]:
     job_dir = job_dir.resolve()
+    results_subdir = get_job_results_subdir(args, job_dir)
     clear_status_line()
     log(f"[demo] Starting job: {job_dir}")
+    log(f"[demo] Structured outputs for this run: {job_results_dir(job_dir, results_subdir)}")
     clear_job_prims(stage)
     workpiece_mesh_path = resolve_workpiece_mesh_path(job_dir)
     log(f"[demo] Using workpiece mesh for simulation: {workpiece_mesh_path.name}")
@@ -2732,6 +2891,7 @@ def process_job(
         z_offset=args.workpiece_z_offset,
         local_offset=tuple(float(v) for v in args.workpiece_offset),
         opacity=args.workpiece_opacity,
+        component_embed_mm=args.workpiece_sim_embed_mm,
     )
     sdf_layer = None
     sdf_npz_path = None
@@ -3252,7 +3412,7 @@ def process_job(
             )
             continue
 
-        saved_files = save_transition_result(job_dir, args.results_subdir, segment_to_store)
+        saved_files = save_transition_result(job_dir, results_subdir, segment_to_store)
         transition_record.update(
             {
                 "status": "planned",
@@ -3285,6 +3445,7 @@ def process_job(
 
     summary: dict[str, Any] = {
         "job_dir": str(job_dir),
+        "results_dir": str(job_results_dir(job_dir, results_subdir)),
         "sdf_npz_path": str(sdf_npz_path) if sdf_npz_path is not None else None,
         "planned_transition_count": len(planned_segments),
         "transition_records": transition_records,
@@ -3294,7 +3455,7 @@ def process_job(
     output_path = None
     if planned_segments and args.record:
         set_status_line(f"[progress] job={job_dir.name} stage=recording_setup")
-        output_path, frames_dir = prepare_job_recording_paths(args, job_dir)
+        output_path, frames_dir = prepare_job_recording_paths(args, job_dir, results_subdir)
         recording_session = start_recording_session(
             rep=rep,
             world=world,
@@ -3345,7 +3506,7 @@ def process_job(
         summary["status"] = "no_valid_transition"
         if not found_noncoincident_transition:
             summary["status"] = "all_transitions_coincident"
-    summary_path = save_job_summary(job_dir, args.results_subdir, summary)
+    summary_path = save_job_summary(job_dir, results_subdir, summary)
     summary["summary_path"] = str(summary_path)
     clear_status_line()
     return summary
@@ -3394,8 +3555,23 @@ def main() -> None:
                 )
             except Exception as exc:
                 log(f"[demo] Job failed but batch will continue: job={job_dir}, error={exc}")
-                save_job_summary(job_dir, args.results_subdir, {"job_dir": str(job_dir), "status": "job_failed", "error": str(exc)})
-                job_summary = {"job_dir": str(job_dir), "status": "job_failed", "error": str(exc)}
+                results_subdir = get_job_results_subdir(args, job_dir)
+                save_job_summary(
+                    job_dir,
+                    results_subdir,
+                    {
+                        "job_dir": str(job_dir),
+                        "results_dir": str(job_results_dir(job_dir, results_subdir)),
+                        "status": "job_failed",
+                        "error": str(exc),
+                    },
+                )
+                job_summary = {
+                    "job_dir": str(job_dir),
+                    "results_dir": str(job_results_dir(job_dir, results_subdir)),
+                    "status": "job_failed",
+                    "error": str(exc),
+                }
             job_summaries.append(job_summary)
             set_status_line(
                 f"[progress] jobs={job_index}/{total_jobs} current_job={job_dir.name} "

@@ -25,7 +25,9 @@ def build_simulation_stl_from_step(step_file: Path, output_stl: Path, embed_mm: 
     import cadquery as cq
 
     imported = cq.importers.importStep(str(step_file))
-    shapes = list(imported.vals())
+    shapes = list(imported.solids().vals())
+    if not shapes:
+        shapes = list(imported.vals())
     if not shapes:
         raise RuntimeError(f"STEP file contains no shapes: {step_file}")
 
