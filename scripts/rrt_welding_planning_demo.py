@@ -147,6 +147,12 @@ def parse_args() -> argparse.Namespace:
         default="planning_results",
         help="Per-job subdirectory used to store structured planning outputs and optional videos.",
     )
+    parser.add_argument(
+        "--results-root",
+        type=Path,
+        default=None,
+        help="Optional root directory for outputs. When set, each job writes to <results-root>/<job_name>/.",
+    )
     parser.add_argument("--urdf", type=Path, default=DEFAULT_URDF, help="UR5e welding-arm URDF.")
     parser.add_argument(
         "--weld-index",
@@ -448,6 +454,12 @@ def job_results_dir(job_dir: Path, results_subdir: str) -> Path:
     return path
 
 
+def resolve_job_results_base_dir(args: argparse.Namespace, job_dir: Path) -> Path:
+    if args.results_root is not None:
+        return args.results_root.resolve() / job_dir.resolve().name
+    return (job_dir / args.results_subdir).resolve()
+
+
 def results_dir_has_existing_outputs(path: Path) -> bool:
     if not path.exists():
         return False
@@ -471,7 +483,7 @@ def get_job_results_subdir(args: argparse.Namespace, job_dir: Path) -> str:
     if cached is not None:
         return cached
 
-    base_dir = (job_dir / args.results_subdir).resolve()
+    base_dir = resolve_job_results_base_dir(args, job_dir)
     resolved_dir = base_dir
     if results_dir_has_existing_outputs(base_dir):
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -551,7 +563,9 @@ def save_transition_result(job_dir: Path, results_subdir: str, segment: dict[str
 def save_job_summary(job_dir: Path, results_subdir: str, summary: dict[str, Any]) -> Path:
     results_dir = job_results_dir(job_dir, results_subdir)
     summary_path = results_dir / "planning_summary.json"
-    summary_path.write_text(json.dumps(json_safe(summary), indent=2, ensure_ascii=False), encoding="utf-8")
+    payload = dict(summary)
+    payload["summary_path"] = str(summary_path)
+    summary_path.write_text(json.dumps(json_safe(payload), indent=2, ensure_ascii=False), encoding="utf-8")
     return summary_path
 
 
