@@ -1722,6 +1722,10 @@ def collect_transition_targets(
     transition_xyz_tol: float,
     rng: np.random.Generator,
 ) -> list[dict[str, Any]]:
+    def quantize_xyz(point: np.ndarray, tol: float) -> tuple[int, int, int]:
+        resolution = max(float(tol), 1e-9)
+        return tuple(int(round(float(value) / resolution)) for value in np.asarray(point, dtype=float).reshape(3))
+
     vector_path, welds = load_welds_data(job_dir)
     candidate_pairs: list[tuple[int, int]] = []
     for first_weld_index in range(len(welds)):
@@ -1736,6 +1740,8 @@ def collect_transition_targets(
 
     rng.shuffle(candidate_pairs)
     targets_list: list[dict[str, Any]] = []
+    seen_spatial_keys: set[tuple[tuple[int, int, int], tuple[int, int, int]]] = set()
+    deduped_count = 0
     for from_weld_index, to_weld_index in candidate_pairs:
         targets = build_transition_targets_from_pair(
             vector_path=vector_path,
@@ -1750,7 +1756,19 @@ def collect_transition_targets(
         )
         if targets.get("skip_planning", False):
             continue
+        start_key = quantize_xyz(np.asarray(targets["start_xyz"], dtype=float), transition_xyz_tol)
+        end_key = quantize_xyz(np.asarray(targets["end_xyz"], dtype=float), transition_xyz_tol)
+        spatial_key = tuple(sorted((start_key, end_key)))
+        if spatial_key in seen_spatial_keys:
+            deduped_count += 1
+            continue
+        seen_spatial_keys.add(spatial_key)
         targets_list.append(targets)
+    if deduped_count > 0:
+        log(
+            f"[demo] Removed {deduped_count} spatially duplicate transition candidates "
+            f"using transition_xyz_tol={transition_xyz_tol:.3e}."
+        )
     return targets_list
 
 
