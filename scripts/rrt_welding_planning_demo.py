@@ -206,6 +206,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--visual-ground-z", type=float, default=None, help="Optional absolute Z height of the collidable visual ground plane. Defaults to just below the workpiece bottom.")
     parser.add_argument("--visual-ground-gap", type=float, default=1e-4, help="Gap in meters between the workpiece bottom and the collidable visual ground plane when --visual-ground-z is not set.")
     parser.add_argument("--visual-ground-opacity", type=float, default=0.18, help="Visual opacity for the collidable ground plane.")
+    parser.add_argument("--show-visual-ground", action="store_true", help="Show the collidable visual ground plane in the simulation view and recording.")
     parser.add_argument(
         "--disable-shadows",
         action="store_true",
@@ -2903,12 +2904,16 @@ def process_job(
         opacity=args.workpiece_opacity,
         component_embed_mm=args.workpiece_sim_embed_mm,
     )
-    ground_prim_path = add_visual_ground(
-        stage,
-        size=args.visual_ground_size,
-        z=ground_z_from_workpiece(workpiece_info, args),
-        opacity=args.visual_ground_opacity,
-    )
+    ground_prim_path = None
+    if args.show_visual_ground:
+        ground_prim_path = add_visual_ground(
+            stage,
+            size=args.visual_ground_size,
+            z=ground_z_from_workpiece(workpiece_info, args),
+            opacity=args.visual_ground_opacity,
+        )
+    else:
+        log("[demo] Visual ground hidden in simulation and recording.")
     sdf_layer = None
     sdf_npz_path = None
     if args.trajopt and args.sdf_trajopt:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import math
 import os
 import shutil
 import subprocess
@@ -606,6 +607,42 @@ def _point_payload(points: dict[str, Any], point_ref: Any, fallback_xyz: Any) ->
     }
 
 
+def _normalize_vector(vector: list[float]) -> list[float]:
+    norm = math.sqrt(sum(float(value) * float(value) for value in vector))
+    if norm <= 1e-12:
+        return [0.0, 0.0, 0.0]
+    return [float(value) / norm for value in vector]
+
+
+def _fallback_pose_from_segment(start_xyz: Any, end_xyz: Any) -> list[float] | None:
+    if not (
+        isinstance(start_xyz, list)
+        and isinstance(end_xyz, list)
+        and len(start_xyz) == 3
+        and len(end_xyz) == 3
+    ):
+        return None
+    tangent = [float(end_xyz[i]) - float(start_xyz[i]) for i in range(3)]
+    tangent = _normalize_vector(tangent)
+    if math.sqrt(sum(value * value for value in tangent)) <= 1e-12:
+        return None
+
+    up = [0.0, 0.0, 1.0]
+    dot = sum(tangent[i] * up[i] for i in range(3))
+    if abs(dot) > 0.95:
+        up = [0.0, 1.0, 0.0]
+
+    normal = [
+        tangent[1] * up[2] - tangent[2] * up[1],
+        tangent[2] * up[0] - tangent[0] * up[2],
+        tangent[0] * up[1] - tangent[1] * up[0],
+    ]
+    normal = _normalize_vector(normal)
+    if math.sqrt(sum(value * value for value in normal)) <= 1e-12:
+        return [1.0, 0.0, 0.0]
+    return normal
+
+
 def export_ordered_weld_vectors(final_json: Path, output_json: Path) -> Path:
     with final_json.open("r", encoding="utf-8") as f:
         final_obj = json.load(f)
@@ -635,9 +672,16 @@ def export_ordered_weld_vectors(final_json: Path, output_json: Path) -> Path:
             edge_points = edge.get("points") if isinstance(edge.get("points"), list) else []
             start_ref = edge_points[0] if edge_points else None
             end_ref = edge_points[-1] if edge_points else None
+            start_payload = _point_payload(points, start_ref, edge.get("start"))
+            end_payload = _point_payload(points, end_ref, edge.get("end"))
+            fallback_pose = _fallback_pose_from_segment(start_payload.get("xyz"), end_payload.get("xyz"))
+            if start_payload.get("pose") is None and fallback_pose is not None:
+                start_payload["pose"] = fallback_pose
+            if end_payload.get("pose") is None and fallback_pose is not None:
+                end_payload["pose"] = fallback_pose
             weld = {
-                "start": _point_payload(points, start_ref, edge.get("start")),
-                "end": _point_payload(points, end_ref, edge.get("end")),
+                "start": start_payload,
+                "end": end_payload,
             }
             ordered_welds.append(weld)
     out = {"welds": ordered_welds}
