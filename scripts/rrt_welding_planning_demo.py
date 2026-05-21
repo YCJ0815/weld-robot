@@ -421,7 +421,7 @@ class RuntimeContext:
     world: Any
     stage: Any
     rep: Any | None
-    ground_prim_path: str
+    ground_prim_path: str | None
     kinematics: "URDFKinematics"
     robot_prim_path: str
     robot: Any
@@ -612,12 +612,8 @@ def initialize_runtime(args: argparse.Namespace, needs_replicator: bool) -> Runt
         world = World(physics_dt=1.0 / 60.0, rendering_dt=1.0 / args.fps, stage_units_in_meters=1.0)
         stage = get_context().get_stage()
         ensure_xform(stage, "/World/Debug")
-        ground_prim_path = add_visual_ground(
-            stage,
-            size=args.visual_ground_size,
-            z=args.visual_ground_z,
-            opacity=args.visual_ground_opacity,
-        )
+        ground_prim_path = None
+        log("[demo] Visual ground disabled for planning and recording.")
         add_scene_lighting(stage)
 
         resolved_urdf = make_resolved_urdf(args.urdf)
@@ -1769,7 +1765,7 @@ class IsaacCollisionChecker:
         robot: Any,
         robot_prim_path: str,
         workpiece_prim_path: str,
-        ground_prim_path: str,
+        ground_prim_path: str | None,
         dof_indices: list[int],
         padding: float,
         contact_settle_steps: int,
@@ -1781,7 +1777,7 @@ class IsaacCollisionChecker:
         self.robot_prim_path = robot_prim_path
         self.workpiece_prim_path = workpiece_prim_path
         self.ground_prim_path = ground_prim_path
-        self.environment_prim_paths = [workpiece_prim_path, ground_prim_path]
+        self.environment_prim_paths = [path for path in [workpiece_prim_path, ground_prim_path] if path]
         self.dof_indices = dof_indices
         self.padding = padding
         self.contact_settle_steps = max(1, int(contact_settle_steps))
@@ -2871,7 +2867,7 @@ def process_job(
     robot_prim_path: str,
     dof_indices: list[int],
     kinematics: URDFKinematics,
-    ground_prim_path: str,
+    ground_prim_path: str | None,
     rng: np.random.Generator,
     rep: Any | None,
 ) -> dict[str, Any]:
