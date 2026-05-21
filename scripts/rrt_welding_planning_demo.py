@@ -203,7 +203,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--height", type=int, default=720, help="Recording height.")
     parser.add_argument("--rt-subframes", type=int, default=8, help="Replicator render subframes per captured frame.")
     parser.add_argument("--visual-ground-size", type=float, default=2.0, help="Size of the collidable visual ground plane.")
-    parser.add_argument("--visual-ground-z", type=float, default=-0.006, help="Z height of the collidable visual ground plane.")
+    parser.add_argument("--visual-ground-z", type=float, default=None, help="Optional absolute Z height of the collidable visual ground plane. Defaults to just below the workpiece bottom.")
+    parser.add_argument("--visual-ground-gap", type=float, default=1e-4, help="Gap in meters between the workpiece bottom and the collidable visual ground plane when --visual-ground-z is not set.")
     parser.add_argument("--visual-ground-opacity", type=float, default=0.18, help="Visual opacity for the collidable ground plane.")
     parser.add_argument(
         "--disable-shadows",
@@ -554,7 +555,13 @@ def save_job_summary(job_dir: Path, results_subdir: str, summary: dict[str, Any]
 
 
 def clear_job_prims(stage: Any) -> None:
-    for prim_path in ["/World/Workpiece", "/World/Workpiece_Material", "/World/Debug"]:
+    for prim_path in [
+        "/World/Workpiece",
+        "/World/Workpiece_Material",
+        "/World/VisualGround",
+        "/World/VisualGround_Material",
+        "/World/Debug",
+    ]:
         try:
             stage.RemovePrim(prim_path)
         except Exception:
@@ -613,7 +620,7 @@ def initialize_runtime(args: argparse.Namespace, needs_replicator: bool) -> Runt
         stage = get_context().get_stage()
         ensure_xform(stage, "/World/Debug")
         ground_prim_path = None
-        log("[demo] Visual ground disabled for planning and recording.")
+        log("[demo] Visual ground creation deferred until workpiece bounds are known.")
         add_scene_lighting(stage)
 
         resolved_urdf = make_resolved_urdf(args.urdf)
@@ -1265,6 +1272,13 @@ def add_visual_ground(stage: Any, size: float, z: float, opacity: float) -> str:
     UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
     log(f"[demo] Added collidable transparent ground: {prim_path}, size={size}, z={z}, opacity={opacity}")
     return prim_path
+
+
+def ground_z_from_workpiece(workpiece_info: dict[str, Any], args: argparse.Namespace) -> float:
+    if args.visual_ground_z is not None:
+        return float(args.visual_ground_z)
+    workpiece_bottom_z = float(workpiece_info["world_min"][2])
+    return workpiece_bottom_z - max(float(args.visual_ground_gap), 0.0)
 
 
 def rpy_matrix(rpy: np.ndarray) -> np.ndarray:
@@ -2888,6 +2902,12 @@ def process_job(
         local_offset=tuple(float(v) for v in args.workpiece_offset),
         opacity=args.workpiece_opacity,
         component_embed_mm=args.workpiece_sim_embed_mm,
+    )
+    ground_prim_path = add_visual_ground(
+        stage,
+        size=args.visual_ground_size,
+        z=ground_z_from_workpiece(workpiece_info, args),
+        opacity=args.visual_ground_opacity,
     )
     sdf_layer = None
     sdf_npz_path = None

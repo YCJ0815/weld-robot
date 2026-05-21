@@ -209,7 +209,7 @@ def autodetect_inputs(args: argparse.Namespace) -> tuple[Path, Path]:
         return step_path.resolve(), weld_json_path
 
     # Check for generated_jobs/job_000 first
-    generated_jobs_dir = ROOT / "data" / "generated_jobs" / "job_000"
+    generated_jobs_dir = ROOT / "data" / "generated_jobs" / "job_001"
     if generated_jobs_dir.exists():
         workpiece_step = generated_jobs_dir / "workpiece.step"
         weld_vectors = generated_jobs_dir / "weld_vectors.json"
