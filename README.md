@@ -104,6 +104,21 @@ python scripts/sim_parallel_welding.py \
   --overwrite
 ```
 
+Replay a joint-angle trajectory, import one STL workpiece with the same default offset as the parallel scene, and record MP4:
+
+```bash
+python scripts/replay_joint_trajectory.py \
+  --trajectory data/joint_trajectory.json \
+  --stl workpiece1.stl \
+  --headless \
+  --record \
+  --hold-steps 2 \
+  --output outputs/replay_joint_trajectory.mp4 \
+  --overwrite
+```
+
+The replay script accepts `json/csv/txt/npy/npz`. If the file does not include joint names, it defaults to the 6 UR5e joints in the repository's initial-joint order; otherwise pass `--joint-names ...` explicitly.
+
 Keep the intermediate PNG frames:
 
 ```bash
