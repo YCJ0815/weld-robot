@@ -5,6 +5,7 @@ import importlib.util
 import json
 import math
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -71,6 +72,32 @@ def copy_if_exists(source: Path, destination: Path) -> Path | None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, destination)
     return destination
+
+
+def existing_job_indices(jobs_dir: Path) -> list[int]:
+    indices: list[int] = []
+    pattern = re.compile(r"job_(\d+)$")
+    if not jobs_dir.exists():
+        return indices
+    for child in jobs_dir.iterdir():
+        if not child.is_dir():
+            continue
+        match = pattern.fullmatch(child.name)
+        if match is None:
+            continue
+        indices.append(int(match.group(1)))
+    return sorted(indices)
+
+
+def load_existing_manifest_jobs(manifest_path: Path) -> list[dict[str, Any]]:
+    if not manifest_path.exists():
+        return []
+    with manifest_path.open("r", encoding="utf-8") as f:
+        manifest = json.load(f)
+    jobs = manifest.get("jobs")
+    if not isinstance(jobs, list):
+        return []
+    return [job for job in jobs if isinstance(job, dict)]
 
 
 def build_simulation_stl_from_step(
@@ -703,10 +730,15 @@ def build_simulation_jobs(
     grid_cols: int,
 ) -> Path:
     jobs_dir.mkdir(parents=True, exist_ok=True)
-    jobs: list[dict[str, Any]] = []
+    manifest_path = jobs_dir / manifest_name
+    jobs: list[dict[str, Any]] = list(load_existing_manifest_jobs(manifest_path))
+    existing_indices = existing_job_indices(jobs_dir)
+    next_job_index = (max(existing_indices) + 1) if existing_indices else 0
+    appended_count = 0
 
     for index, (model_info, sequence_output) in enumerate(zip(generated_models, sequence_outputs)):
-        job_id = f"job_{index:03d}"
+        global_index = next_job_index + index
+        job_id = f"job_{global_index:03d}"
         job_dir = jobs_dir / job_id
         job_dir.mkdir(parents=True, exist_ok=True)
 
@@ -732,12 +764,12 @@ def build_simulation_jobs(
             raise RuntimeError(f"No path JSON was produced for {job_id}: {sequence_output}")
 
         if layout == "line":
-            origin = [float(index) * float(spacing), 0.0, 0.0]
+            origin = [float(global_index) * float(spacing), 0.0, 0.0]
         elif layout == "grid":
             if grid_cols <= 0:
                 raise RuntimeError("--grid-cols must be greater than 0 for grid layout.")
-            row = index // grid_cols
-            col = index % grid_cols
+            row = global_index // grid_cols
+            col = global_index % grid_cols
             origin = [float(col) * float(spacing), float(row) * float(spacing), 0.0]
         else:
             raise RuntimeError(f"Unsupported layout: {layout}")
@@ -748,7 +780,7 @@ def build_simulation_jobs(
             "workpiece_asset": relative_to_directory(workpiece_asset, jobs_dir),
             "path_json": relative_to_directory(path_json, jobs_dir),
             "origin": origin,
-            "workpiece_offset": [0.45, 0.0, 0.0],
+            "workpiece_offset": [0.5, 0.0, 0.0],
             "frame": "workpiece",
             "units": "mm",
         }
@@ -763,6 +795,7 @@ def build_simulation_jobs(
         if raw_path_json is not None:
             job["raw_topology_json"] = relative_to_directory(raw_path_json, jobs_dir)
         jobs.append(job)
+        appended_count += 1
 
     manifest = {
         "schema": "weld_robot.simulation_jobs.v1",
@@ -777,10 +810,9 @@ def build_simulation_jobs(
         "default_units": "mm",
         "jobs": jobs,
     }
-    manifest_path = jobs_dir / manifest_name
     with manifest_path.open("w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
-    print(f"[manifest] saved {len(jobs)} jobs to {manifest_path}")
+    print(f"[manifest] appended {appended_count} jobs, total {len(jobs)} jobs in {manifest_path}")
     return manifest_path
 
 
@@ -799,8 +831,9 @@ def run_pipeline(
     pose_normal_tol: float,
     seed: int | None,
 ) -> tuple[list[Path], Path]:
-    for output_dir in (model_dir, extract_dir, final_dir, vector_dir, jobs_dir):
+    for output_dir in (model_dir, extract_dir, final_dir, vector_dir):
         clear_output_dir(output_dir)
+    jobs_dir.mkdir(parents=True, exist_ok=True)
 
     try:
         if seed is not None:

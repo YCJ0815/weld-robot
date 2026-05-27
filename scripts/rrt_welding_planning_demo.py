@@ -32,8 +32,6 @@ REPO_ROOT = SCRIPT_DIR.parents[0]
 DEFAULT_JOB_DIR = REPO_ROOT / "data_generation/data/generated_jobs/job_000"
 DEFAULT_URDF = REPO_ROOT / "source/weldRobot/weldRobot/assets/robot-model/ur5e_with_pen.urdf"
 DEFAULT_OUTPUT = REPO_ROOT / "outputs/rrt_welding_planning_demo.mp4"
-TRAJOPT_POINT_CAP = 25
-TRAJOPT_RRT_STEP_RETRY_CAP = 3
 DEFAULT_INITIAL_JOINT_POS = {
     "shoulder_pan_joint": 0.0,
     "shoulder_lift_joint": -1.57,
@@ -43,6 +41,7 @@ DEFAULT_INITIAL_JOINT_POS = {
     "wrist_3_joint": 0.0,
 }
 PLANNING_JOINTS = tuple(DEFAULT_INITIAL_JOINT_POS)
+TRAJOPT_MAXITER_CAP = 20
 
 
 if str(SCRIPT_DIR) not in sys.path:
@@ -148,12 +147,6 @@ def parse_args() -> argparse.Namespace:
         type=str,
         default="planning_results",
         help="Per-job subdirectory used to store structured planning outputs and optional videos.",
-    )
-    parser.add_argument(
-        "--results-root",
-        type=Path,
-        default=None,
-        help="Optional root directory for outputs. When set, each job writes to <results-root>/<job_name>/.",
     )
     parser.add_argument("--urdf", type=Path, default=DEFAULT_URDF, help="UR5e welding-arm URDF.")
     parser.add_argument(
@@ -276,9 +269,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--trajopt", dest="trajopt", action="store_true", default=True, help="Run TrajOpt-style smoothing after RRT. Enabled by default.")
     parser.add_argument("--no-trajopt", dest="trajopt", action="store_false", help="Skip TrajOpt smoothing and replay the raw RRT path.")
-    parser.add_argument("--trajopt-waypoints", type=int, default=12, help=f"Number of waypoints used by TrajOpt resampling. Values above {TRAJOPT_POINT_CAP} are capped.")
-    parser.add_argument("--trajopt-max-waypoints", type=int, default=16, help=f"Upper bound on SDF TrajOpt resampling waypoints. Values above {TRAJOPT_POINT_CAP} are capped.")
-    parser.add_argument("--trajopt-maxiter", type=int, default=300, help="Maximum SLSQP iterations for TrajOpt.")
+    parser.add_argument("--trajopt-waypoints", type=int, default=12, help="Number of waypoints used by TrajOpt resampling.")
+    parser.add_argument("--trajopt-max-waypoints", type=int, default=16, help="Upper bound on SDF TrajOpt resampling waypoints; 0 disables the cap.")
+    parser.add_argument("--trajopt-maxiter", type=int, default=500, help="Maximum SLSQP iterations for TrajOpt. Values above 20 are capped.")
     parser.add_argument(
         "--trajopt-retries",
         type=int,
@@ -456,12 +449,6 @@ def job_results_dir(job_dir: Path, results_subdir: str) -> Path:
     return path
 
 
-def resolve_job_results_base_dir(args: argparse.Namespace, job_dir: Path) -> Path:
-    if args.results_root is not None:
-        return args.results_root.resolve() / job_dir.resolve().name
-    return (job_dir / args.results_subdir).resolve()
-
-
 def results_dir_has_existing_outputs(path: Path) -> bool:
     if not path.exists():
         return False
@@ -485,7 +472,7 @@ def get_job_results_subdir(args: argparse.Namespace, job_dir: Path) -> str:
     if cached is not None:
         return cached
 
-    base_dir = resolve_job_results_base_dir(args, job_dir)
+    base_dir = (job_dir / args.results_subdir).resolve()
     resolved_dir = base_dir
     if results_dir_has_existing_outputs(base_dir):
         timestamp = time.strftime("%Y%m%d_%H%M%S")
@@ -565,9 +552,7 @@ def save_transition_result(job_dir: Path, results_subdir: str, segment: dict[str
 def save_job_summary(job_dir: Path, results_subdir: str, summary: dict[str, Any]) -> Path:
     results_dir = job_results_dir(job_dir, results_subdir)
     summary_path = results_dir / "planning_summary.json"
-    payload = dict(summary)
-    payload["summary_path"] = str(summary_path)
-    summary_path.write_text(json.dumps(json_safe(payload), indent=2, ensure_ascii=False), encoding="utf-8")
+    summary_path.write_text(json.dumps(json_safe(summary), indent=2, ensure_ascii=False), encoding="utf-8")
     return summary_path
 
 
@@ -2330,31 +2315,9 @@ def build_rrt_candidate_configs(
     return combos[: max(1, int(max_candidates))]
 
 
-def build_trajopt_rrt_step_retry_configs(
-    base_step_size: float,
-    base_goal_bias: float,
-    max_retries: int = TRAJOPT_RRT_STEP_RETRY_CAP,
-) -> list[tuple[float, float]]:
-    step_candidates = unique_floats(
-        [
-            base_step_size,
-            base_step_size * 0.75,
-            base_step_size * 0.5,
-            base_step_size * 0.35,
-        ]
-    )
-    step_candidates = [min(0.25, max(0.02, step)) for step in step_candidates]
-    step_candidates = unique_floats(step_candidates)
-    candidates = [(float(step), float(base_goal_bias)) for step in step_candidates]
-    return candidates[: 1 + max(0, int(max_retries))]
-
-
 def build_sdf_trajopt_retry_configs(args: argparse.Namespace, failure_reason: str | None) -> list[dict[str, Any]]:
-    def cap_waypoints(value: int) -> int:
-        return min(TRAJOPT_POINT_CAP, max(3, int(value)))
-
     base = {
-        "max_waypoints": cap_waypoints(args.trajopt_max_waypoints),
+        "max_waypoints": int(args.trajopt_max_waypoints),
         "maxiter": int(args.trajopt_maxiter),
         "ftol": float(args.sdf_trajopt_ftol),
         "path_length_weight": float(args.trajopt_path_length_weight),
@@ -2375,7 +2338,7 @@ def build_sdf_trajopt_retry_configs(args: argparse.Namespace, failure_reason: st
                     "path_length_weight": max(0.2, base["path_length_weight"] * 0.5),
                     "collision_weight": base["collision_weight"] * 1.5,
                     "tool_collision_weight": base["tool_collision_weight"] * 1.75,
-                    "max_waypoints": cap_waypoints(max(base["max_waypoints"], args.trajopt_waypoints + 2)),
+                    "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 2),
                 },
                 {
                     **base,
@@ -2383,7 +2346,7 @@ def build_sdf_trajopt_retry_configs(args: argparse.Namespace, failure_reason: st
                     "collision_weight": base["collision_weight"] * 2.0,
                     "tool_collision_weight": base["tool_collision_weight"] * 2.25,
                     "arm_collision_weight": base["arm_collision_weight"] * 1.25,
-                    "max_waypoints": cap_waypoints(max(base["max_waypoints"], args.trajopt_waypoints + 4)),
+                    "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 4),
                     "ftol": max(base["ftol"], 2e-3),
                 },
             ]
@@ -2411,13 +2374,13 @@ def build_sdf_trajopt_retry_configs(args: argparse.Namespace, failure_reason: st
             [
                 {
                     **base,
-                    "max_waypoints": cap_waypoints(max(base["max_waypoints"], args.trajopt_waypoints + 2)),
+                    "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 2),
                     "initial_penetration_tol": min(base["initial_penetration_tol"], -0.0035),
                     "seed_fallback_penetration_tol": min(base["seed_fallback_penetration_tol"], -0.0055),
                 },
                 {
                     **base,
-                    "max_waypoints": cap_waypoints(max(base["max_waypoints"], args.trajopt_waypoints + 4)),
+                    "max_waypoints": max(base["max_waypoints"], args.trajopt_waypoints + 4),
                     "initial_penetration_tol": min(base["initial_penetration_tol"], -0.0045),
                     "seed_fallback_penetration_tol": min(base["seed_fallback_penetration_tol"], -0.0065),
                     "ftol": max(base["ftol"], 2e-3),
@@ -3211,18 +3174,11 @@ def process_job(
             continue
 
         t0 = time.perf_counter()
-        if args.trajopt and args.sdf_trajopt:
-            rrt_candidates = build_trajopt_rrt_step_retry_configs(
-                args.rrt_step_size,
-                args.goal_bias,
-                max_retries=TRAJOPT_RRT_STEP_RETRY_CAP,
-            )
-        else:
-            rrt_candidates = (
-                build_rrt_candidate_configs(args.rrt_step_size, args.goal_bias, args.rrt_auto_max_candidates)
-                if args.auto_rrt_adapt
-                else [(float(args.rrt_step_size), float(args.goal_bias))]
-            )
+        rrt_candidates = (
+            build_rrt_candidate_configs(args.rrt_step_size, args.goal_bias, args.rrt_auto_max_candidates)
+            if args.auto_rrt_adapt
+            else [(float(args.rrt_step_size), float(args.goal_bias))]
+        )
         best_fallback_segment: dict[str, Any] | None = None
         selected_segment: dict[str, Any] | None = None
         rrt_attempts: list[dict[str, Any]] = []
@@ -3417,12 +3373,6 @@ def process_job(
                         "optimization_info": optimization_info,
                         "trajopt_attempts": trajopt_attempts,
                     }
-                if candidate_index == len(rrt_candidates):
-                    reduction_retries = max(0, len(rrt_candidates) - 1)
-                    log(
-                        f"[demo] TrajOpt precheck remained penetrating after {reduction_retries} "
-                        "RRT step-size reductions; skipping optimization for this transition."
-                    )
                 continue
 
             q_core_playback = densify_path(q_plan, args.playback_resolution)
@@ -3604,20 +3554,12 @@ def process_job(
 
 def main() -> None:
     args = parse_args()
-    requested_waypoints = int(args.trajopt_waypoints)
-    requested_max_waypoints = int(args.trajopt_max_waypoints)
-    args.trajopt_waypoints = min(TRAJOPT_POINT_CAP, max(3, requested_waypoints))
-    args.trajopt_max_waypoints = min(TRAJOPT_POINT_CAP, max(3, requested_max_waypoints))
-    if args.trajopt_waypoints != requested_waypoints:
+    if int(args.trajopt_maxiter) > TRAJOPT_MAXITER_CAP:
         log(
-            f"[demo] Capping --trajopt-waypoints from {requested_waypoints} "
-            f"to {int(args.trajopt_waypoints)}."
+            f"[demo] Capping --trajopt-maxiter from {int(args.trajopt_maxiter)} "
+            f"to {TRAJOPT_MAXITER_CAP} to limit optimization time."
         )
-    if args.trajopt_max_waypoints != requested_max_waypoints:
-        log(
-            f"[demo] Capping --trajopt-max-waypoints from {requested_max_waypoints} "
-            f"to {int(args.trajopt_max_waypoints)}."
-        )
+        args.trajopt_maxiter = TRAJOPT_MAXITER_CAP
     if args.encode_only:
         args.output = args.output.resolve()
         if args.frames_dir is None:

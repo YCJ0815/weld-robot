@@ -92,7 +92,7 @@ def parse_args() -> argparse.Namespace:
         "--workpiece-offset",
         type=float,
         nargs=3,
-        default=[0.45, 0.0, 0.0],
+        default=[0.5, 0.0, 0.0],
         metavar=("X", "Y", "Z"),
         help="Local workpiece offset relative to each robot/env origin, in meters. Manifest workpiece_offset overrides this when present.",
     )
