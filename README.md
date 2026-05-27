@@ -120,6 +120,20 @@ python scripts/replay_joint_trajectory.py \
 
 The replay script accepts `json/csv/txt/npy/npz`. In `auto` mode, `npy/npz` trajectories are treated as joint-angle deltas. The delta start state can come from `--start-npz`, which is read directly as absolute joint angles, or from `--start-joint-positions` if you want to provide the absolute start state on the command line. If the file does not include joint names, it defaults to the 6 UR5e joints in the repository's initial-joint order; otherwise pass `--joint-names ...` explicitly.
 
+For comparison playback, provide `--reference-npz` to spawn a second robot with an offset and replay the reference trajectory side by side:
+
+```bash
+python scripts/replay_joint_trajectory.py \
+  --trajectory data/pred_delta.npy \
+  --start-npz data/start_state.npz \
+  --reference-npz data/reference_traj.npz \
+  --reference-key ground_truth \
+  --stl workpiece1.stl \
+  --record \
+  --output outputs/replay_compare.mp4 \
+  --overwrite
+```
+
 Keep the intermediate PNG frames:
 
 ```bash

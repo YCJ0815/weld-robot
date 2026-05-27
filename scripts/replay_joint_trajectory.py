@@ -20,9 +20,11 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from sim_parallel_welding import (  # noqa: E402
     encode_video,
+    ensure_xform,
     move_prim_to_path,
     import_stl_as_mesh,
     prepare_recording_paths,
+    set_xform_translation,
     step_replicator,
 )
 from sim_welding_arm import (  # noqa: E402
@@ -44,6 +46,26 @@ DEFAULT_START_KEY_CANDIDATES = (
     "start",
     "robot_start",
     "joint_start",
+)
+DEFAULT_TRAJECTORY_KEY_CANDIDATES = (
+    "joint_positions",
+    "trajectory",
+    "waypoints",
+    "q",
+    "positions",
+)
+DEFAULT_REFERENCE_KEY_CANDIDATES = (
+    "ground_truth",
+    "gt_joint_positions",
+    "real_joint_positions",
+    "reference_joint_positions",
+    "expert_joint_positions",
+    "target_joint_positions",
+    "joint_positions",
+    "trajectory",
+    "waypoints",
+    "q",
+    "positions",
 )
 
 
@@ -67,6 +89,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stl", type=Path, default=None, help="Optional STL workpiece path.")
     parser.add_argument("--robot-prim-path", default="/World/UR5ePen", help="USD prim path for the imported robot.")
     parser.add_argument("--workpiece-prim-path", default="/World/Workpiece", help="USD prim path for the imported STL workpiece.")
+    parser.add_argument("--reference-npz", type=Path, default=None, help="Optional NPZ file containing the reference trajectory.")
+    parser.add_argument("--reference-key", default=None, help="Key inside --reference-npz for the reference trajectory.")
+    parser.add_argument(
+        "--reference-representation",
+        choices=("auto", "absolute", "delta"),
+        default="absolute",
+        help="Interpret the reference trajectory as absolute joint angles or joint-angle deltas.",
+    )
+    parser.add_argument("--reference-robot-prim-path", default="/World/UR5ePenReference", help="USD prim path for the reference robot.")
+    parser.add_argument("--reference-workpiece-prim-path", default="/World/WorkpieceReference", help="USD prim path for the reference STL workpiece.")
+    parser.add_argument(
+        "--reference-offset",
+        type=float,
+        nargs=3,
+        default=[0.0, 0.8, 0.0],
+        metavar=("X", "Y", "Z"),
+        help="World-space offset applied to the reference robot and its optional STL workpiece.",
+    )
     parser.add_argument("--headless", action="store_true", help="Run Isaac Sim without the UI.")
     parser.add_argument("--floating", action="store_true", help="Do not fix the robot base to the world.")
     parser.add_argument("--physics-dt", type=float, default=1.0 / 60.0, help="Physics timestep in seconds.")
@@ -122,6 +162,24 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Key inside --start-npz for the absolute start joint positions. "
         "If omitted, common key names are searched automatically.",
+    )
+    parser.add_argument(
+        "--reference-start-joint-positions",
+        type=float,
+        nargs="+",
+        default=None,
+        help="Optional absolute start state used when the reference trajectory is stored as deltas.",
+    )
+    parser.add_argument(
+        "--reference-start-npz",
+        type=Path,
+        default=None,
+        help="Optional NPZ file containing the absolute reference start joint positions.",
+    )
+    parser.add_argument(
+        "--reference-start-key",
+        default=None,
+        help="Key inside --reference-start-npz for the absolute reference start joint positions.",
     )
     parser.add_argument(
         "--workpiece-scale",
@@ -217,22 +275,35 @@ def _load_csv_trajectory(path: Path) -> tuple[np.ndarray, list[str] | None]:
     return _coerce_trajectory_array(data, "CSV trajectory"), joint_names
 
 
-def _load_npz_trajectory(path: Path) -> tuple[np.ndarray, list[str] | None]:
+def _load_npz_array(
+    path: Path,
+    preferred_key: str | None,
+    candidate_keys: tuple[str, ...],
+    label: str,
+) -> tuple[np.ndarray, list[str] | None]:
     with np.load(path, allow_pickle=True) as data:
         joint_names = _normalize_joint_name_list(data["joint_names"]) if "joint_names" in data else None
-        for key in ("joint_positions", "trajectory", "waypoints", "q", "positions"):
+        keys = [preferred_key] if preferred_key else list(candidate_keys)
+        for key in keys:
             if key in data:
                 return _coerce_trajectory_array(data[key], f"NPZ field '{key}'"), joint_names
         if len(data.files) == 1:
             only_key = data.files[0]
             return _coerce_trajectory_array(data[only_key], f"NPZ field '{only_key}'"), joint_names
         raise RuntimeError(
-            "NPZ trajectory must contain one of: "
-            "'joint_positions', 'trajectory', 'waypoints', 'q', 'positions'."
+            f"{label} NPZ must contain one of: {keys}. Available keys={list(data.files)}"
         )
 
 
-def load_joint_trajectory(path: Path, cli_joint_names: list[str] | None) -> tuple[np.ndarray, list[str] | None]:
+def _load_npz_trajectory(path: Path, preferred_key: str | None = None) -> tuple[np.ndarray, list[str] | None]:
+    return _load_npz_array(path, preferred_key, DEFAULT_TRAJECTORY_KEY_CANDIDATES, "Trajectory")
+
+
+def load_joint_trajectory(
+    path: Path,
+    cli_joint_names: list[str] | None,
+    preferred_npz_key: str | None = None,
+) -> tuple[np.ndarray, list[str] | None]:
     path = path.expanduser().resolve()
     if not path.is_file():
         raise FileNotFoundError(f"Trajectory file does not exist: {path}")
@@ -245,7 +316,7 @@ def load_joint_trajectory(path: Path, cli_joint_names: list[str] | None) -> tupl
     elif suffix == ".npy":
         waypoints, file_joint_names = _coerce_trajectory_array(np.load(path, allow_pickle=False), "NPY trajectory"), None
     elif suffix == ".npz":
-        waypoints, file_joint_names = _load_npz_trajectory(path)
+        waypoints, file_joint_names = _load_npz_trajectory(path, preferred_npz_key)
     else:
         raise RuntimeError(f"Unsupported trajectory format '{suffix}'. Use json/csv/txt/npy/npz.")
 
@@ -390,6 +461,30 @@ def build_absolute_trajectory(
     return absolute
 
 
+def import_robot_instance(
+    stage: Any,
+    resolved_urdf: Path,
+    requested_prim_path: str,
+    fix_base: bool,
+    world_offset: tuple[float, float, float] | None = None,
+) -> str:
+    imported_robot_path = import_robot_from_urdf(resolved_urdf, requested_prim_path, fix_base=fix_base)
+    if not stage.GetPrimAtPath(imported_robot_path).IsValid() and stage.GetPrimAtPath("/ur5e_pen").IsValid():
+        imported_robot_path = "/ur5e_pen"
+    robot_prim_path = move_prim_to_path(stage, imported_robot_path, requested_prim_path)
+    if world_offset is not None:
+        set_xform_translation(stage.GetPrimAtPath(robot_prim_path), world_offset)
+    return robot_prim_path
+
+
+def shifted_offset(base_offset: list[float], world_offset: list[float]) -> tuple[float, float, float]:
+    return (
+        float(base_offset[0]) + float(world_offset[0]),
+        float(base_offset[1]) + float(world_offset[1]),
+        float(base_offset[2]) + float(world_offset[2]),
+    )
+
+
 def apply_joint_waypoint(robot: Any, dof_indices: list[int], waypoint: np.ndarray) -> None:
     if waypoint.shape != (len(dof_indices),):
         raise RuntimeError(
@@ -434,6 +529,19 @@ def main() -> None:
     trajectory_path = args.trajectory.expanduser().resolve()
     trajectory, requested_joint_names = load_joint_trajectory(trajectory_path, args.joint_names)
     trajectory_representation = resolve_trajectory_representation(trajectory_path, args.trajectory_representation)
+    reference_trajectory = None
+    reference_joint_names = None
+    reference_trajectory_representation = args.reference_representation
+    if args.reference_npz is not None:
+        reference_npz_path = args.reference_npz.expanduser().resolve()
+        reference_trajectory, reference_joint_names = load_joint_trajectory(
+            reference_npz_path,
+            args.joint_names,
+            preferred_npz_key=args.reference_key,
+        )
+        reference_trajectory_representation = resolve_trajectory_representation(
+            reference_npz_path, args.reference_representation
+        )
     frames_dir = prepare_recording_paths(args) if args.record else None
 
     if args.stl is not None:
@@ -464,12 +572,26 @@ def main() -> None:
 
         resolved_urdf = make_resolved_urdf(args.urdf)
         stage = get_context().get_stage()
-        imported_robot_path = import_robot_from_urdf(resolved_urdf, args.robot_prim_path, fix_base=not args.floating)
-        if not stage.GetPrimAtPath(imported_robot_path).IsValid() and stage.GetPrimAtPath("/ur5e_pen").IsValid():
-            imported_robot_path = "/ur5e_pen"
-        robot_prim_path = move_prim_to_path(stage, imported_robot_path, args.robot_prim_path)
+        ensure_xform(stage, "/World")
+        robot_prim_path = import_robot_instance(
+            stage=stage,
+            resolved_urdf=resolved_urdf,
+            requested_prim_path=args.robot_prim_path,
+            fix_base=not args.floating,
+        )
+        reference_robot_prim_path = None
+        if reference_trajectory is not None:
+            reference_robot_prim_path = import_robot_instance(
+                stage=stage,
+                resolved_urdf=resolved_urdf,
+                requested_prim_path=args.reference_robot_prim_path,
+                fix_base=not args.floating,
+                world_offset=tuple(float(v) for v in args.reference_offset),
+            )
         world.reset()
         set_initial_joint_positions(robot_prim_path)
+        if reference_robot_prim_path is not None:
+            set_initial_joint_positions(reference_robot_prim_path)
 
         if args.stl is not None:
             import_stl_as_mesh(
@@ -481,9 +603,21 @@ def main() -> None:
                 local_offset=tuple(float(v) for v in args.workpiece_offset),
                 debug_box=args.debug_workpiece_box,
             )
+            if reference_robot_prim_path is not None:
+                import_stl_as_mesh(
+                    stage=stage,
+                    stl_path=args.stl,
+                    prim_path=args.reference_workpiece_prim_path,
+                    scale=args.workpiece_scale,
+                    z_offset=args.workpiece_z_offset,
+                    local_offset=shifted_offset(args.workpiece_offset, args.reference_offset),
+                    debug_box=args.debug_workpiece_box,
+                )
 
         world.step(render=False)
         set_initial_joint_positions(robot_prim_path)
+        if reference_robot_prim_path is not None:
+            set_initial_joint_positions(reference_robot_prim_path)
 
         robot = create_articulation(robot_prim_path)
         joint_names, dof_indices = resolve_dof_indices(robot, requested_joint_names, trajectory.shape[1])
@@ -499,6 +633,26 @@ def main() -> None:
             representation=trajectory_representation,
             start_joint_positions=start_joint_positions,
         )
+        reference_robot = None
+        if reference_robot_prim_path is not None and reference_trajectory is not None:
+            reference_robot = create_articulation(reference_robot_prim_path)
+            resolved_reference_joint_names, reference_dof_indices = resolve_dof_indices(
+                reference_robot,
+                reference_joint_names or args.joint_names,
+                reference_trajectory.shape[1],
+            )
+            reference_start_joint_positions = resolve_start_joint_positions(
+                robot=reference_robot,
+                dof_indices=reference_dof_indices,
+                cli_start_joint_positions=args.reference_start_joint_positions,
+                start_npz=args.reference_start_npz,
+                start_key=args.reference_start_key,
+            )
+            reference_trajectory = build_absolute_trajectory(
+                trajectory=reference_trajectory,
+                representation=reference_trajectory_representation,
+                start_joint_positions=reference_start_joint_positions,
+            )
 
         writer = None
         if args.record:
@@ -514,6 +668,11 @@ def main() -> None:
             add_camera_view()
 
         total_frames = trajectory.shape[0] * args.hold_steps * args.loop
+        if reference_trajectory is not None:
+            total_waypoints = max(trajectory.shape[0], reference_trajectory.shape[0])
+            total_frames = total_waypoints * args.hold_steps * args.loop
+        else:
+            total_waypoints = trajectory.shape[0]
         log(
             f"[weldRobot] Replay ready: waypoints={trajectory.shape[0]}, hold_steps={args.hold_steps}, "
             f"loop={args.loop}, total_steps={total_frames}, joints={joint_names}, "
@@ -521,6 +680,11 @@ def main() -> None:
         )
         if trajectory_representation == "delta":
             log(f"[weldRobot] Delta trajectory start joint positions: {start_joint_positions.tolist()}")
+        if reference_trajectory is not None:
+            log(
+                f"[weldRobot] Reference replay ready: waypoints={reference_trajectory.shape[0]}, "
+                f"representation={reference_trajectory_representation}, offset={tuple(args.reference_offset)}"
+            )
         if args.stl is not None:
             log(
                 f"[weldRobot] Imported STL {args.stl.name} with offset={tuple(args.workpiece_offset)} "
@@ -529,8 +693,12 @@ def main() -> None:
 
         frame_idx = 0
         for loop_idx in range(args.loop):
-            for waypoint_idx, waypoint in enumerate(trajectory):
+            for waypoint_idx in range(total_waypoints):
+                waypoint = trajectory[min(waypoint_idx, trajectory.shape[0] - 1)]
                 apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
+                if reference_robot is not None and reference_trajectory is not None:
+                    reference_waypoint = reference_trajectory[min(waypoint_idx, reference_trajectory.shape[0] - 1)]
+                    apply_joint_waypoint(reference_robot, reference_dof_indices, reference_waypoint.reshape(-1))
                 for _ in range(args.hold_steps):
                     world.step(render=True)
                     if args.record:
@@ -540,7 +708,7 @@ def main() -> None:
                         log(f"[weldRobot] Recorded {frame_idx}/{total_frames} frames")
                 if not args.record and (waypoint_idx + 1) % 50 == 0:
                     log(
-                        f"[weldRobot] Replayed {waypoint_idx + 1}/{trajectory.shape[0]} waypoints "
+                        f"[weldRobot] Replayed {waypoint_idx + 1}/{total_waypoints} waypoints "
                         f"in loop {loop_idx + 1}/{args.loop}"
                     )
 
