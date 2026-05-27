@@ -7,7 +7,6 @@ import csv
 import json
 import sys
 import traceback
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -116,19 +115,13 @@ def parse_args() -> argparse.Namespace:
         "--start-npz",
         type=Path,
         default=None,
-        help="Optional NPZ file containing the normalized start joint positions.",
+        help="Optional NPZ file containing the absolute start joint positions.",
     )
     parser.add_argument(
         "--start-key",
         default=None,
-        help="Key inside --start-npz for the normalized start joint positions. "
+        help="Key inside --start-npz for the absolute start joint positions. "
         "If omitted, common key names are searched automatically.",
-    )
-    parser.add_argument(
-        "--start-normalization",
-        choices=("auto", "neg_one_to_one", "zero_to_one"),
-        default="auto",
-        help="Normalization range used by the start joint positions stored in --start-npz.",
     )
     parser.add_argument(
         "--workpiece-scale",
@@ -273,29 +266,6 @@ def resolve_trajectory_representation(path: Path, requested: str) -> str:
     return "absolute"
 
 
-def load_urdf_joint_limits(urdf_path: Path, joint_names: list[str]) -> tuple[np.ndarray, np.ndarray]:
-    if not urdf_path.is_file():
-        raise FileNotFoundError(f"URDF file does not exist: {urdf_path}")
-
-    root = ET.parse(urdf_path).getroot()
-    limits_by_name: dict[str, tuple[float, float]] = {}
-    for joint in root.findall("joint"):
-        limit_xml = joint.find("limit")
-        if limit_xml is None:
-            continue
-        lower = float(limit_xml.attrib.get("lower", "-6.28318530718"))
-        upper = float(limit_xml.attrib.get("upper", "6.28318530718"))
-        limits_by_name[joint.attrib["name"]] = (lower, upper)
-
-    missing = [name for name in joint_names if name not in limits_by_name]
-    if missing:
-        raise RuntimeError(f"Missing URDF joint limits for joints: {missing}")
-
-    lower = np.asarray([limits_by_name[name][0] for name in joint_names], dtype=float)
-    upper = np.asarray([limits_by_name[name][1] for name in joint_names], dtype=float)
-    return lower, upper
-
-
 def create_articulation(robot_prim_path: str):
     try:
         from isaacsim.core.prims import SingleArticulation
@@ -369,38 +339,6 @@ def load_start_array_from_npz(npz_path: Path, start_key: str | None) -> np.ndarr
         return value
 
 
-def resolve_normalization_mode(values: np.ndarray, requested: str) -> str:
-    if requested != "auto":
-        return requested
-    if np.all(values >= -1.000001) and np.all(values <= 1.000001):
-        return "neg_one_to_one"
-    if np.all(values >= -0.000001) and np.all(values <= 1.000001):
-        return "zero_to_one"
-    raise RuntimeError(
-        "Could not infer start normalization range automatically. "
-        "Use --start-normalization neg_one_to_one or --start-normalization zero_to_one."
-    )
-
-
-def denormalize_joint_positions(
-    normalized: np.ndarray,
-    lower_limits: np.ndarray,
-    upper_limits: np.ndarray,
-    normalization: str,
-) -> np.ndarray:
-    if normalized.size != lower_limits.size:
-        raise RuntimeError(
-            f"Normalized start joint count {normalized.size} does not match joint count {lower_limits.size}"
-        )
-    if normalization == "neg_one_to_one":
-        scaled = 0.5 * (normalized + 1.0)
-    elif normalization == "zero_to_one":
-        scaled = normalized
-    else:
-        raise RuntimeError(f"Unsupported normalization mode: {normalization}")
-    return lower_limits + scaled * (upper_limits - lower_limits)
-
-
 def current_joint_subset(robot: Any, dof_indices: list[int]) -> np.ndarray:
     full = read_full_joint_positions(robot)
     return np.asarray([full[dof_idx] for dof_idx in dof_indices], dtype=float)
@@ -409,24 +347,19 @@ def current_joint_subset(robot: Any, dof_indices: list[int]) -> np.ndarray:
 def resolve_start_joint_positions(
     robot: Any,
     dof_indices: list[int],
-    joint_names: list[str],
-    urdf_path: Path,
     cli_start_joint_positions: list[float] | None,
     start_npz: Path | None,
     start_key: str | None,
-    start_normalization: str,
 ) -> np.ndarray:
     if cli_start_joint_positions is None:
         if start_npz is None:
             return current_joint_subset(robot, dof_indices)
-        normalized = load_start_array_from_npz(start_npz, start_key)
-        lower_limits, upper_limits = load_urdf_joint_limits(urdf_path, joint_names)
-        normalization_mode = resolve_normalization_mode(normalized, start_normalization)
-        start = denormalize_joint_positions(normalized, lower_limits, upper_limits, normalization_mode)
-        log(
-            f"[weldRobot] Loaded normalized start joints from {start_npz.name} "
-            f"using normalization={normalization_mode}"
-        )
+        start = load_start_array_from_npz(start_npz, start_key)
+        if start.size != len(dof_indices):
+            raise RuntimeError(
+                f"Start joint count from {start_npz} is {start.size}, expected {len(dof_indices)}"
+            )
+        log(f"[weldRobot] Loaded absolute start joints from {start_npz.name}")
         return start
 
     start = np.asarray(cli_start_joint_positions, dtype=float).reshape(-1)
@@ -554,23 +487,17 @@ def main() -> None:
 
         robot = create_articulation(robot_prim_path)
         joint_names, dof_indices = resolve_dof_indices(robot, requested_joint_names, trajectory.shape[1])
-        lower_limits, upper_limits = load_urdf_joint_limits(args.urdf, joint_names)
         start_joint_positions = resolve_start_joint_positions(
             robot=robot,
             dof_indices=dof_indices,
-            joint_names=joint_names,
-            urdf_path=args.urdf,
             cli_start_joint_positions=args.start_joint_positions,
             start_npz=args.start_npz,
             start_key=args.start_key,
-            start_normalization=args.start_normalization,
         )
         trajectory = build_absolute_trajectory(
             trajectory=trajectory,
             representation=trajectory_representation,
             start_joint_positions=start_joint_positions,
-            lower_limits=lower_limits,
-            upper_limits=upper_limits,
         )
 
         writer = None
@@ -594,9 +521,6 @@ def main() -> None:
         )
         if trajectory_representation == "delta":
             log(f"[weldRobot] Delta trajectory start joint positions: {start_joint_positions.tolist()}")
-            log(
-                f"[weldRobot] URDF joint limits: lower={lower_limits.tolist()} upper={upper_limits.tolist()}"
-            )
         if args.stl is not None:
             log(
                 f"[weldRobot] Imported STL {args.stl.name} with offset={tuple(args.workpiece_offset)} "
