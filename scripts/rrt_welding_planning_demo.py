@@ -148,6 +148,12 @@ def parse_args() -> argparse.Namespace:
         default="planning_results",
         help="Per-job subdirectory used to store structured planning outputs and optional videos.",
     )
+    parser.add_argument(
+        "--results-root",
+        type=Path,
+        default=None,
+        help="Optional root directory for per-job outputs. When set, results are written to <results-root>/<job_name>.",
+    )
     parser.add_argument("--urdf", type=Path, default=DEFAULT_URDF, help="UR5e welding-arm URDF.")
     parser.add_argument(
         "--weld-index",
@@ -472,7 +478,10 @@ def get_job_results_subdir(args: argparse.Namespace, job_dir: Path) -> str:
     if cached is not None:
         return cached
 
-    base_dir = (job_dir / args.results_subdir).resolve()
+    if args.results_root is not None:
+        base_dir = (args.results_root.expanduser().resolve() / job_dir.name).resolve()
+    else:
+        base_dir = (job_dir / args.results_subdir).resolve()
     resolved_dir = base_dir
     if results_dir_has_existing_outputs(base_dir):
         timestamp = time.strftime("%Y%m%d_%H%M%S")
