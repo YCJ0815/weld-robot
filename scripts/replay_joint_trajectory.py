@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 import sys
+import traceback
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -20,6 +21,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from sim_parallel_welding import (  # noqa: E402
     encode_video,
+    move_prim_to_path,
     import_stl_as_mesh,
     prepare_recording_paths,
     step_replicator,
@@ -528,11 +530,14 @@ def main() -> None:
         world.scene.add_default_ground_plane()
 
         resolved_urdf = make_resolved_urdf(args.urdf)
-        robot_prim_path = import_robot_from_urdf(resolved_urdf, args.robot_prim_path, fix_base=not args.floating)
+        stage = get_context().get_stage()
+        imported_robot_path = import_robot_from_urdf(resolved_urdf, args.robot_prim_path, fix_base=not args.floating)
+        if not stage.GetPrimAtPath(imported_robot_path).IsValid() and stage.GetPrimAtPath("/ur5e_pen").IsValid():
+            imported_robot_path = "/ur5e_pen"
+        robot_prim_path = move_prim_to_path(stage, imported_robot_path, args.robot_prim_path)
         world.reset()
         set_initial_joint_positions(robot_prim_path)
 
-        stage = get_context().get_stage()
         if args.stl is not None:
             import_stl_as_mesh(
                 stage=stage,
@@ -618,6 +623,13 @@ def main() -> None:
         if args.record and writer is not None:
             rep.orchestrator.wait_until_complete()
             writer.detach()
+            png_count = len(list(frames_dir.glob("*.png"))) + len(list(frames_dir.glob("**/*.png")))
+            log(f"[weldRobot] PNG files written under {frames_dir}: {png_count}")
+
+    except Exception:
+        log("[weldRobot] Fatal error while building or recording the replay scene:")
+        traceback.print_exc()
+        raise
 
     finally:
         simulation_app.close()
