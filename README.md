@@ -108,7 +108,8 @@ Replay a joint-angle trajectory, import one STL workpiece with the same default 
 
 ```bash
 python scripts/replay_joint_trajectory.py \
-  --trajectory data/joint_trajectory.json \
+  --trajectory data/joint_delta.npy \
+  --start-npz data/start_state.npz \
   --stl workpiece1.stl \
   --headless \
   --record \
@@ -117,7 +118,7 @@ python scripts/replay_joint_trajectory.py \
   --overwrite
 ```
 
-The replay script accepts `json/csv/txt/npy/npz`. If the file does not include joint names, it defaults to the 6 UR5e joints in the repository's initial-joint order; otherwise pass `--joint-names ...` explicitly.
+The replay script accepts `json/csv/txt/npy/npz`. In `auto` mode, `npy/npz` trajectories are treated as joint-angle deltas. The delta start state can come from `--start-npz`, where the stored normalized joint angles are denormalized using the URDF joint limits, or from `--start-joint-positions` if you want to provide absolute angles directly. `--start-normalization` supports `neg_one_to_one` and `zero_to_one`, with `auto` inference by default. The accumulated joint trajectory is clipped to the URDF limits before replay. If the file does not include joint names, it defaults to the 6 UR5e joints in the repository's initial-joint order; otherwise pass `--joint-names ...` explicitly.
 
 Keep the intermediate PNG frames:
 
