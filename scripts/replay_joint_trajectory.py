@@ -39,15 +39,19 @@ from sim_welding_arm import (  # noqa: E402
 
 DEFAULT_TRAJECTORY_JOINT_NAMES = list(DEFAULT_INITIAL_JOINT_POS.keys())
 DEFAULT_START_KEY_CANDIDATES = (
+    "q_start",
     "start_joint_positions",
     "start_joints",
-    "q_start",
     "start_q",
     "start",
     "robot_start",
     "joint_start",
 )
 DEFAULT_TRAJECTORY_KEY_CANDIDATES = (
+    "q_playback",
+    "q_plan",
+    "q_rrt_playback",
+    "q_seed_path",
     "joint_positions",
     "trajectory",
     "waypoints",
@@ -55,6 +59,10 @@ DEFAULT_TRAJECTORY_KEY_CANDIDATES = (
     "positions",
 )
 DEFAULT_REFERENCE_KEY_CANDIDATES = (
+    "q_playback",
+    "q_plan",
+    "q_rrt_playback",
+    "q_seed_path",
     "ground_truth",
     "gt_joint_positions",
     "real_joint_positions",

@@ -42,6 +42,7 @@ DEFAULT_INITIAL_JOINT_POS = {
 }
 PLANNING_JOINTS = tuple(DEFAULT_INITIAL_JOINT_POS)
 TRAJOPT_MAXITER_CAP = 500
+TRAJOPT_SEED_WAYPOINT_SKIP_THRESHOLD = 60
 
 
 if str(SCRIPT_DIR) not in sys.path:
@@ -3238,7 +3239,22 @@ def process_job(
             trajopt_success = False
             trajopt_attempts: list[dict[str, Any]] = []
             try_next_rrt_candidate = False
-            if args.trajopt:
+            skip_trajopt_for_long_seed = len(q_seed_path) > TRAJOPT_SEED_WAYPOINT_SKIP_THRESHOLD
+            if args.trajopt and skip_trajopt_for_long_seed:
+                optimization_info = {
+                    "trajopt_success": False,
+                    "trajopt_info": {
+                        "failure_reason": "trajopt_skipped_long_seed",
+                        "seed_waypoint_count": int(len(q_seed_path)),
+                        "seed_waypoint_threshold": int(TRAJOPT_SEED_WAYPOINT_SKIP_THRESHOLD),
+                        "used_rrt_result": True,
+                    },
+                }
+                log(
+                    f"[demo] Skipping TrajOpt because RRT seed has {len(q_seed_path)} waypoints "
+                    f"> {TRAJOPT_SEED_WAYPOINT_SKIP_THRESHOLD}; using raw RRT result."
+                )
+            if args.trajopt and not skip_trajopt_for_long_seed:
                 if args.sdf_trajopt:
                     retry_reason: str | None = None
                     for retry_index, retry_cfg in enumerate(build_sdf_trajopt_retry_configs(args, retry_reason), start=1):
@@ -3440,7 +3456,10 @@ def process_job(
                     "goal_bias": candidate_goal_bias,
                     "success": True,
                     "trajopt_attempts": json_safe(trajopt_attempts),
-                    "result": "selected",
+                    "result": "selected_rrt_trajopt_skipped_long_seed" if skip_trajopt_for_long_seed else "selected",
+                    "trajopt_skipped": bool(skip_trajopt_for_long_seed),
+                    "seed_waypoint_count": int(len(q_seed_path)),
+                    "seed_waypoint_threshold": int(TRAJOPT_SEED_WAYPOINT_SKIP_THRESHOLD),
                 }
             )
             if not trajopt_success and best_fallback_segment is None:
