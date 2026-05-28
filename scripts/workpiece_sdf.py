@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -73,8 +74,17 @@ def _as_vec3(data: np.lib.npyio.NpzFile, key: str) -> np.ndarray | None:
     return value
 
 
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _cached_sdf_matches(
     npz_path: Path,
+    stl_path: Path,
     scale: float,
     z_offset: float,
     local_offset: tuple[float, float, float],
@@ -90,7 +100,11 @@ def _cached_sdf_matches(
     cached_pitch = _as_scalar(data, "voxel_pitch")
     cached_margin = _as_scalar(data, "margin")
     cached_offset = _as_vec3(data, "workpiece_offset")
+    cached_sha = str(data["workpiece_source_sha256"].reshape(-1)[0]) if "workpiece_source_sha256" in data else None
 
+    current_sha = _file_sha256(stl_path)
+    if cached_sha is None or cached_sha != current_sha:
+        return False, "workpiece mesh content changed or cache has no source hash"
     if cached_scale is None or not np.isclose(cached_scale, float(scale), atol=1e-12):
         return False, f"scale mismatch: cached={cached_scale}, requested={scale}"
     if cached_z_offset is None or not np.isclose(cached_z_offset, float(z_offset), atol=1e-12):
@@ -190,6 +204,8 @@ def build_sdf_from_workpiece_mesh(
         workpiece_scale=np.array([float(scale)], dtype=float),
         workpiece_z_offset=np.array([float(z_offset)], dtype=float),
         workpiece_offset=np.asarray(local_offset, dtype=float).reshape(3),
+        workpiece_source_sha256=np.array([_file_sha256(stl_path)]),
+        workpiece_source_path=np.array([str(stl_path.resolve())]),
         voxel_pitch=np.array([pitch], dtype=float),
         margin=np.array([margin], dtype=float),
     )
@@ -216,6 +232,7 @@ def load_or_build_workpiece_sdf(
     if not needs_rebuild:
         metadata_ok, reason = _cached_sdf_matches(
             npz_path=npz_path,
+            stl_path=stl_path,
             scale=scale,
             z_offset=z_offset,
             local_offset=local_offset,

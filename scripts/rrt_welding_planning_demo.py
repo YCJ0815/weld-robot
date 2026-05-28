@@ -581,6 +581,12 @@ def clear_job_prims(stage: Any) -> None:
     ensure_xform(stage, "/World/Debug")
 
 
+def refresh_job_physics_scene(world: Any, robot: Any, reason: str, warmup_steps: int = 3) -> None:
+    """Force USD edits for a new job to be reflected in PhysX queries."""
+    log(f"[demo] Refreshing physics scene after {reason}.")
+    refresh_articulation_view(world, robot, warmup_steps=warmup_steps)
+
+
 def prepare_job_recording_paths(args: argparse.Namespace, job_dir: Path, results_subdir: str) -> tuple[Path, Path]:
     results_dir = job_results_dir(job_dir, results_subdir)
     if args.all_jobs:
@@ -2921,6 +2927,7 @@ def process_job(
     log(f"[demo] Starting job: {job_dir}")
     log(f"[demo] Structured outputs for this run: {job_results_dir(job_dir, results_subdir)}")
     clear_job_prims(stage)
+    refresh_job_physics_scene(world, robot, "removing previous job prims", warmup_steps=1)
     workpiece_mesh_path = resolve_workpiece_mesh_path(job_dir)
     log(f"[demo] Using workpiece mesh for simulation: {workpiece_mesh_path.name}")
     workpiece_info = import_collision_stl(
@@ -2943,6 +2950,7 @@ def process_job(
         )
     else:
         log("[demo] Visual ground hidden in simulation and recording.")
+    refresh_job_physics_scene(world, robot, "importing current job workpiece", warmup_steps=3)
     sdf_layer = None
     sdf_npz_path = None
     if args.trajopt and args.sdf_trajopt:
