@@ -27,6 +27,12 @@ EXTRACT_OUTPUT_DIR = ROOT / "data" / "extract"
 FINAL_OUTPUT_DIR = ROOT / "data" / "path"
 VECTOR_OUTPUT_DIR = ROOT / "data" / "vector"
 JOBS_OUTPUT_DIR = ROOT / "data" / "generated_jobs"
+SIMPLE_MODEL_OUTPUT_DIR = ROOT / "data" / "simple_model"
+SIMPLE_EXTRACT_OUTPUT_DIR = ROOT / "data" / "simple_extract"
+SIMPLE_FINAL_OUTPUT_DIR = ROOT / "data" / "simple_path"
+SIMPLE_VECTOR_OUTPUT_DIR = ROOT / "data" / "simple_vector"
+SIMPLE_JOBS_OUTPUT_DIR = JOBS_OUTPUT_DIR / "simple_jobs"
+SIMPLE_SAMPLES_PER_TYPE = 30
 SEAM_EXTRACT_DIR = ROOT / "seam_extract"
 DEFAULT_EXTRACT_PYTHON = Path("/Users/ycj/miniconda3/bin/python")
 CACHE_DIR = ROOT / "data" / ".cache"
@@ -57,6 +63,10 @@ def clear_output_dir(path: Path) -> None:
             shutil.rmtree(child)
         else:
             child.unlink()
+
+
+def ensure_output_dir(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
 
 
 def relative_to_directory(path: Path, directory: Path) -> str:
@@ -224,7 +234,19 @@ def load_model_generation_module() -> Any:
     return _load_module("mode_generate_model_generation", ROOT / "mode_generate" / "model_generation.py")
 
 
-def generate_models_in_subprocess(count: int, output_dir: Path, seed: int | None) -> list[dict[str, str]]:
+def load_simple_structure_generation_module() -> Any:
+    return _load_module(
+        "mode_generate_simple_structure_generation",
+        ROOT / "mode_generate" / "simple_structure_generation.py",
+    )
+
+
+def generate_models_in_subprocess(
+    count: int,
+    output_dir: Path,
+    seed: int | None,
+    start_index: int = 0,
+) -> list[dict[str, str]]:
     code = r"""
 import importlib.util
 import json
@@ -236,6 +258,7 @@ root = Path(sys.argv[1])
 count = int(sys.argv[2])
 output_dir = Path(sys.argv[3])
 seed_arg = sys.argv[4]
+start_index = int(sys.argv[5])
 if seed_arg != "":
     seed = int(seed_arg)
     random.seed(seed)
@@ -252,11 +275,23 @@ if spec is None or spec.loader is None:
     raise ImportError("Cannot load mode_generate/model_generation.py")
 module = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(module)
-generated = module.generate_batch(count=count, output_dir=str(output_dir))
+generated = [
+    module.generate_random_plate(start_index + i, output_dir=str(output_dir))
+    for i in range(count)
+]
 print("__GENERATED_JSON__" + json.dumps(generated, ensure_ascii=False))
 """
     result = subprocess.run(
-        [sys.executable, "-c", code, str(ROOT), str(count), str(output_dir), "" if seed is None else str(seed)],
+        [
+            sys.executable,
+            "-c",
+            code,
+            str(ROOT),
+            str(count),
+            str(output_dir),
+            "" if seed is None else str(seed),
+            str(start_index),
+        ],
         cwd=str(ROOT),
         capture_output=True,
         text=True,
@@ -282,6 +317,89 @@ print("__GENERATED_JSON__" + json.dumps(generated, ensure_ascii=False))
 
     raise RuntimeError(
         "Model generation subprocess did not return generated model paths.\n"
+        f"stdout:\n{stdout}\n"
+        f"stderr:\n{stderr}"
+    )
+
+
+def generate_simple_models_in_subprocess(
+    samples_per_type: int,
+    output_dir: Path,
+    seed: int | None,
+    start_index: int = 0,
+) -> list[dict[str, str]]:
+    code = r"""
+import importlib.util
+import json
+import random
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+samples_per_type = int(sys.argv[2])
+output_dir = Path(sys.argv[3])
+seed_arg = sys.argv[4]
+start_index = int(sys.argv[5])
+if seed_arg != "":
+    seed = int(seed_arg)
+    random.seed(seed)
+    try:
+        import numpy as np
+        np.random.seed(seed)
+    except Exception:
+        pass
+spec = importlib.util.spec_from_file_location(
+    "mode_generate_simple_structure_generation",
+    root / "mode_generate" / "simple_structure_generation.py",
+)
+if spec is None or spec.loader is None:
+    raise ImportError("Cannot load mode_generate/simple_structure_generation.py")
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+generated = module.generate_all_structure_batches(
+    samples_per_type=samples_per_type,
+    output_dir=str(output_dir),
+    seed=None if seed_arg == "" else int(seed_arg),
+    start_index=start_index,
+)
+print("__GENERATED_JSON__" + json.dumps(generated, ensure_ascii=False))
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            code,
+            str(ROOT),
+            str(samples_per_type),
+            str(output_dir),
+            "" if seed is None else str(seed),
+            str(start_index),
+        ],
+        cwd=str(ROOT),
+        capture_output=True,
+        text=True,
+    )
+    stdout = result.stdout or ""
+    stderr = result.stderr or ""
+    marker = "__GENERATED_JSON__"
+
+    for line in stdout.splitlines():
+        if not line.startswith(marker):
+            print(line)
+
+    if result.returncode != 0:
+        raise RuntimeError(
+            "Simple structure generation subprocess failed.\n"
+            f"stdout:\n{stdout}\n"
+            f"stderr:\n{stderr}"
+        )
+
+    for line in reversed(stdout.splitlines()):
+        if line.startswith(marker):
+            return json.loads(line[len(marker):])
+
+    raise RuntimeError(
+        "Simple structure generation subprocess did not return generated model paths.\n"
         f"stdout:\n{stdout}\n"
         f"stderr:\n{stderr}"
     )
@@ -794,6 +912,9 @@ def build_simulation_jobs(
             job["vector_json"] = relative_to_directory(vector_json, jobs_dir)
         if raw_path_json is not None:
             job["raw_topology_json"] = relative_to_directory(raw_path_json, jobs_dir)
+        for key in ("structure_type", "rib_count", "orientation", "rotation_angle_deg"):
+            if key in model_info:
+                job[key] = model_info[key]
         jobs.append(job)
         appended_count += 1
 
@@ -830,15 +951,35 @@ def run_pipeline(
     compute_pose_normals: bool,
     pose_normal_tol: float,
     seed: int | None,
+    generator_mode: str = "standard",
+    simple_samples_per_type: int = SIMPLE_SAMPLES_PER_TYPE,
 ) -> tuple[list[Path], Path]:
-    for output_dir in (model_dir, extract_dir, final_dir, vector_dir):
-        clear_output_dir(output_dir)
-    jobs_dir.mkdir(parents=True, exist_ok=True)
+    for output_dir in (model_dir, extract_dir, final_dir, vector_dir, jobs_dir):
+        ensure_output_dir(output_dir)
+
+    existing_indices = existing_job_indices(jobs_dir)
+    next_job_index = (max(existing_indices) + 1) if existing_indices else 0
 
     try:
         if seed is not None:
             print(f"[env] model generation seed: {seed}")
-        generated = generate_models_in_subprocess(count=count, output_dir=model_dir, seed=seed)
+        if generator_mode == "standard":
+            generated = generate_models_in_subprocess(
+                count=count,
+                output_dir=model_dir,
+                seed=seed,
+                start_index=next_job_index,
+            )
+        elif generator_mode == "simple":
+            print(f"[env] simple samples per type: {simple_samples_per_type}")
+            generated = generate_simple_models_in_subprocess(
+                samples_per_type=simple_samples_per_type,
+                output_dir=model_dir,
+                seed=seed,
+                start_index=next_job_index,
+            )
+        else:
+            raise RuntimeError(f"Unsupported generator mode: {generator_mode}")
     except RuntimeError:
         raise
     except ModuleNotFoundError as exc:
@@ -924,6 +1065,30 @@ def run_extract_worker(
     return sequence_output
 
 
+def resolve_pipeline_dirs(args: argparse.Namespace) -> tuple[Path, Path, Path, Path, Path]:
+    if not args.simple_structures:
+        return (
+            args.model_dir,
+            args.extract_dir,
+            args.final_dir,
+            args.vector_dir,
+            args.jobs_dir,
+        )
+
+    def pick(path: Path, default: Path, simple_default: Path) -> Path:
+        if path.resolve() == default.resolve():
+            return simple_default
+        return path
+
+    return (
+        pick(args.model_dir, MODEL_OUTPUT_DIR, SIMPLE_MODEL_OUTPUT_DIR),
+        pick(args.extract_dir, EXTRACT_OUTPUT_DIR, SIMPLE_EXTRACT_OUTPUT_DIR),
+        pick(args.final_dir, FINAL_OUTPUT_DIR, SIMPLE_FINAL_OUTPUT_DIR),
+        pick(args.vector_dir, VECTOR_OUTPUT_DIR, SIMPLE_VECTOR_OUTPUT_DIR),
+        pick(args.jobs_dir, JOBS_OUTPUT_DIR, SIMPLE_JOBS_OUTPUT_DIR),
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate random STEP models, extract welds, sort weld sequences, and save one JSON per STEP."
@@ -939,6 +1104,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--layout", choices=("line", "grid"), default="line", help="Placement layout for generated Isaac Sim jobs.")
     parser.add_argument("--grid-cols", type=int, default=5, help="Number of columns when --layout=grid.")
     parser.add_argument("--seed", type=int, default=None, help="Optional random seed for reproducible model generation.")
+    parser.add_argument(
+        "--simple-structures",
+        action="store_true",
+        help="Generate the simple-structure dataset instead of the original random workpieces.",
+    )
+    parser.add_argument(
+        "--simple-samples-per-type",
+        type=int,
+        default=SIMPLE_SAMPLES_PER_TYPE,
+        help="Number of models generated for each simple structure type when --simple-structures is enabled.",
+    )
     parser.add_argument("--skip-pose-normals", action="store_true", help="Skip point pose normal computation.")
     parser.add_argument("--pose-normal-tol", type=float, default=1e-2, help="Point-to-face/arc tolerance for pose normals.")
     parser.add_argument("--extract-worker", action="store_true", help=argparse.SUPPRESS)
@@ -962,13 +1138,14 @@ def main() -> None:
             )
             print(f"__SEQUENCE_JSON__{output}")
             return
+        model_dir, extract_dir, final_dir, vector_dir, jobs_dir = resolve_pipeline_dirs(args)
         outputs, manifest_path = run_pipeline(
             count=args.count,
-            model_dir=args.model_dir,
-            extract_dir=args.extract_dir,
-            final_dir=args.final_dir,
-            vector_dir=args.vector_dir,
-            jobs_dir=args.jobs_dir,
+            model_dir=model_dir,
+            extract_dir=extract_dir,
+            final_dir=final_dir,
+            vector_dir=vector_dir,
+            jobs_dir=jobs_dir,
             manifest_name=args.manifest_name,
             spacing=args.spacing,
             layout=args.layout,
@@ -976,11 +1153,13 @@ def main() -> None:
             compute_pose_normals=not args.skip_pose_normals,
             pose_normal_tol=args.pose_normal_tol,
             seed=args.seed,
+            generator_mode="simple" if args.simple_structures else "standard",
+            simple_samples_per_type=args.simple_samples_per_type,
         )
     except RuntimeError as exc:
         print(f"[error] {exc}", file=sys.stderr)
         sys.exit(1)
-    print(f"[done] saved {len(outputs)} JSON files to {args.final_dir}")
+    print(f"[done] saved {len(outputs)} JSON files to {final_dir}")
     print(f"[done] Isaac Sim manifest: {manifest_path}")
 
 

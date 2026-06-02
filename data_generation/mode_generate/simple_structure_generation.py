@@ -2,10 +2,17 @@ import argparse
 import math
 import os
 import random
+import sys
 from copy import deepcopy
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import cadquery as cq
+
+MODULE_DIR = Path(__file__).resolve().parent
+module_dir_str = str(MODULE_DIR)
+if module_dir_str not in sys.path:
+    sys.path.insert(0, module_dir_str)
 
 from model_generation import (
     MODEL_GEN_PARAMS,
@@ -16,77 +23,106 @@ from model_generation import (
 )
 
 
+MAIN_RIB_CFG = MODEL_GEN_PARAMS["main_rib"]
+SIDE_RIB_CFG = MODEL_GEN_PARAMS["side_rib"]
+
+
+def _loosen_min(value, factor=0.8):
+    return value * factor
+
+
+def _loosen_max(value, factor=1.25):
+    return value * factor
+
+
+def _ratio_min(value, delta=0.15):
+    return max(0.15, value - delta)
+
+
+def _height_max_capped(value, factor=1.25, cap=95.0):
+    return min(cap, value * factor)
+
+
+def _length_ratio_max_capped(plate_dim, max_length_mm):
+    return min(1.0, max_length_mm / plate_dim)
+
+
+# 简单结构沿用 model_generation.py 的尺寸约束来源，
+# 但适当放宽厚度/高度/长度比例，提升几何变化范围。
 SIMPLE_STRUCTURE_PARAMS = {
-    "plate": deepcopy(MODEL_GEN_PARAMS["plate"]),
+    "plate": {
+        **deepcopy(MODEL_GEN_PARAMS["plate"]),
+        "edge_clearance_min": 50.0,
+    },
     "parallel_ribs": {
         "rib_counts": [1, 2, 3],
         "samples_per_count": 10,
-        "orientation_choices": ["X", "Y"],
-        "thickness_min": MODEL_GEN_PARAMS["main_rib"]["thickness_min"],
-        "thickness_max": MODEL_GEN_PARAMS["main_rib"]["thickness_max"],
-        "height_min": MODEL_GEN_PARAMS["main_rib"]["height_min"],
-        "height_max": MODEL_GEN_PARAMS["main_rib"]["height_max"],
-        "length_ratio_min": 0.35,
-        "length_ratio_max": 1.0,
-        "min_gap": 20.0 * 2.0,
+        "orientation_choices": MAIN_RIB_CFG["orientation_choices"],
+        "thickness_min": _loosen_min(MAIN_RIB_CFG["thickness_min"]),
+        "thickness_max": _loosen_max(MAIN_RIB_CFG["thickness_max"]),
+        "height_min": _loosen_min(MAIN_RIB_CFG["height_min"]),
+        "height_max": _height_max_capped(MAIN_RIB_CFG["height_max"]),
+        "length_ratio_min": _ratio_min(MAIN_RIB_CFG["length_ratio_min"], delta=0.45),
+        "length_ratio_max": _length_ratio_max_capped(MODEL_GEN_PARAMS["plate"]["length"], 350.0),
+        "min_gap": SIDE_RIB_CFG["min_spacing"] * 0.4,
         "placement_attempts": 1000,
         "rotation_angle_min": 0.0,
         "rotation_angle_max": 180.0,
     },
     "t_ribs": {
         "samples": 10,
-        "orientation_choices": ["X", "Y"],
-        "main_thickness_min": MODEL_GEN_PARAMS["main_rib"]["thickness_min"],
-        "main_thickness_max": MODEL_GEN_PARAMS["main_rib"]["thickness_max"],
-        "main_height_min": MODEL_GEN_PARAMS["main_rib"]["height_min"],
-        "main_height_max": MODEL_GEN_PARAMS["main_rib"]["height_max"],
-        "main_length_ratio_min": 0.45,
-        "main_length_ratio_max": 1.0,
-        "side_thickness_min": MODEL_GEN_PARAMS["side_rib"]["thickness_min"],
-        "side_thickness_max": MODEL_GEN_PARAMS["side_rib"]["thickness_max"],
-        "side_height_min": MODEL_GEN_PARAMS["side_rib"]["height_min"],
-        "side_length_ratio_min": 0.2,
-        "side_length_ratio_max": 0.75,
-        "corner_hole_radius": MODEL_GEN_PARAMS["side_rib"]["corner_hole_radius"],
+        "orientation_choices": MAIN_RIB_CFG["orientation_choices"],
+        "main_thickness_min": _loosen_min(MAIN_RIB_CFG["thickness_min"]),
+        "main_thickness_max": _loosen_max(MAIN_RIB_CFG["thickness_max"]),
+        "main_height_min": _loosen_min(MAIN_RIB_CFG["height_min"]),
+        "main_height_max": _height_max_capped(MAIN_RIB_CFG["height_max"]),
+        "main_length_ratio_min": _ratio_min(MAIN_RIB_CFG["length_ratio_min"], delta=0.35),
+        "main_length_ratio_max": _length_ratio_max_capped(MODEL_GEN_PARAMS["plate"]["length"], 350.0),
+        "side_thickness_min": _loosen_min(SIDE_RIB_CFG["thickness_min"]),
+        "side_thickness_max": _loosen_max(SIDE_RIB_CFG["thickness_max"]),
+        "side_height_min": _loosen_min(SIDE_RIB_CFG["height_min"]),
+        "side_length_ratio_min": 0.18,
+        "side_length_ratio_max": 0.82,
+        "corner_hole_radius": SIDE_RIB_CFG["corner_hole_radius"],
         "placement_attempts": 1000,
         "rotation_angle_min": 0.0,
         "rotation_angle_max": 180.0,
     },
     "sandwich_ribs": {
         "samples": 10,
-        "orientation_choices": ["X", "Y"],
-        "main_thickness_min": MODEL_GEN_PARAMS["main_rib"]["thickness_min"],
-        "main_thickness_max": MODEL_GEN_PARAMS["main_rib"]["thickness_max"],
-        "main_height_min": MODEL_GEN_PARAMS["main_rib"]["height_min"],
-        "main_height_max": MODEL_GEN_PARAMS["main_rib"]["height_max"],
-        "main_length_ratio_min": 0.45,
-        "main_length_ratio_max": 1.0,
-        "middle_thickness_min": MODEL_GEN_PARAMS["side_rib"]["thickness_min"],
-        "middle_thickness_max": MODEL_GEN_PARAMS["side_rib"]["thickness_max"],
-        "middle_height_min": MODEL_GEN_PARAMS["side_rib"]["height_min"],
-        "middle_length_ratio_min": 0.2,
-        "middle_length_ratio_max": 0.65,
-        "corner_hole_radius": MODEL_GEN_PARAMS["side_rib"]["corner_hole_radius"],
+        "orientation_choices": MAIN_RIB_CFG["orientation_choices"],
+        "main_thickness_min": _loosen_min(MAIN_RIB_CFG["thickness_min"]),
+        "main_thickness_max": _loosen_max(MAIN_RIB_CFG["thickness_max"]),
+        "main_height_min": _loosen_min(MAIN_RIB_CFG["height_min"]),
+        "main_height_max": _height_max_capped(MAIN_RIB_CFG["height_max"]),
+        "main_length_ratio_min": _ratio_min(MAIN_RIB_CFG["length_ratio_min"], delta=0.35),
+        "main_length_ratio_max": _length_ratio_max_capped(MODEL_GEN_PARAMS["plate"]["length"], 350.0),
+        "middle_thickness_min": _loosen_min(SIDE_RIB_CFG["thickness_min"]),
+        "middle_thickness_max": _loosen_max(SIDE_RIB_CFG["thickness_max"]),
+        "middle_height_min": _loosen_min(SIDE_RIB_CFG["height_min"]),
+        "middle_length_ratio_min": 0.18,
+        "middle_length_ratio_max": 0.72,
+        "corner_hole_radius": SIDE_RIB_CFG["corner_hole_radius"],
         "placement_attempts": 1000,
         "rotation_angle_min": 0.0,
         "rotation_angle_max": 180.0,
     },
     "grid_ribs": {
         "samples": 10,
-        "orientation_choices": ["X", "Y"],
-        "main_thickness_min": MODEL_GEN_PARAMS["main_rib"]["thickness_min"],
-        "main_thickness_max": MODEL_GEN_PARAMS["main_rib"]["thickness_max"],
-        "main_height_min": MODEL_GEN_PARAMS["main_rib"]["height_min"],
-        "main_height_max": MODEL_GEN_PARAMS["main_rib"]["height_max"],
-        "main_length_ratio_min": 0.45,
-        "main_length_ratio_max": 1.0,
-        "middle_thickness_min": MODEL_GEN_PARAMS["side_rib"]["thickness_min"],
-        "middle_thickness_max": MODEL_GEN_PARAMS["side_rib"]["thickness_max"],
-        "middle_height_min": MODEL_GEN_PARAMS["side_rib"]["height_min"],
-        "middle_length_ratio_min": 0.2,
-        "middle_length_ratio_max": 0.65,
-        "middle_min_gap": 20.0 * 2.0,
-        "corner_hole_radius": MODEL_GEN_PARAMS["side_rib"]["corner_hole_radius"],
+        "orientation_choices": MAIN_RIB_CFG["orientation_choices"],
+        "main_thickness_min": _loosen_min(MAIN_RIB_CFG["thickness_min"]),
+        "main_thickness_max": _loosen_max(MAIN_RIB_CFG["thickness_max"]),
+        "main_height_min": _loosen_min(MAIN_RIB_CFG["height_min"]),
+        "main_height_max": _height_max_capped(MAIN_RIB_CFG["height_max"]),
+        "main_length_ratio_min": _ratio_min(MAIN_RIB_CFG["length_ratio_min"], delta=0.35),
+        "main_length_ratio_max": _length_ratio_max_capped(MODEL_GEN_PARAMS["plate"]["length"], 350.0),
+        "middle_thickness_min": _loosen_min(SIDE_RIB_CFG["thickness_min"]),
+        "middle_thickness_max": _loosen_max(SIDE_RIB_CFG["thickness_max"]),
+        "middle_height_min": _loosen_min(SIDE_RIB_CFG["height_min"]),
+        "middle_length_ratio_min": 0.18,
+        "middle_length_ratio_max": 0.72,
+        "middle_min_gap": SIDE_RIB_CFG["min_spacing"] * 0.4,
+        "corner_hole_radius": SIDE_RIB_CFG["corner_hole_radius"],
         "placement_attempts": 1000,
         "rotation_angle_min": 0.0,
         "rotation_angle_max": 180.0,
@@ -157,7 +193,11 @@ def _rotated_rect_corners(width, depth, center_x, center_y, angle_deg):
     return corners
 
 
-def _ribs_fit_after_rotation(ribs, plate_l, plate_w, angle_deg, tol=1e-7):
+def _ribs_fit_after_rotation(ribs, plate_l, plate_w, angle_deg, edge_clearance_min=0.0, tol=1e-7):
+    x_min = -plate_l / 2 + edge_clearance_min
+    x_max = plate_l / 2 - edge_clearance_min
+    y_min = -plate_w / 2 + edge_clearance_min
+    y_max = plate_w / 2 - edge_clearance_min
     for rib in ribs:
         rot_center_x, rot_center_y = _rotate_xy(rib.center_x, rib.center_y, angle_deg)
         for corner_x, corner_y in _rotated_rect_corners(
@@ -167,9 +207,9 @@ def _ribs_fit_after_rotation(ribs, plate_l, plate_w, angle_deg, tol=1e-7):
             rot_center_y,
             angle_deg,
         ):
-            if not (-plate_l / 2 - tol <= corner_x <= plate_l / 2 + tol):
+            if not (x_min - tol <= corner_x <= x_max + tol):
                 return False
-            if not (-plate_w / 2 - tol <= corner_y <= plate_w / 2 + tol):
+            if not (y_min - tol <= corner_y <= y_max + tol):
                 return False
     return True
 
@@ -288,14 +328,32 @@ def _sample_non_overlapping_centers_in_range(rng, count, low, high, thicknesses,
     return centers
 
 
-def _sample_layout(rng, cfg, plate_l, plate_w, build_ribs):
+def _sample_layout(rng, cfg, plate_l, plate_w, edge_clearance_min, build_ribs):
+    safe_plate_l = plate_l - 2 * edge_clearance_min
+    safe_plate_w = plate_w - 2 * edge_clearance_min
+    if safe_plate_l <= 0 or safe_plate_w <= 0:
+        raise ValueError(
+            "Invalid plate clearance constraints: "
+            f"plate=({plate_l}, {plate_w}), edge_clearance_min={edge_clearance_min}."
+        )
+
     for _ in range(cfg["placement_attempts"]):
         orientation = rng.choice(cfg["orientation_choices"])
         angle_deg = _sample_rotation(rng, cfg)
-        ribs = build_ribs(rng, cfg, orientation, *_axis_dims(plate_l, plate_w, orientation))
-        if ribs and _ribs_fit_after_rotation(ribs, plate_l, plate_w, angle_deg):
+        ribs = build_ribs(rng, cfg, orientation, *_axis_dims(safe_plate_l, safe_plate_w, orientation))
+        if ribs and _ribs_fit_after_rotation(
+            ribs,
+            plate_l,
+            plate_w,
+            angle_deg,
+            edge_clearance_min=edge_clearance_min,
+        ):
             return orientation, angle_deg, ribs
-    raise ValueError("Unable to sample a valid layout within the plate boundary.")
+    raise ValueError(
+        "Unable to sample a valid layout within the plate boundary: "
+        f"plate=({plate_l}, {plate_w}), safe=({safe_plate_l}, {safe_plate_w}), "
+        f"edge_clearance_min={edge_clearance_min}."
+    )
 
 
 def _write_model(output_dir, base_name, ribs, angle_deg, plate_cfg):
@@ -348,12 +406,14 @@ def generate_parallel_rib_plate(index, rib_count, output_dir=None, params=SIMPLE
     output_dir = output_dir or params["batch"]["output_dir"]
     plate_l = plate_cfg["length"]
     plate_w = plate_cfg["width"]
+    edge_clearance_min = plate_cfg.get("edge_clearance_min", 0.0)
 
     orientation, angle_deg, ribs = _sample_layout(
         rng,
         cfg,
         plate_l,
         plate_w,
+        edge_clearance_min,
         lambda *args: _parallel_ribs_layout(*args, rib_count=rib_count),
     )
     step_filename, stl_filename = _write_model(
@@ -446,8 +506,9 @@ def generate_t_rib_plate(index, output_dir=None, params=SIMPLE_STRUCTURE_PARAMS,
     output_dir = output_dir or params["batch"]["output_dir"]
     plate_l = plate_cfg["length"]
     plate_w = plate_cfg["width"]
+    edge_clearance_min = plate_cfg.get("edge_clearance_min", 0.0)
 
-    orientation, angle_deg, ribs = _sample_layout(rng, cfg, plate_l, plate_w, _t_ribs_layout)
+    orientation, angle_deg, ribs = _sample_layout(rng, cfg, plate_l, plate_w, edge_clearance_min, _t_ribs_layout)
     step_filename, stl_filename = _write_model(
         output_dir,
         f"simple_t_ribs_{index:03d}_{orientation.lower()}_rot{angle_deg:.1f}",
@@ -560,8 +621,16 @@ def generate_sandwich_rib_plate(index, output_dir=None, params=SIMPLE_STRUCTURE_
     output_dir = output_dir or params["batch"]["output_dir"]
     plate_l = plate_cfg["length"]
     plate_w = plate_cfg["width"]
+    edge_clearance_min = plate_cfg.get("edge_clearance_min", 0.0)
 
-    orientation, angle_deg, ribs = _sample_layout(rng, cfg, plate_l, plate_w, _main_pair_with_middle_layout)
+    orientation, angle_deg, ribs = _sample_layout(
+        rng,
+        cfg,
+        plate_l,
+        plate_w,
+        edge_clearance_min,
+        _main_pair_with_middle_layout,
+    )
     step_filename, stl_filename = _write_model(
         output_dir,
         f"simple_sandwich_ribs_{index:03d}_{orientation.lower()}_rot{angle_deg:.1f}",
@@ -702,8 +771,16 @@ def generate_grid_rib_plate(index, output_dir=None, params=SIMPLE_STRUCTURE_PARA
     output_dir = output_dir or params["batch"]["output_dir"]
     plate_l = plate_cfg["length"]
     plate_w = plate_cfg["width"]
+    edge_clearance_min = plate_cfg.get("edge_clearance_min", 0.0)
 
-    orientation, angle_deg, ribs = _sample_layout(rng, cfg, plate_l, plate_w, _main_pair_with_two_cross_ribs_layout)
+    orientation, angle_deg, ribs = _sample_layout(
+        rng,
+        cfg,
+        plate_l,
+        plate_w,
+        edge_clearance_min,
+        _main_pair_with_two_cross_ribs_layout,
+    )
     step_filename, stl_filename = _write_model(
         output_dir,
         f"simple_grid_ribs_{index:03d}_{orientation.lower()}_rot{angle_deg:.1f}",
@@ -730,6 +807,75 @@ def generate_grid_rib_batch(samples=None, output_dir=None, params=SIMPLE_STRUCTU
         generate_grid_rib_plate(index, output_dir=output_dir, params=params, rng=rng)
         for index in range(samples)
     ]
+
+
+def _parallel_sample_counts(samples_per_type, rib_counts):
+    if samples_per_type <= 0:
+        return {rib_count: 0 for rib_count in rib_counts}
+
+    base = samples_per_type // len(rib_counts)
+    remainder = samples_per_type % len(rib_counts)
+    counts = {}
+    for index, rib_count in enumerate(rib_counts):
+        counts[rib_count] = base + (1 if index < remainder else 0)
+    return counts
+
+
+def generate_all_structure_batches(
+    samples_per_type=30,
+    output_dir=None,
+    params=SIMPLE_STRUCTURE_PARAMS,
+    seed=None,
+    start_index=0,
+):
+    output_dir = output_dir or params["batch"]["output_dir"]
+    rng = random.Random(seed) if seed is not None else random
+    generated = []
+
+    parallel_cfg = params["parallel_ribs"]
+    for rib_count, sample_count in _parallel_sample_counts(
+        samples_per_type,
+        parallel_cfg["rib_counts"],
+    ).items():
+        for index in range(sample_count):
+            generated.append(
+                generate_parallel_rib_plate(
+                    start_index + index,
+                    rib_count,
+                    output_dir=output_dir,
+                    params=params,
+                    rng=rng,
+                )
+            )
+
+    for index in range(samples_per_type):
+        generated.append(
+            generate_t_rib_plate(
+                start_index + index,
+                output_dir=output_dir,
+                params=params,
+                rng=rng,
+            )
+        )
+    for index in range(samples_per_type):
+        generated.append(
+            generate_sandwich_rib_plate(
+                start_index + index,
+                output_dir=output_dir,
+                params=params,
+                rng=rng,
+            )
+        )
+    for index in range(samples_per_type):
+        generated.append(
+            generate_grid_rib_plate(
+                start_index + index,
+                output_dir=output_dir,
+                params=params,
+                rng=rng,
+            )
+        )
+    return generated
 
 
 def parse_args():

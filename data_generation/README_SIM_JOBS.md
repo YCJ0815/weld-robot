@@ -8,6 +8,14 @@ Run:
 python src/main.py --count 8 --jobs-dir data/generated_jobs --spacing 2.0
 ```
 
+Simple-structure dataset:
+
+```bash
+python src/main.py --simple-structures --simple-samples-per-type 30
+```
+
+This writes simple-structure jobs to `data/generated_jobs/simple_jobs/` by default and keeps the original random-workpiece flow unchanged unless `--simple-structures` is passed.
+
 The pipeline still writes the original intermediate outputs:
 
 - `data/model/*.step` and `data/model/*.stl`

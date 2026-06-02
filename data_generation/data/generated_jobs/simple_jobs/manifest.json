@@ -1,0 +1,6314 @@
+{
+  "schema": "weld_robot.simulation_jobs.v1",
+  "description": "Generated workpiece/path jobs for Isaac Sim parallel welding simulation.",
+  "path_resolution": "relative_to_manifest_directory",
+  "jobs_dir": ".",
+  "job_count": 240,
+  "layout": "line",
+  "spacing": 2.0,
+  "grid_cols": null,
+  "default_frame": "workpiece",
+  "default_units": "mm",
+  "jobs": [
+    {
+      "id": "job_000",
+      "source_stem": "simple_parallel_ribs_1_000_x_rot146.2",
+      "workpiece_asset": "job_000/workpiece_sim.stl",
+      "path_json": "job_000/path.json",
+      "origin": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_000/workpiece.step",
+      "stl_asset": "job_000/workpiece.stl",
+      "sim_stl_asset": "job_000/workpiece_sim.stl",
+      "vector_json": "job_000/weld_vectors.json",
+      "raw_topology_json": "job_000/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 146.2492959783709
+    },
+    {
+      "id": "job_001",
+      "source_stem": "simple_parallel_ribs_1_001_y_rot15.8",
+      "workpiece_asset": "job_001/workpiece_sim.stl",
+      "path_json": "job_001/path.json",
+      "origin": [
+        2.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_001/workpiece.step",
+      "stl_asset": "job_001/workpiece.stl",
+      "sim_stl_asset": "job_001/workpiece_sim.stl",
+      "vector_json": "job_001/weld_vectors.json",
+      "raw_topology_json": "job_001/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "Y",
+      "rotation_angle_deg": 15.785055054096595
+    },
+    {
+      "id": "job_002",
+      "source_stem": "simple_parallel_ribs_1_002_y_rot145.9",
+      "workpiece_asset": "job_002/workpiece_sim.stl",
+      "path_json": "job_002/path.json",
+      "origin": [
+        4.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_002/workpiece.step",
+      "stl_asset": "job_002/workpiece.stl",
+      "sim_stl_asset": "job_002/workpiece_sim.stl",
+      "vector_json": "job_002/weld_vectors.json",
+      "raw_topology_json": "job_002/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "Y",
+      "rotation_angle_deg": 145.87364553187578
+    },
+    {
+      "id": "job_003",
+      "source_stem": "simple_parallel_ribs_1_003_y_rot170.2",
+      "workpiece_asset": "job_003/workpiece_sim.stl",
+      "path_json": "job_003/path.json",
+      "origin": [
+        6.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_003/workpiece.step",
+      "stl_asset": "job_003/workpiece.stl",
+      "sim_stl_asset": "job_003/workpiece_sim.stl",
+      "vector_json": "job_003/weld_vectors.json",
+      "raw_topology_json": "job_003/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "Y",
+      "rotation_angle_deg": 170.23768126532397
+    },
+    {
+      "id": "job_004",
+      "source_stem": "simple_parallel_ribs_1_004_x_rot100.3",
+      "workpiece_asset": "job_004/workpiece_sim.stl",
+      "path_json": "job_004/path.json",
+      "origin": [
+        8.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_004/workpiece.step",
+      "stl_asset": "job_004/workpiece.stl",
+      "sim_stl_asset": "job_004/workpiece_sim.stl",
+      "vector_json": "job_004/weld_vectors.json",
+      "raw_topology_json": "job_004/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 100.2544453399684
+    },
+    {
+      "id": "job_005",
+      "source_stem": "simple_parallel_ribs_1_005_y_rot142.1",
+      "workpiece_asset": "job_005/workpiece_sim.stl",
+      "path_json": "job_005/path.json",
+      "origin": [
+        10.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_005/workpiece.step",
+      "stl_asset": "job_005/workpiece.stl",
+      "sim_stl_asset": "job_005/workpiece_sim.stl",
+      "vector_json": "job_005/weld_vectors.json",
+      "raw_topology_json": "job_005/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "Y",
+      "rotation_angle_deg": 142.12437024683706
+    },
+    {
+      "id": "job_006",
+      "source_stem": "simple_parallel_ribs_1_006_x_rot111.0",
+      "workpiece_asset": "job_006/workpiece_sim.stl",
+      "path_json": "job_006/path.json",
+      "origin": [
+        12.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_006/workpiece.step",
+      "stl_asset": "job_006/workpiece.stl",
+      "sim_stl_asset": "job_006/workpiece_sim.stl",
+      "vector_json": "job_006/weld_vectors.json",
+      "raw_topology_json": "job_006/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 110.98089978743896
+    },
+    {
+      "id": "job_007",
+      "source_stem": "simple_parallel_ribs_1_007_x_rot144.3",
+      "workpiece_asset": "job_007/workpiece_sim.stl",
+      "path_json": "job_007/path.json",
+      "origin": [
+        14.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_007/workpiece.step",
+      "stl_asset": "job_007/workpiece.stl",
+      "sim_stl_asset": "job_007/workpiece_sim.stl",
+      "vector_json": "job_007/weld_vectors.json",
+      "raw_topology_json": "job_007/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 144.2764461375096
+    },
+    {
+      "id": "job_008",
+      "source_stem": "simple_parallel_ribs_1_008_x_rot127.5",
+      "workpiece_asset": "job_008/workpiece_sim.stl",
+      "path_json": "job_008/path.json",
+      "origin": [
+        16.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_008/workpiece.step",
+      "stl_asset": "job_008/workpiece.stl",
+      "sim_stl_asset": "job_008/workpiece_sim.stl",
+      "vector_json": "job_008/weld_vectors.json",
+      "raw_topology_json": "job_008/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 127.49397469522867
+    },
+    {
+      "id": "job_009",
+      "source_stem": "simple_parallel_ribs_1_009_x_rot100.3",
+      "workpiece_asset": "job_009/workpiece_sim.stl",
+      "path_json": "job_009/path.json",
+      "origin": [
+        18.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_009/workpiece.step",
+      "stl_asset": "job_009/workpiece.stl",
+      "sim_stl_asset": "job_009/workpiece_sim.stl",
+      "vector_json": "job_009/weld_vectors.json",
+      "raw_topology_json": "job_009/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 100.26241594856363
+    },
+    {
+      "id": "job_010",
+      "source_stem": "simple_parallel_ribs_2_000_x_rot6.9",
+      "workpiece_asset": "job_010/workpiece_sim.stl",
+      "path_json": "job_010/path.json",
+      "origin": [
+        20.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_010/workpiece.step",
+      "stl_asset": "job_010/workpiece.stl",
+      "sim_stl_asset": "job_010/workpiece_sim.stl",
+      "vector_json": "job_010/weld_vectors.json",
+      "raw_topology_json": "job_010/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 6.939556704346497
+    },
+    {
+      "id": "job_011",
+      "source_stem": "simple_parallel_ribs_2_001_x_rot93.1",
+      "workpiece_asset": "job_011/workpiece_sim.stl",
+      "path_json": "job_011/path.json",
+      "origin": [
+        22.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_011/workpiece.step",
+      "stl_asset": "job_011/workpiece.stl",
+      "sim_stl_asset": "job_011/workpiece_sim.stl",
+      "vector_json": "job_011/weld_vectors.json",
+      "raw_topology_json": "job_011/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 93.14591709982099
+    },
+    {
+      "id": "job_012",
+      "source_stem": "simple_parallel_ribs_2_002_y_rot90.4",
+      "workpiece_asset": "job_012/workpiece_sim.stl",
+      "path_json": "job_012/path.json",
+      "origin": [
+        24.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_012/workpiece.step",
+      "stl_asset": "job_012/workpiece.stl",
+      "sim_stl_asset": "job_012/workpiece_sim.stl",
+      "vector_json": "job_012/weld_vectors.json",
+      "raw_topology_json": "job_012/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "Y",
+      "rotation_angle_deg": 90.41793946746807
+    },
+    {
+      "id": "job_013",
+      "source_stem": "simple_parallel_ribs_2_003_x_rot16.5",
+      "workpiece_asset": "job_013/workpiece_sim.stl",
+      "path_json": "job_013/path.json",
+      "origin": [
+        26.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_013/workpiece.step",
+      "stl_asset": "job_013/workpiece.stl",
+      "sim_stl_asset": "job_013/workpiece_sim.stl",
+      "vector_json": "job_013/weld_vectors.json",
+      "raw_topology_json": "job_013/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 16.47207976530376
+    },
+    {
+      "id": "job_014",
+      "source_stem": "simple_parallel_ribs_2_004_y_rot179.7",
+      "workpiece_asset": "job_014/workpiece_sim.stl",
+      "path_json": "job_014/path.json",
+      "origin": [
+        28.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_014/workpiece.step",
+      "stl_asset": "job_014/workpiece.stl",
+      "sim_stl_asset": "job_014/workpiece_sim.stl",
+      "vector_json": "job_014/weld_vectors.json",
+      "raw_topology_json": "job_014/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "Y",
+      "rotation_angle_deg": 179.70520643762555
+    },
+    {
+      "id": "job_015",
+      "source_stem": "simple_parallel_ribs_2_005_x_rot114.7",
+      "workpiece_asset": "job_015/workpiece_sim.stl",
+      "path_json": "job_015/path.json",
+      "origin": [
+        30.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_015/workpiece.step",
+      "stl_asset": "job_015/workpiece.stl",
+      "sim_stl_asset": "job_015/workpiece_sim.stl",
+      "vector_json": "job_015/weld_vectors.json",
+      "raw_topology_json": "job_015/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 114.74679963229113
+    },
+    {
+      "id": "job_016",
+      "source_stem": "simple_parallel_ribs_2_006_y_rot81.0",
+      "workpiece_asset": "job_016/workpiece_sim.stl",
+      "path_json": "job_016/path.json",
+      "origin": [
+        32.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_016/workpiece.step",
+      "stl_asset": "job_016/workpiece.stl",
+      "sim_stl_asset": "job_016/workpiece_sim.stl",
+      "vector_json": "job_016/weld_vectors.json",
+      "raw_topology_json": "job_016/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "Y",
+      "rotation_angle_deg": 80.97985822282226
+    },
+    {
+      "id": "job_017",
+      "source_stem": "simple_parallel_ribs_2_007_y_rot171.5",
+      "workpiece_asset": "job_017/workpiece_sim.stl",
+      "path_json": "job_017/path.json",
+      "origin": [
+        34.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_017/workpiece.step",
+      "stl_asset": "job_017/workpiece.stl",
+      "sim_stl_asset": "job_017/workpiece_sim.stl",
+      "vector_json": "job_017/weld_vectors.json",
+      "raw_topology_json": "job_017/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "Y",
+      "rotation_angle_deg": 171.50664933503575
+    },
+    {
+      "id": "job_018",
+      "source_stem": "simple_parallel_ribs_2_008_x_rot76.9",
+      "workpiece_asset": "job_018/workpiece_sim.stl",
+      "path_json": "job_018/path.json",
+      "origin": [
+        36.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_018/workpiece.step",
+      "stl_asset": "job_018/workpiece.stl",
+      "sim_stl_asset": "job_018/workpiece_sim.stl",
+      "vector_json": "job_018/weld_vectors.json",
+      "raw_topology_json": "job_018/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 76.87023612862146
+    },
+    {
+      "id": "job_019",
+      "source_stem": "simple_parallel_ribs_2_009_x_rot88.7",
+      "workpiece_asset": "job_019/workpiece_sim.stl",
+      "path_json": "job_019/path.json",
+      "origin": [
+        38.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_019/workpiece.step",
+      "stl_asset": "job_019/workpiece.stl",
+      "sim_stl_asset": "job_019/workpiece_sim.stl",
+      "vector_json": "job_019/weld_vectors.json",
+      "raw_topology_json": "job_019/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 88.69233321373201
+    },
+    {
+      "id": "job_020",
+      "source_stem": "simple_parallel_ribs_3_000_y_rot168.4",
+      "workpiece_asset": "job_020/workpiece_sim.stl",
+      "path_json": "job_020/path.json",
+      "origin": [
+        40.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_020/workpiece.step",
+      "stl_asset": "job_020/workpiece.stl",
+      "sim_stl_asset": "job_020/workpiece_sim.stl",
+      "vector_json": "job_020/weld_vectors.json",
+      "raw_topology_json": "job_020/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 168.44417126757244
+    },
+    {
+      "id": "job_021",
+      "source_stem": "simple_parallel_ribs_3_001_y_rot139.3",
+      "workpiece_asset": "job_021/workpiece_sim.stl",
+      "path_json": "job_021/path.json",
+      "origin": [
+        42.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_021/workpiece.step",
+      "stl_asset": "job_021/workpiece.stl",
+      "sim_stl_asset": "job_021/workpiece_sim.stl",
+      "vector_json": "job_021/weld_vectors.json",
+      "raw_topology_json": "job_021/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 139.27827678474364
+    },
+    {
+      "id": "job_022",
+      "source_stem": "simple_parallel_ribs_3_002_y_rot71.8",
+      "workpiece_asset": "job_022/workpiece_sim.stl",
+      "path_json": "job_022/path.json",
+      "origin": [
+        44.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_022/workpiece.step",
+      "stl_asset": "job_022/workpiece.stl",
+      "sim_stl_asset": "job_022/workpiece_sim.stl",
+      "vector_json": "job_022/weld_vectors.json",
+      "raw_topology_json": "job_022/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 71.81957861996868
+    },
+    {
+      "id": "job_023",
+      "source_stem": "simple_parallel_ribs_3_003_x_rot95.9",
+      "workpiece_asset": "job_023/workpiece_sim.stl",
+      "path_json": "job_023/path.json",
+      "origin": [
+        46.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_023/workpiece.step",
+      "stl_asset": "job_023/workpiece.stl",
+      "sim_stl_asset": "job_023/workpiece_sim.stl",
+      "vector_json": "job_023/weld_vectors.json",
+      "raw_topology_json": "job_023/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "X",
+      "rotation_angle_deg": 95.93616989178174
+    },
+    {
+      "id": "job_024",
+      "source_stem": "simple_parallel_ribs_3_004_x_rot75.8",
+      "workpiece_asset": "job_024/workpiece_sim.stl",
+      "path_json": "job_024/path.json",
+      "origin": [
+        48.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_024/workpiece.step",
+      "stl_asset": "job_024/workpiece.stl",
+      "sim_stl_asset": "job_024/workpiece_sim.stl",
+      "vector_json": "job_024/weld_vectors.json",
+      "raw_topology_json": "job_024/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "X",
+      "rotation_angle_deg": 75.84847075074623
+    },
+    {
+      "id": "job_025",
+      "source_stem": "simple_parallel_ribs_3_005_x_rot21.6",
+      "workpiece_asset": "job_025/workpiece_sim.stl",
+      "path_json": "job_025/path.json",
+      "origin": [
+        50.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_025/workpiece.step",
+      "stl_asset": "job_025/workpiece.stl",
+      "sim_stl_asset": "job_025/workpiece_sim.stl",
+      "vector_json": "job_025/weld_vectors.json",
+      "raw_topology_json": "job_025/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "X",
+      "rotation_angle_deg": 21.620061517000924
+    },
+    {
+      "id": "job_026",
+      "source_stem": "simple_parallel_ribs_3_006_y_rot99.2",
+      "workpiece_asset": "job_026/workpiece_sim.stl",
+      "path_json": "job_026/path.json",
+      "origin": [
+        52.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_026/workpiece.step",
+      "stl_asset": "job_026/workpiece.stl",
+      "sim_stl_asset": "job_026/workpiece_sim.stl",
+      "vector_json": "job_026/weld_vectors.json",
+      "raw_topology_json": "job_026/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 99.17714488074823
+    },
+    {
+      "id": "job_027",
+      "source_stem": "simple_parallel_ribs_3_007_x_rot170.2",
+      "workpiece_asset": "job_027/workpiece_sim.stl",
+      "path_json": "job_027/path.json",
+      "origin": [
+        54.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_027/workpiece.step",
+      "stl_asset": "job_027/workpiece.stl",
+      "sim_stl_asset": "job_027/workpiece_sim.stl",
+      "vector_json": "job_027/weld_vectors.json",
+      "raw_topology_json": "job_027/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "X",
+      "rotation_angle_deg": 170.20001309062206
+    },
+    {
+      "id": "job_028",
+      "source_stem": "simple_parallel_ribs_3_008_y_rot67.7",
+      "workpiece_asset": "job_028/workpiece_sim.stl",
+      "path_json": "job_028/path.json",
+      "origin": [
+        56.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_028/workpiece.step",
+      "stl_asset": "job_028/workpiece.stl",
+      "sim_stl_asset": "job_028/workpiece_sim.stl",
+      "vector_json": "job_028/weld_vectors.json",
+      "raw_topology_json": "job_028/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 67.72710541589593
+    },
+    {
+      "id": "job_029",
+      "source_stem": "simple_parallel_ribs_3_009_y_rot7.6",
+      "workpiece_asset": "job_029/workpiece_sim.stl",
+      "path_json": "job_029/path.json",
+      "origin": [
+        58.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_029/workpiece.step",
+      "stl_asset": "job_029/workpiece.stl",
+      "sim_stl_asset": "job_029/workpiece_sim.stl",
+      "vector_json": "job_029/weld_vectors.json",
+      "raw_topology_json": "job_029/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 7.567126841822458
+    },
+    {
+      "id": "job_030",
+      "source_stem": "simple_t_ribs_000_x_rot129.2",
+      "workpiece_asset": "job_030/workpiece_sim.stl",
+      "path_json": "job_030/path.json",
+      "origin": [
+        60.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_030/workpiece.step",
+      "stl_asset": "job_030/workpiece.stl",
+      "sim_stl_asset": "job_030/workpiece_sim.stl",
+      "vector_json": "job_030/weld_vectors.json",
+      "raw_topology_json": "job_030/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 129.22947485801242
+    },
+    {
+      "id": "job_031",
+      "source_stem": "simple_t_ribs_001_x_rot92.5",
+      "workpiece_asset": "job_031/workpiece_sim.stl",
+      "path_json": "job_031/path.json",
+      "origin": [
+        62.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_031/workpiece.step",
+      "stl_asset": "job_031/workpiece.stl",
+      "sim_stl_asset": "job_031/workpiece_sim.stl",
+      "vector_json": "job_031/weld_vectors.json",
+      "raw_topology_json": "job_031/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 92.49964828747733
+    },
+    {
+      "id": "job_032",
+      "source_stem": "simple_t_ribs_002_x_rot155.7",
+      "workpiece_asset": "job_032/workpiece_sim.stl",
+      "path_json": "job_032/path.json",
+      "origin": [
+        64.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_032/workpiece.step",
+      "stl_asset": "job_032/workpiece.stl",
+      "sim_stl_asset": "job_032/workpiece_sim.stl",
+      "vector_json": "job_032/weld_vectors.json",
+      "raw_topology_json": "job_032/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 155.68311013216925
+    },
+    {
+      "id": "job_033",
+      "source_stem": "simple_t_ribs_003_x_rot124.9",
+      "workpiece_asset": "job_033/workpiece_sim.stl",
+      "path_json": "job_033/path.json",
+      "origin": [
+        66.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_033/workpiece.step",
+      "stl_asset": "job_033/workpiece.stl",
+      "sim_stl_asset": "job_033/workpiece_sim.stl",
+      "vector_json": "job_033/weld_vectors.json",
+      "raw_topology_json": "job_033/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 124.8694683795753
+    },
+    {
+      "id": "job_034",
+      "source_stem": "simple_t_ribs_004_x_rot14.8",
+      "workpiece_asset": "job_034/workpiece_sim.stl",
+      "path_json": "job_034/path.json",
+      "origin": [
+        68.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_034/workpiece.step",
+      "stl_asset": "job_034/workpiece.stl",
+      "sim_stl_asset": "job_034/workpiece_sim.stl",
+      "vector_json": "job_034/weld_vectors.json",
+      "raw_topology_json": "job_034/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 14.82805611151983
+    },
+    {
+      "id": "job_035",
+      "source_stem": "simple_t_ribs_005_y_rot9.4",
+      "workpiece_asset": "job_035/workpiece_sim.stl",
+      "path_json": "job_035/path.json",
+      "origin": [
+        70.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_035/workpiece.step",
+      "stl_asset": "job_035/workpiece.stl",
+      "sim_stl_asset": "job_035/workpiece_sim.stl",
+      "vector_json": "job_035/weld_vectors.json",
+      "raw_topology_json": "job_035/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 9.420392189533132
+    },
+    {
+      "id": "job_036",
+      "source_stem": "simple_t_ribs_006_y_rot87.9",
+      "workpiece_asset": "job_036/workpiece_sim.stl",
+      "path_json": "job_036/path.json",
+      "origin": [
+        72.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_036/workpiece.step",
+      "stl_asset": "job_036/workpiece.stl",
+      "sim_stl_asset": "job_036/workpiece_sim.stl",
+      "vector_json": "job_036/weld_vectors.json",
+      "raw_topology_json": "job_036/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 87.92822305757998
+    },
+    {
+      "id": "job_037",
+      "source_stem": "simple_t_ribs_007_y_rot76.6",
+      "workpiece_asset": "job_037/workpiece_sim.stl",
+      "path_json": "job_037/path.json",
+      "origin": [
+        74.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_037/workpiece.step",
+      "stl_asset": "job_037/workpiece.stl",
+      "sim_stl_asset": "job_037/workpiece_sim.stl",
+      "vector_json": "job_037/weld_vectors.json",
+      "raw_topology_json": "job_037/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 76.5754969190909
+    },
+    {
+      "id": "job_038",
+      "source_stem": "simple_t_ribs_008_y_rot17.3",
+      "workpiece_asset": "job_038/workpiece_sim.stl",
+      "path_json": "job_038/path.json",
+      "origin": [
+        76.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_038/workpiece.step",
+      "stl_asset": "job_038/workpiece.stl",
+      "sim_stl_asset": "job_038/workpiece_sim.stl",
+      "vector_json": "job_038/weld_vectors.json",
+      "raw_topology_json": "job_038/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 17.28055090879372
+    },
+    {
+      "id": "job_039",
+      "source_stem": "simple_t_ribs_009_x_rot60.2",
+      "workpiece_asset": "job_039/workpiece_sim.stl",
+      "path_json": "job_039/path.json",
+      "origin": [
+        78.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_039/workpiece.step",
+      "stl_asset": "job_039/workpiece.stl",
+      "sim_stl_asset": "job_039/workpiece_sim.stl",
+      "vector_json": "job_039/weld_vectors.json",
+      "raw_topology_json": "job_039/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 60.168710058334575
+    },
+    {
+      "id": "job_040",
+      "source_stem": "simple_t_ribs_010_y_rot63.2",
+      "workpiece_asset": "job_040/workpiece_sim.stl",
+      "path_json": "job_040/path.json",
+      "origin": [
+        80.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_040/workpiece.step",
+      "stl_asset": "job_040/workpiece.stl",
+      "sim_stl_asset": "job_040/workpiece_sim.stl",
+      "vector_json": "job_040/weld_vectors.json",
+      "raw_topology_json": "job_040/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 63.242221166650914
+    },
+    {
+      "id": "job_041",
+      "source_stem": "simple_t_ribs_011_x_rot105.3",
+      "workpiece_asset": "job_041/workpiece_sim.stl",
+      "path_json": "job_041/path.json",
+      "origin": [
+        82.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_041/workpiece.step",
+      "stl_asset": "job_041/workpiece.stl",
+      "sim_stl_asset": "job_041/workpiece_sim.stl",
+      "vector_json": "job_041/weld_vectors.json",
+      "raw_topology_json": "job_041/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 105.34902269610822
+    },
+    {
+      "id": "job_042",
+      "source_stem": "simple_t_ribs_012_y_rot35.1",
+      "workpiece_asset": "job_042/workpiece_sim.stl",
+      "path_json": "job_042/path.json",
+      "origin": [
+        84.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_042/workpiece.step",
+      "stl_asset": "job_042/workpiece.stl",
+      "sim_stl_asset": "job_042/workpiece_sim.stl",
+      "vector_json": "job_042/weld_vectors.json",
+      "raw_topology_json": "job_042/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 35.14782777292504
+    },
+    {
+      "id": "job_043",
+      "source_stem": "simple_t_ribs_013_y_rot139.2",
+      "workpiece_asset": "job_043/workpiece_sim.stl",
+      "path_json": "job_043/path.json",
+      "origin": [
+        86.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_043/workpiece.step",
+      "stl_asset": "job_043/workpiece.stl",
+      "sim_stl_asset": "job_043/workpiece_sim.stl",
+      "vector_json": "job_043/weld_vectors.json",
+      "raw_topology_json": "job_043/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 139.22560107536995
+    },
+    {
+      "id": "job_044",
+      "source_stem": "simple_t_ribs_014_x_rot179.4",
+      "workpiece_asset": "job_044/workpiece_sim.stl",
+      "path_json": "job_044/path.json",
+      "origin": [
+        88.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_044/workpiece.step",
+      "stl_asset": "job_044/workpiece.stl",
+      "sim_stl_asset": "job_044/workpiece_sim.stl",
+      "vector_json": "job_044/weld_vectors.json",
+      "raw_topology_json": "job_044/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 179.37902819219852
+    },
+    {
+      "id": "job_045",
+      "source_stem": "simple_t_ribs_015_y_rot59.2",
+      "workpiece_asset": "job_045/workpiece_sim.stl",
+      "path_json": "job_045/path.json",
+      "origin": [
+        90.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_045/workpiece.step",
+      "stl_asset": "job_045/workpiece.stl",
+      "sim_stl_asset": "job_045/workpiece_sim.stl",
+      "vector_json": "job_045/weld_vectors.json",
+      "raw_topology_json": "job_045/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 59.22424684311701
+    },
+    {
+      "id": "job_046",
+      "source_stem": "simple_t_ribs_016_y_rot148.4",
+      "workpiece_asset": "job_046/workpiece_sim.stl",
+      "path_json": "job_046/path.json",
+      "origin": [
+        92.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_046/workpiece.step",
+      "stl_asset": "job_046/workpiece.stl",
+      "sim_stl_asset": "job_046/workpiece_sim.stl",
+      "vector_json": "job_046/weld_vectors.json",
+      "raw_topology_json": "job_046/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 148.36336293752254
+    },
+    {
+      "id": "job_047",
+      "source_stem": "simple_t_ribs_017_x_rot118.6",
+      "workpiece_asset": "job_047/workpiece_sim.stl",
+      "path_json": "job_047/path.json",
+      "origin": [
+        94.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_047/workpiece.step",
+      "stl_asset": "job_047/workpiece.stl",
+      "sim_stl_asset": "job_047/workpiece_sim.stl",
+      "vector_json": "job_047/weld_vectors.json",
+      "raw_topology_json": "job_047/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 118.62697565651776
+    },
+    {
+      "id": "job_048",
+      "source_stem": "simple_t_ribs_018_x_rot4.1",
+      "workpiece_asset": "job_048/workpiece_sim.stl",
+      "path_json": "job_048/path.json",
+      "origin": [
+        96.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_048/workpiece.step",
+      "stl_asset": "job_048/workpiece.stl",
+      "sim_stl_asset": "job_048/workpiece_sim.stl",
+      "vector_json": "job_048/weld_vectors.json",
+      "raw_topology_json": "job_048/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 4.052282302524084
+    },
+    {
+      "id": "job_049",
+      "source_stem": "simple_t_ribs_019_y_rot129.9",
+      "workpiece_asset": "job_049/workpiece_sim.stl",
+      "path_json": "job_049/path.json",
+      "origin": [
+        98.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_049/workpiece.step",
+      "stl_asset": "job_049/workpiece.stl",
+      "sim_stl_asset": "job_049/workpiece_sim.stl",
+      "vector_json": "job_049/weld_vectors.json",
+      "raw_topology_json": "job_049/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 129.90468257624892
+    },
+    {
+      "id": "job_050",
+      "source_stem": "simple_t_ribs_020_y_rot132.7",
+      "workpiece_asset": "job_050/workpiece_sim.stl",
+      "path_json": "job_050/path.json",
+      "origin": [
+        100.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_050/workpiece.step",
+      "stl_asset": "job_050/workpiece.stl",
+      "sim_stl_asset": "job_050/workpiece_sim.stl",
+      "vector_json": "job_050/weld_vectors.json",
+      "raw_topology_json": "job_050/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 132.70009115700478
+    },
+    {
+      "id": "job_051",
+      "source_stem": "simple_t_ribs_021_x_rot44.7",
+      "workpiece_asset": "job_051/workpiece_sim.stl",
+      "path_json": "job_051/path.json",
+      "origin": [
+        102.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_051/workpiece.step",
+      "stl_asset": "job_051/workpiece.stl",
+      "sim_stl_asset": "job_051/workpiece_sim.stl",
+      "vector_json": "job_051/weld_vectors.json",
+      "raw_topology_json": "job_051/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 44.715520324338044
+    },
+    {
+      "id": "job_052",
+      "source_stem": "simple_t_ribs_022_y_rot129.4",
+      "workpiece_asset": "job_052/workpiece_sim.stl",
+      "path_json": "job_052/path.json",
+      "origin": [
+        104.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_052/workpiece.step",
+      "stl_asset": "job_052/workpiece.stl",
+      "sim_stl_asset": "job_052/workpiece_sim.stl",
+      "vector_json": "job_052/weld_vectors.json",
+      "raw_topology_json": "job_052/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 129.35463572779594
+    },
+    {
+      "id": "job_053",
+      "source_stem": "simple_t_ribs_023_x_rot114.8",
+      "workpiece_asset": "job_053/workpiece_sim.stl",
+      "path_json": "job_053/path.json",
+      "origin": [
+        106.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_053/workpiece.step",
+      "stl_asset": "job_053/workpiece.stl",
+      "sim_stl_asset": "job_053/workpiece_sim.stl",
+      "vector_json": "job_053/weld_vectors.json",
+      "raw_topology_json": "job_053/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 114.81678017591821
+    },
+    {
+      "id": "job_054",
+      "source_stem": "simple_t_ribs_024_x_rot94.2",
+      "workpiece_asset": "job_054/workpiece_sim.stl",
+      "path_json": "job_054/path.json",
+      "origin": [
+        108.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_054/workpiece.step",
+      "stl_asset": "job_054/workpiece.stl",
+      "sim_stl_asset": "job_054/workpiece_sim.stl",
+      "vector_json": "job_054/weld_vectors.json",
+      "raw_topology_json": "job_054/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 94.2297994678821
+    },
+    {
+      "id": "job_055",
+      "source_stem": "simple_t_ribs_025_y_rot48.7",
+      "workpiece_asset": "job_055/workpiece_sim.stl",
+      "path_json": "job_055/path.json",
+      "origin": [
+        110.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_055/workpiece.step",
+      "stl_asset": "job_055/workpiece.stl",
+      "sim_stl_asset": "job_055/workpiece_sim.stl",
+      "vector_json": "job_055/weld_vectors.json",
+      "raw_topology_json": "job_055/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 48.6746497281385
+    },
+    {
+      "id": "job_056",
+      "source_stem": "simple_t_ribs_026_x_rot94.7",
+      "workpiece_asset": "job_056/workpiece_sim.stl",
+      "path_json": "job_056/path.json",
+      "origin": [
+        112.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_056/workpiece.step",
+      "stl_asset": "job_056/workpiece.stl",
+      "sim_stl_asset": "job_056/workpiece_sim.stl",
+      "vector_json": "job_056/weld_vectors.json",
+      "raw_topology_json": "job_056/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 94.67713477481819
+    },
+    {
+      "id": "job_057",
+      "source_stem": "simple_t_ribs_027_x_rot23.7",
+      "workpiece_asset": "job_057/workpiece_sim.stl",
+      "path_json": "job_057/path.json",
+      "origin": [
+        114.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_057/workpiece.step",
+      "stl_asset": "job_057/workpiece.stl",
+      "sim_stl_asset": "job_057/workpiece_sim.stl",
+      "vector_json": "job_057/weld_vectors.json",
+      "raw_topology_json": "job_057/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 23.744642906688924
+    },
+    {
+      "id": "job_058",
+      "source_stem": "simple_t_ribs_028_x_rot120.2",
+      "workpiece_asset": "job_058/workpiece_sim.stl",
+      "path_json": "job_058/path.json",
+      "origin": [
+        116.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_058/workpiece.step",
+      "stl_asset": "job_058/workpiece.stl",
+      "sim_stl_asset": "job_058/workpiece_sim.stl",
+      "vector_json": "job_058/weld_vectors.json",
+      "raw_topology_json": "job_058/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 120.15736132223074
+    },
+    {
+      "id": "job_059",
+      "source_stem": "simple_t_ribs_029_y_rot114.3",
+      "workpiece_asset": "job_059/workpiece_sim.stl",
+      "path_json": "job_059/path.json",
+      "origin": [
+        118.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_059/workpiece.step",
+      "stl_asset": "job_059/workpiece.stl",
+      "sim_stl_asset": "job_059/workpiece_sim.stl",
+      "vector_json": "job_059/weld_vectors.json",
+      "raw_topology_json": "job_059/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 114.30877744520744
+    },
+    {
+      "id": "job_060",
+      "source_stem": "simple_sandwich_ribs_000_x_rot99.8",
+      "workpiece_asset": "job_060/workpiece_sim.stl",
+      "path_json": "job_060/path.json",
+      "origin": [
+        120.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_060/workpiece.step",
+      "stl_asset": "job_060/workpiece.stl",
+      "sim_stl_asset": "job_060/workpiece_sim.stl",
+      "vector_json": "job_060/weld_vectors.json",
+      "raw_topology_json": "job_060/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 99.76238416420138
+    },
+    {
+      "id": "job_061",
+      "source_stem": "simple_sandwich_ribs_001_y_rot105.3",
+      "workpiece_asset": "job_061/workpiece_sim.stl",
+      "path_json": "job_061/path.json",
+      "origin": [
+        122.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_061/workpiece.step",
+      "stl_asset": "job_061/workpiece.stl",
+      "sim_stl_asset": "job_061/workpiece_sim.stl",
+      "vector_json": "job_061/weld_vectors.json",
+      "raw_topology_json": "job_061/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 105.2554204432305
+    },
+    {
+      "id": "job_062",
+      "source_stem": "simple_sandwich_ribs_002_x_rot28.8",
+      "workpiece_asset": "job_062/workpiece_sim.stl",
+      "path_json": "job_062/path.json",
+      "origin": [
+        124.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_062/workpiece.step",
+      "stl_asset": "job_062/workpiece.stl",
+      "sim_stl_asset": "job_062/workpiece_sim.stl",
+      "vector_json": "job_062/weld_vectors.json",
+      "raw_topology_json": "job_062/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 28.823119108509413
+    },
+    {
+      "id": "job_063",
+      "source_stem": "simple_sandwich_ribs_003_x_rot173.7",
+      "workpiece_asset": "job_063/workpiece_sim.stl",
+      "path_json": "job_063/path.json",
+      "origin": [
+        126.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_063/workpiece.step",
+      "stl_asset": "job_063/workpiece.stl",
+      "sim_stl_asset": "job_063/workpiece_sim.stl",
+      "vector_json": "job_063/weld_vectors.json",
+      "raw_topology_json": "job_063/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 173.65581671739687
+    },
+    {
+      "id": "job_064",
+      "source_stem": "simple_sandwich_ribs_004_y_rot2.6",
+      "workpiece_asset": "job_064/workpiece_sim.stl",
+      "path_json": "job_064/path.json",
+      "origin": [
+        128.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_064/workpiece.step",
+      "stl_asset": "job_064/workpiece.stl",
+      "sim_stl_asset": "job_064/workpiece_sim.stl",
+      "vector_json": "job_064/weld_vectors.json",
+      "raw_topology_json": "job_064/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 2.5953895600018706
+    },
+    {
+      "id": "job_065",
+      "source_stem": "simple_sandwich_ribs_005_x_rot103.4",
+      "workpiece_asset": "job_065/workpiece_sim.stl",
+      "path_json": "job_065/path.json",
+      "origin": [
+        130.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_065/workpiece.step",
+      "stl_asset": "job_065/workpiece.stl",
+      "sim_stl_asset": "job_065/workpiece_sim.stl",
+      "vector_json": "job_065/weld_vectors.json",
+      "raw_topology_json": "job_065/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 103.38900750594522
+    },
+    {
+      "id": "job_066",
+      "source_stem": "simple_sandwich_ribs_006_x_rot107.6",
+      "workpiece_asset": "job_066/workpiece_sim.stl",
+      "path_json": "job_066/path.json",
+      "origin": [
+        132.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_066/workpiece.step",
+      "stl_asset": "job_066/workpiece.stl",
+      "sim_stl_asset": "job_066/workpiece_sim.stl",
+      "vector_json": "job_066/weld_vectors.json",
+      "raw_topology_json": "job_066/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 107.63572921106304
+    },
+    {
+      "id": "job_067",
+      "source_stem": "simple_sandwich_ribs_007_y_rot156.0",
+      "workpiece_asset": "job_067/workpiece_sim.stl",
+      "path_json": "job_067/path.json",
+      "origin": [
+        134.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_067/workpiece.step",
+      "stl_asset": "job_067/workpiece.stl",
+      "sim_stl_asset": "job_067/workpiece_sim.stl",
+      "vector_json": "job_067/weld_vectors.json",
+      "raw_topology_json": "job_067/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 156.04065144237637
+    },
+    {
+      "id": "job_068",
+      "source_stem": "simple_sandwich_ribs_008_x_rot109.4",
+      "workpiece_asset": "job_068/workpiece_sim.stl",
+      "path_json": "job_068/path.json",
+      "origin": [
+        136.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_068/workpiece.step",
+      "stl_asset": "job_068/workpiece.stl",
+      "sim_stl_asset": "job_068/workpiece_sim.stl",
+      "vector_json": "job_068/weld_vectors.json",
+      "raw_topology_json": "job_068/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 109.38724432160313
+    },
+    {
+      "id": "job_069",
+      "source_stem": "simple_sandwich_ribs_009_y_rot94.7",
+      "workpiece_asset": "job_069/workpiece_sim.stl",
+      "path_json": "job_069/path.json",
+      "origin": [
+        138.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_069/workpiece.step",
+      "stl_asset": "job_069/workpiece.stl",
+      "sim_stl_asset": "job_069/workpiece_sim.stl",
+      "vector_json": "job_069/weld_vectors.json",
+      "raw_topology_json": "job_069/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 94.69098393838416
+    },
+    {
+      "id": "job_070",
+      "source_stem": "simple_sandwich_ribs_010_x_rot121.0",
+      "workpiece_asset": "job_070/workpiece_sim.stl",
+      "path_json": "job_070/path.json",
+      "origin": [
+        140.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_070/workpiece.step",
+      "stl_asset": "job_070/workpiece.stl",
+      "sim_stl_asset": "job_070/workpiece_sim.stl",
+      "vector_json": "job_070/weld_vectors.json",
+      "raw_topology_json": "job_070/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 121.02956658755924
+    },
+    {
+      "id": "job_071",
+      "source_stem": "simple_sandwich_ribs_011_y_rot159.5",
+      "workpiece_asset": "job_071/workpiece_sim.stl",
+      "path_json": "job_071/path.json",
+      "origin": [
+        142.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_071/workpiece.step",
+      "stl_asset": "job_071/workpiece.stl",
+      "sim_stl_asset": "job_071/workpiece_sim.stl",
+      "vector_json": "job_071/weld_vectors.json",
+      "raw_topology_json": "job_071/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 159.50710843075697
+    },
+    {
+      "id": "job_072",
+      "source_stem": "simple_sandwich_ribs_012_y_rot168.6",
+      "workpiece_asset": "job_072/workpiece_sim.stl",
+      "path_json": "job_072/path.json",
+      "origin": [
+        144.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_072/workpiece.step",
+      "stl_asset": "job_072/workpiece.stl",
+      "sim_stl_asset": "job_072/workpiece_sim.stl",
+      "vector_json": "job_072/weld_vectors.json",
+      "raw_topology_json": "job_072/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 168.57488753409316
+    },
+    {
+      "id": "job_073",
+      "source_stem": "simple_sandwich_ribs_013_y_rot104.6",
+      "workpiece_asset": "job_073/workpiece_sim.stl",
+      "path_json": "job_073/path.json",
+      "origin": [
+        146.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_073/workpiece.step",
+      "stl_asset": "job_073/workpiece.stl",
+      "sim_stl_asset": "job_073/workpiece_sim.stl",
+      "vector_json": "job_073/weld_vectors.json",
+      "raw_topology_json": "job_073/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 104.56583470592167
+    },
+    {
+      "id": "job_074",
+      "source_stem": "simple_sandwich_ribs_014_x_rot58.6",
+      "workpiece_asset": "job_074/workpiece_sim.stl",
+      "path_json": "job_074/path.json",
+      "origin": [
+        148.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_074/workpiece.step",
+      "stl_asset": "job_074/workpiece.stl",
+      "sim_stl_asset": "job_074/workpiece_sim.stl",
+      "vector_json": "job_074/weld_vectors.json",
+      "raw_topology_json": "job_074/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 58.64093098506111
+    },
+    {
+      "id": "job_075",
+      "source_stem": "simple_sandwich_ribs_015_x_rot111.7",
+      "workpiece_asset": "job_075/workpiece_sim.stl",
+      "path_json": "job_075/path.json",
+      "origin": [
+        150.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_075/workpiece.step",
+      "stl_asset": "job_075/workpiece.stl",
+      "sim_stl_asset": "job_075/workpiece_sim.stl",
+      "vector_json": "job_075/weld_vectors.json",
+      "raw_topology_json": "job_075/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 111.73771590151938
+    },
+    {
+      "id": "job_076",
+      "source_stem": "simple_sandwich_ribs_016_y_rot59.9",
+      "workpiece_asset": "job_076/workpiece_sim.stl",
+      "path_json": "job_076/path.json",
+      "origin": [
+        152.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_076/workpiece.step",
+      "stl_asset": "job_076/workpiece.stl",
+      "sim_stl_asset": "job_076/workpiece_sim.stl",
+      "vector_json": "job_076/weld_vectors.json",
+      "raw_topology_json": "job_076/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 59.864341649905604
+    },
+    {
+      "id": "job_077",
+      "source_stem": "simple_sandwich_ribs_017_x_rot0.9",
+      "workpiece_asset": "job_077/workpiece_sim.stl",
+      "path_json": "job_077/path.json",
+      "origin": [
+        154.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_077/workpiece.step",
+      "stl_asset": "job_077/workpiece.stl",
+      "sim_stl_asset": "job_077/workpiece_sim.stl",
+      "vector_json": "job_077/weld_vectors.json",
+      "raw_topology_json": "job_077/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 0.9116916608176129
+    },
+    {
+      "id": "job_078",
+      "source_stem": "simple_sandwich_ribs_018_x_rot89.1",
+      "workpiece_asset": "job_078/workpiece_sim.stl",
+      "path_json": "job_078/path.json",
+      "origin": [
+        156.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_078/workpiece.step",
+      "stl_asset": "job_078/workpiece.stl",
+      "sim_stl_asset": "job_078/workpiece_sim.stl",
+      "vector_json": "job_078/weld_vectors.json",
+      "raw_topology_json": "job_078/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 89.1161919583101
+    },
+    {
+      "id": "job_079",
+      "source_stem": "simple_sandwich_ribs_019_x_rot79.1",
+      "workpiece_asset": "job_079/workpiece_sim.stl",
+      "path_json": "job_079/path.json",
+      "origin": [
+        158.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_079/workpiece.step",
+      "stl_asset": "job_079/workpiece.stl",
+      "sim_stl_asset": "job_079/workpiece_sim.stl",
+      "vector_json": "job_079/weld_vectors.json",
+      "raw_topology_json": "job_079/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 79.06315731466661
+    },
+    {
+      "id": "job_080",
+      "source_stem": "simple_sandwich_ribs_020_x_rot91.3",
+      "workpiece_asset": "job_080/workpiece_sim.stl",
+      "path_json": "job_080/path.json",
+      "origin": [
+        160.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_080/workpiece.step",
+      "stl_asset": "job_080/workpiece.stl",
+      "sim_stl_asset": "job_080/workpiece_sim.stl",
+      "vector_json": "job_080/weld_vectors.json",
+      "raw_topology_json": "job_080/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 91.29024131651472
+    },
+    {
+      "id": "job_081",
+      "source_stem": "simple_sandwich_ribs_021_x_rot90.3",
+      "workpiece_asset": "job_081/workpiece_sim.stl",
+      "path_json": "job_081/path.json",
+      "origin": [
+        162.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_081/workpiece.step",
+      "stl_asset": "job_081/workpiece.stl",
+      "sim_stl_asset": "job_081/workpiece_sim.stl",
+      "vector_json": "job_081/weld_vectors.json",
+      "raw_topology_json": "job_081/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 90.26933934464247
+    },
+    {
+      "id": "job_082",
+      "source_stem": "simple_sandwich_ribs_022_x_rot6.4",
+      "workpiece_asset": "job_082/workpiece_sim.stl",
+      "path_json": "job_082/path.json",
+      "origin": [
+        164.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_082/workpiece.step",
+      "stl_asset": "job_082/workpiece.stl",
+      "sim_stl_asset": "job_082/workpiece_sim.stl",
+      "vector_json": "job_082/weld_vectors.json",
+      "raw_topology_json": "job_082/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 6.3534851379002655
+    },
+    {
+      "id": "job_083",
+      "source_stem": "simple_sandwich_ribs_023_y_rot25.5",
+      "workpiece_asset": "job_083/workpiece_sim.stl",
+      "path_json": "job_083/path.json",
+      "origin": [
+        166.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_083/workpiece.step",
+      "stl_asset": "job_083/workpiece.stl",
+      "sim_stl_asset": "job_083/workpiece_sim.stl",
+      "vector_json": "job_083/weld_vectors.json",
+      "raw_topology_json": "job_083/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 25.483857678396863
+    },
+    {
+      "id": "job_084",
+      "source_stem": "simple_sandwich_ribs_024_x_rot169.8",
+      "workpiece_asset": "job_084/workpiece_sim.stl",
+      "path_json": "job_084/path.json",
+      "origin": [
+        168.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_084/workpiece.step",
+      "stl_asset": "job_084/workpiece.stl",
+      "sim_stl_asset": "job_084/workpiece_sim.stl",
+      "vector_json": "job_084/weld_vectors.json",
+      "raw_topology_json": "job_084/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 169.79314168308406
+    },
+    {
+      "id": "job_085",
+      "source_stem": "simple_sandwich_ribs_025_y_rot153.3",
+      "workpiece_asset": "job_085/workpiece_sim.stl",
+      "path_json": "job_085/path.json",
+      "origin": [
+        170.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_085/workpiece.step",
+      "stl_asset": "job_085/workpiece.stl",
+      "sim_stl_asset": "job_085/workpiece_sim.stl",
+      "vector_json": "job_085/weld_vectors.json",
+      "raw_topology_json": "job_085/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 153.3095776537564
+    },
+    {
+      "id": "job_086",
+      "source_stem": "simple_sandwich_ribs_026_x_rot88.8",
+      "workpiece_asset": "job_086/workpiece_sim.stl",
+      "path_json": "job_086/path.json",
+      "origin": [
+        172.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_086/workpiece.step",
+      "stl_asset": "job_086/workpiece.stl",
+      "sim_stl_asset": "job_086/workpiece_sim.stl",
+      "vector_json": "job_086/weld_vectors.json",
+      "raw_topology_json": "job_086/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 88.80766701568001
+    },
+    {
+      "id": "job_087",
+      "source_stem": "simple_sandwich_ribs_027_x_rot175.2",
+      "workpiece_asset": "job_087/workpiece_sim.stl",
+      "path_json": "job_087/path.json",
+      "origin": [
+        174.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_087/workpiece.step",
+      "stl_asset": "job_087/workpiece.stl",
+      "sim_stl_asset": "job_087/workpiece_sim.stl",
+      "vector_json": "job_087/weld_vectors.json",
+      "raw_topology_json": "job_087/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 175.1867348520802
+    },
+    {
+      "id": "job_088",
+      "source_stem": "simple_sandwich_ribs_028_y_rot40.7",
+      "workpiece_asset": "job_088/workpiece_sim.stl",
+      "path_json": "job_088/path.json",
+      "origin": [
+        176.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_088/workpiece.step",
+      "stl_asset": "job_088/workpiece.stl",
+      "sim_stl_asset": "job_088/workpiece_sim.stl",
+      "vector_json": "job_088/weld_vectors.json",
+      "raw_topology_json": "job_088/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 40.7394596728833
+    },
+    {
+      "id": "job_089",
+      "source_stem": "simple_sandwich_ribs_029_x_rot72.4",
+      "workpiece_asset": "job_089/workpiece_sim.stl",
+      "path_json": "job_089/path.json",
+      "origin": [
+        178.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_089/workpiece.step",
+      "stl_asset": "job_089/workpiece.stl",
+      "sim_stl_asset": "job_089/workpiece_sim.stl",
+      "vector_json": "job_089/weld_vectors.json",
+      "raw_topology_json": "job_089/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 72.38037150139633
+    },
+    {
+      "id": "job_090",
+      "source_stem": "simple_grid_ribs_000_y_rot155.6",
+      "workpiece_asset": "job_090/workpiece_sim.stl",
+      "path_json": "job_090/path.json",
+      "origin": [
+        180.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_090/workpiece.step",
+      "stl_asset": "job_090/workpiece.stl",
+      "sim_stl_asset": "job_090/workpiece_sim.stl",
+      "vector_json": "job_090/weld_vectors.json",
+      "raw_topology_json": "job_090/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 155.60317108372448
+    },
+    {
+      "id": "job_091",
+      "source_stem": "simple_grid_ribs_001_y_rot12.9",
+      "workpiece_asset": "job_091/workpiece_sim.stl",
+      "path_json": "job_091/path.json",
+      "origin": [
+        182.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_091/workpiece.step",
+      "stl_asset": "job_091/workpiece.stl",
+      "sim_stl_asset": "job_091/workpiece_sim.stl",
+      "vector_json": "job_091/weld_vectors.json",
+      "raw_topology_json": "job_091/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 12.852246924892476
+    },
+    {
+      "id": "job_092",
+      "source_stem": "simple_grid_ribs_002_y_rot37.3",
+      "workpiece_asset": "job_092/workpiece_sim.stl",
+      "path_json": "job_092/path.json",
+      "origin": [
+        184.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_092/workpiece.step",
+      "stl_asset": "job_092/workpiece.stl",
+      "sim_stl_asset": "job_092/workpiece_sim.stl",
+      "vector_json": "job_092/weld_vectors.json",
+      "raw_topology_json": "job_092/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 37.276905895134746
+    },
+    {
+      "id": "job_093",
+      "source_stem": "simple_grid_ribs_003_y_rot110.9",
+      "workpiece_asset": "job_093/workpiece_sim.stl",
+      "path_json": "job_093/path.json",
+      "origin": [
+        186.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_093/workpiece.step",
+      "stl_asset": "job_093/workpiece.stl",
+      "sim_stl_asset": "job_093/workpiece_sim.stl",
+      "vector_json": "job_093/weld_vectors.json",
+      "raw_topology_json": "job_093/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 110.87729102285118
+    },
+    {
+      "id": "job_094",
+      "source_stem": "simple_grid_ribs_004_x_rot42.6",
+      "workpiece_asset": "job_094/workpiece_sim.stl",
+      "path_json": "job_094/path.json",
+      "origin": [
+        188.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_094/workpiece.step",
+      "stl_asset": "job_094/workpiece.stl",
+      "sim_stl_asset": "job_094/workpiece_sim.stl",
+      "vector_json": "job_094/weld_vectors.json",
+      "raw_topology_json": "job_094/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 42.599586092594414
+    },
+    {
+      "id": "job_095",
+      "source_stem": "simple_grid_ribs_005_x_rot63.6",
+      "workpiece_asset": "job_095/workpiece_sim.stl",
+      "path_json": "job_095/path.json",
+      "origin": [
+        190.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_095/workpiece.step",
+      "stl_asset": "job_095/workpiece.stl",
+      "sim_stl_asset": "job_095/workpiece_sim.stl",
+      "vector_json": "job_095/weld_vectors.json",
+      "raw_topology_json": "job_095/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 63.61372706044856
+    },
+    {
+      "id": "job_096",
+      "source_stem": "simple_grid_ribs_006_x_rot54.8",
+      "workpiece_asset": "job_096/workpiece_sim.stl",
+      "path_json": "job_096/path.json",
+      "origin": [
+        192.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_096/workpiece.step",
+      "stl_asset": "job_096/workpiece.stl",
+      "sim_stl_asset": "job_096/workpiece_sim.stl",
+      "vector_json": "job_096/weld_vectors.json",
+      "raw_topology_json": "job_096/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 54.798083324966385
+    },
+    {
+      "id": "job_097",
+      "source_stem": "simple_grid_ribs_007_y_rot20.8",
+      "workpiece_asset": "job_097/workpiece_sim.stl",
+      "path_json": "job_097/path.json",
+      "origin": [
+        194.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_097/workpiece.step",
+      "stl_asset": "job_097/workpiece.stl",
+      "sim_stl_asset": "job_097/workpiece_sim.stl",
+      "vector_json": "job_097/weld_vectors.json",
+      "raw_topology_json": "job_097/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 20.84713973224432
+    },
+    {
+      "id": "job_098",
+      "source_stem": "simple_grid_ribs_008_x_rot160.4",
+      "workpiece_asset": "job_098/workpiece_sim.stl",
+      "path_json": "job_098/path.json",
+      "origin": [
+        196.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_098/workpiece.step",
+      "stl_asset": "job_098/workpiece.stl",
+      "sim_stl_asset": "job_098/workpiece_sim.stl",
+      "vector_json": "job_098/weld_vectors.json",
+      "raw_topology_json": "job_098/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 160.4042519069195
+    },
+    {
+      "id": "job_099",
+      "source_stem": "simple_grid_ribs_009_y_rot1.3",
+      "workpiece_asset": "job_099/workpiece_sim.stl",
+      "path_json": "job_099/path.json",
+      "origin": [
+        198.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_099/workpiece.step",
+      "stl_asset": "job_099/workpiece.stl",
+      "sim_stl_asset": "job_099/workpiece_sim.stl",
+      "vector_json": "job_099/weld_vectors.json",
+      "raw_topology_json": "job_099/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 1.2926108183274887
+    },
+    {
+      "id": "job_100",
+      "source_stem": "simple_grid_ribs_010_y_rot92.1",
+      "workpiece_asset": "job_100/workpiece_sim.stl",
+      "path_json": "job_100/path.json",
+      "origin": [
+        200.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_100/workpiece.step",
+      "stl_asset": "job_100/workpiece.stl",
+      "sim_stl_asset": "job_100/workpiece_sim.stl",
+      "vector_json": "job_100/weld_vectors.json",
+      "raw_topology_json": "job_100/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 92.1109103865725
+    },
+    {
+      "id": "job_101",
+      "source_stem": "simple_grid_ribs_011_y_rot111.0",
+      "workpiece_asset": "job_101/workpiece_sim.stl",
+      "path_json": "job_101/path.json",
+      "origin": [
+        202.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_101/workpiece.step",
+      "stl_asset": "job_101/workpiece.stl",
+      "sim_stl_asset": "job_101/workpiece_sim.stl",
+      "vector_json": "job_101/weld_vectors.json",
+      "raw_topology_json": "job_101/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 110.95396315581024
+    },
+    {
+      "id": "job_102",
+      "source_stem": "simple_grid_ribs_012_x_rot105.9",
+      "workpiece_asset": "job_102/workpiece_sim.stl",
+      "path_json": "job_102/path.json",
+      "origin": [
+        204.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_102/workpiece.step",
+      "stl_asset": "job_102/workpiece.stl",
+      "sim_stl_asset": "job_102/workpiece_sim.stl",
+      "vector_json": "job_102/weld_vectors.json",
+      "raw_topology_json": "job_102/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 105.87393562261855
+    },
+    {
+      "id": "job_103",
+      "source_stem": "simple_grid_ribs_013_x_rot29.2",
+      "workpiece_asset": "job_103/workpiece_sim.stl",
+      "path_json": "job_103/path.json",
+      "origin": [
+        206.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_103/workpiece.step",
+      "stl_asset": "job_103/workpiece.stl",
+      "sim_stl_asset": "job_103/workpiece_sim.stl",
+      "vector_json": "job_103/weld_vectors.json",
+      "raw_topology_json": "job_103/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 29.166596821091375
+    },
+    {
+      "id": "job_104",
+      "source_stem": "simple_grid_ribs_014_x_rot173.0",
+      "workpiece_asset": "job_104/workpiece_sim.stl",
+      "path_json": "job_104/path.json",
+      "origin": [
+        208.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_104/workpiece.step",
+      "stl_asset": "job_104/workpiece.stl",
+      "sim_stl_asset": "job_104/workpiece_sim.stl",
+      "vector_json": "job_104/weld_vectors.json",
+      "raw_topology_json": "job_104/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 173.03208288951967
+    },
+    {
+      "id": "job_105",
+      "source_stem": "simple_grid_ribs_015_x_rot129.5",
+      "workpiece_asset": "job_105/workpiece_sim.stl",
+      "path_json": "job_105/path.json",
+      "origin": [
+        210.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_105/workpiece.step",
+      "stl_asset": "job_105/workpiece.stl",
+      "sim_stl_asset": "job_105/workpiece_sim.stl",
+      "vector_json": "job_105/weld_vectors.json",
+      "raw_topology_json": "job_105/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 129.53412117667386
+    },
+    {
+      "id": "job_106",
+      "source_stem": "simple_grid_ribs_016_y_rot73.9",
+      "workpiece_asset": "job_106/workpiece_sim.stl",
+      "path_json": "job_106/path.json",
+      "origin": [
+        212.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_106/workpiece.step",
+      "stl_asset": "job_106/workpiece.stl",
+      "sim_stl_asset": "job_106/workpiece_sim.stl",
+      "vector_json": "job_106/weld_vectors.json",
+      "raw_topology_json": "job_106/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 73.91283795640081
+    },
+    {
+      "id": "job_107",
+      "source_stem": "simple_grid_ribs_017_x_rot93.9",
+      "workpiece_asset": "job_107/workpiece_sim.stl",
+      "path_json": "job_107/path.json",
+      "origin": [
+        214.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_107/workpiece.step",
+      "stl_asset": "job_107/workpiece.stl",
+      "sim_stl_asset": "job_107/workpiece_sim.stl",
+      "vector_json": "job_107/weld_vectors.json",
+      "raw_topology_json": "job_107/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 93.87006474052936
+    },
+    {
+      "id": "job_108",
+      "source_stem": "simple_grid_ribs_018_x_rot81.3",
+      "workpiece_asset": "job_108/workpiece_sim.stl",
+      "path_json": "job_108/path.json",
+      "origin": [
+        216.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_108/workpiece.step",
+      "stl_asset": "job_108/workpiece.stl",
+      "sim_stl_asset": "job_108/workpiece_sim.stl",
+      "vector_json": "job_108/weld_vectors.json",
+      "raw_topology_json": "job_108/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 81.28636073692346
+    },
+    {
+      "id": "job_109",
+      "source_stem": "simple_grid_ribs_019_x_rot85.1",
+      "workpiece_asset": "job_109/workpiece_sim.stl",
+      "path_json": "job_109/path.json",
+      "origin": [
+        218.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_109/workpiece.step",
+      "stl_asset": "job_109/workpiece.stl",
+      "sim_stl_asset": "job_109/workpiece_sim.stl",
+      "vector_json": "job_109/weld_vectors.json",
+      "raw_topology_json": "job_109/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 85.05413901482524
+    },
+    {
+      "id": "job_110",
+      "source_stem": "simple_grid_ribs_020_y_rot177.2",
+      "workpiece_asset": "job_110/workpiece_sim.stl",
+      "path_json": "job_110/path.json",
+      "origin": [
+        220.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_110/workpiece.step",
+      "stl_asset": "job_110/workpiece.stl",
+      "sim_stl_asset": "job_110/workpiece_sim.stl",
+      "vector_json": "job_110/weld_vectors.json",
+      "raw_topology_json": "job_110/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 177.24137253477213
+    },
+    {
+      "id": "job_111",
+      "source_stem": "simple_grid_ribs_021_x_rot120.1",
+      "workpiece_asset": "job_111/workpiece_sim.stl",
+      "path_json": "job_111/path.json",
+      "origin": [
+        222.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_111/workpiece.step",
+      "stl_asset": "job_111/workpiece.stl",
+      "sim_stl_asset": "job_111/workpiece_sim.stl",
+      "vector_json": "job_111/weld_vectors.json",
+      "raw_topology_json": "job_111/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 120.0504274145567
+    },
+    {
+      "id": "job_112",
+      "source_stem": "simple_grid_ribs_022_y_rot112.2",
+      "workpiece_asset": "job_112/workpiece_sim.stl",
+      "path_json": "job_112/path.json",
+      "origin": [
+        224.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_112/workpiece.step",
+      "stl_asset": "job_112/workpiece.stl",
+      "sim_stl_asset": "job_112/workpiece_sim.stl",
+      "vector_json": "job_112/weld_vectors.json",
+      "raw_topology_json": "job_112/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 112.21159519271951
+    },
+    {
+      "id": "job_113",
+      "source_stem": "simple_grid_ribs_023_y_rot87.3",
+      "workpiece_asset": "job_113/workpiece_sim.stl",
+      "path_json": "job_113/path.json",
+      "origin": [
+        226.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_113/workpiece.step",
+      "stl_asset": "job_113/workpiece.stl",
+      "sim_stl_asset": "job_113/workpiece_sim.stl",
+      "vector_json": "job_113/weld_vectors.json",
+      "raw_topology_json": "job_113/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 87.33663984931776
+    },
+    {
+      "id": "job_114",
+      "source_stem": "simple_grid_ribs_024_y_rot162.0",
+      "workpiece_asset": "job_114/workpiece_sim.stl",
+      "path_json": "job_114/path.json",
+      "origin": [
+        228.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_114/workpiece.step",
+      "stl_asset": "job_114/workpiece.stl",
+      "sim_stl_asset": "job_114/workpiece_sim.stl",
+      "vector_json": "job_114/weld_vectors.json",
+      "raw_topology_json": "job_114/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 162.01609565074776
+    },
+    {
+      "id": "job_115",
+      "source_stem": "simple_grid_ribs_025_y_rot95.2",
+      "workpiece_asset": "job_115/workpiece_sim.stl",
+      "path_json": "job_115/path.json",
+      "origin": [
+        230.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_115/workpiece.step",
+      "stl_asset": "job_115/workpiece.stl",
+      "sim_stl_asset": "job_115/workpiece_sim.stl",
+      "vector_json": "job_115/weld_vectors.json",
+      "raw_topology_json": "job_115/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 95.22197789038763
+    },
+    {
+      "id": "job_116",
+      "source_stem": "simple_grid_ribs_026_y_rot139.2",
+      "workpiece_asset": "job_116/workpiece_sim.stl",
+      "path_json": "job_116/path.json",
+      "origin": [
+        232.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_116/workpiece.step",
+      "stl_asset": "job_116/workpiece.stl",
+      "sim_stl_asset": "job_116/workpiece_sim.stl",
+      "vector_json": "job_116/weld_vectors.json",
+      "raw_topology_json": "job_116/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 139.1933295274068
+    },
+    {
+      "id": "job_117",
+      "source_stem": "simple_grid_ribs_027_x_rot0.1",
+      "workpiece_asset": "job_117/workpiece_sim.stl",
+      "path_json": "job_117/path.json",
+      "origin": [
+        234.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_117/workpiece.step",
+      "stl_asset": "job_117/workpiece.stl",
+      "sim_stl_asset": "job_117/workpiece_sim.stl",
+      "vector_json": "job_117/weld_vectors.json",
+      "raw_topology_json": "job_117/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 0.09089842029255113
+    },
+    {
+      "id": "job_118",
+      "source_stem": "simple_grid_ribs_028_x_rot64.8",
+      "workpiece_asset": "job_118/workpiece_sim.stl",
+      "path_json": "job_118/path.json",
+      "origin": [
+        236.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_118/workpiece.step",
+      "stl_asset": "job_118/workpiece.stl",
+      "sim_stl_asset": "job_118/workpiece_sim.stl",
+      "vector_json": "job_118/weld_vectors.json",
+      "raw_topology_json": "job_118/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 64.83373569864082
+    },
+    {
+      "id": "job_119",
+      "source_stem": "simple_grid_ribs_029_y_rot178.5",
+      "workpiece_asset": "job_119/workpiece_sim.stl",
+      "path_json": "job_119/path.json",
+      "origin": [
+        238.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_119/workpiece.step",
+      "stl_asset": "job_119/workpiece.stl",
+      "sim_stl_asset": "job_119/workpiece_sim.stl",
+      "vector_json": "job_119/weld_vectors.json",
+      "raw_topology_json": "job_119/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 178.54404628738797
+    },
+    {
+      "id": "job_120",
+      "source_stem": "simple_parallel_ribs_1_120_y_rot176.4",
+      "workpiece_asset": "job_120/workpiece_sim.stl",
+      "path_json": "job_120/path.json",
+      "origin": [
+        240.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_120/workpiece.step",
+      "stl_asset": "job_120/workpiece.stl",
+      "sim_stl_asset": "job_120/workpiece_sim.stl",
+      "vector_json": "job_120/weld_vectors.json",
+      "raw_topology_json": "job_120/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "Y",
+      "rotation_angle_deg": 176.4053360457728
+    },
+    {
+      "id": "job_121",
+      "source_stem": "simple_parallel_ribs_1_121_x_rot19.4",
+      "workpiece_asset": "job_121/workpiece_sim.stl",
+      "path_json": "job_121/path.json",
+      "origin": [
+        242.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_121/workpiece.step",
+      "stl_asset": "job_121/workpiece.stl",
+      "sim_stl_asset": "job_121/workpiece_sim.stl",
+      "vector_json": "job_121/weld_vectors.json",
+      "raw_topology_json": "job_121/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 19.392816743761227
+    },
+    {
+      "id": "job_122",
+      "source_stem": "simple_parallel_ribs_1_122_x_rot92.0",
+      "workpiece_asset": "job_122/workpiece_sim.stl",
+      "path_json": "job_122/path.json",
+      "origin": [
+        244.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_122/workpiece.step",
+      "stl_asset": "job_122/workpiece.stl",
+      "sim_stl_asset": "job_122/workpiece_sim.stl",
+      "vector_json": "job_122/weld_vectors.json",
+      "raw_topology_json": "job_122/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 91.95791563309737
+    },
+    {
+      "id": "job_123",
+      "source_stem": "simple_parallel_ribs_1_123_x_rot129.5",
+      "workpiece_asset": "job_123/workpiece_sim.stl",
+      "path_json": "job_123/path.json",
+      "origin": [
+        246.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_123/workpiece.step",
+      "stl_asset": "job_123/workpiece.stl",
+      "sim_stl_asset": "job_123/workpiece_sim.stl",
+      "vector_json": "job_123/weld_vectors.json",
+      "raw_topology_json": "job_123/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 129.5314107839906
+    },
+    {
+      "id": "job_124",
+      "source_stem": "simple_parallel_ribs_1_124_x_rot116.8",
+      "workpiece_asset": "job_124/workpiece_sim.stl",
+      "path_json": "job_124/path.json",
+      "origin": [
+        248.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_124/workpiece.step",
+      "stl_asset": "job_124/workpiece.stl",
+      "sim_stl_asset": "job_124/workpiece_sim.stl",
+      "vector_json": "job_124/weld_vectors.json",
+      "raw_topology_json": "job_124/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 116.78533533928108
+    },
+    {
+      "id": "job_125",
+      "source_stem": "simple_parallel_ribs_1_125_x_rot105.9",
+      "workpiece_asset": "job_125/workpiece_sim.stl",
+      "path_json": "job_125/path.json",
+      "origin": [
+        250.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_125/workpiece.step",
+      "stl_asset": "job_125/workpiece.stl",
+      "sim_stl_asset": "job_125/workpiece_sim.stl",
+      "vector_json": "job_125/weld_vectors.json",
+      "raw_topology_json": "job_125/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 105.91804352395069
+    },
+    {
+      "id": "job_126",
+      "source_stem": "simple_parallel_ribs_1_126_y_rot153.0",
+      "workpiece_asset": "job_126/workpiece_sim.stl",
+      "path_json": "job_126/path.json",
+      "origin": [
+        252.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_126/workpiece.step",
+      "stl_asset": "job_126/workpiece.stl",
+      "sim_stl_asset": "job_126/workpiece_sim.stl",
+      "vector_json": "job_126/weld_vectors.json",
+      "raw_topology_json": "job_126/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "Y",
+      "rotation_angle_deg": 152.99656673891485
+    },
+    {
+      "id": "job_127",
+      "source_stem": "simple_parallel_ribs_1_127_x_rot48.8",
+      "workpiece_asset": "job_127/workpiece_sim.stl",
+      "path_json": "job_127/path.json",
+      "origin": [
+        254.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_127/workpiece.step",
+      "stl_asset": "job_127/workpiece.stl",
+      "sim_stl_asset": "job_127/workpiece_sim.stl",
+      "vector_json": "job_127/weld_vectors.json",
+      "raw_topology_json": "job_127/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "X",
+      "rotation_angle_deg": 48.79206771147317
+    },
+    {
+      "id": "job_128",
+      "source_stem": "simple_parallel_ribs_1_128_y_rot146.4",
+      "workpiece_asset": "job_128/workpiece_sim.stl",
+      "path_json": "job_128/path.json",
+      "origin": [
+        256.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_128/workpiece.step",
+      "stl_asset": "job_128/workpiece.stl",
+      "sim_stl_asset": "job_128/workpiece_sim.stl",
+      "vector_json": "job_128/weld_vectors.json",
+      "raw_topology_json": "job_128/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "Y",
+      "rotation_angle_deg": 146.38186050878963
+    },
+    {
+      "id": "job_129",
+      "source_stem": "simple_parallel_ribs_1_129_y_rot146.3",
+      "workpiece_asset": "job_129/workpiece_sim.stl",
+      "path_json": "job_129/path.json",
+      "origin": [
+        258.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_129/workpiece.step",
+      "stl_asset": "job_129/workpiece.stl",
+      "sim_stl_asset": "job_129/workpiece_sim.stl",
+      "vector_json": "job_129/weld_vectors.json",
+      "raw_topology_json": "job_129/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 1,
+      "orientation": "Y",
+      "rotation_angle_deg": 146.31115134495172
+    },
+    {
+      "id": "job_130",
+      "source_stem": "simple_parallel_ribs_2_120_x_rot167.9",
+      "workpiece_asset": "job_130/workpiece_sim.stl",
+      "path_json": "job_130/path.json",
+      "origin": [
+        260.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_130/workpiece.step",
+      "stl_asset": "job_130/workpiece.stl",
+      "sim_stl_asset": "job_130/workpiece_sim.stl",
+      "vector_json": "job_130/weld_vectors.json",
+      "raw_topology_json": "job_130/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 167.8604082927697
+    },
+    {
+      "id": "job_131",
+      "source_stem": "simple_parallel_ribs_2_121_y_rot95.9",
+      "workpiece_asset": "job_131/workpiece_sim.stl",
+      "path_json": "job_131/path.json",
+      "origin": [
+        262.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_131/workpiece.step",
+      "stl_asset": "job_131/workpiece.stl",
+      "sim_stl_asset": "job_131/workpiece_sim.stl",
+      "vector_json": "job_131/weld_vectors.json",
+      "raw_topology_json": "job_131/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "Y",
+      "rotation_angle_deg": 95.91569608528451
+    },
+    {
+      "id": "job_132",
+      "source_stem": "simple_parallel_ribs_2_122_x_rot131.9",
+      "workpiece_asset": "job_132/workpiece_sim.stl",
+      "path_json": "job_132/path.json",
+      "origin": [
+        264.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_132/workpiece.step",
+      "stl_asset": "job_132/workpiece.stl",
+      "sim_stl_asset": "job_132/workpiece_sim.stl",
+      "vector_json": "job_132/weld_vectors.json",
+      "raw_topology_json": "job_132/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 131.87089149265702
+    },
+    {
+      "id": "job_133",
+      "source_stem": "simple_parallel_ribs_2_123_x_rot115.8",
+      "workpiece_asset": "job_133/workpiece_sim.stl",
+      "path_json": "job_133/path.json",
+      "origin": [
+        266.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_133/workpiece.step",
+      "stl_asset": "job_133/workpiece.stl",
+      "sim_stl_asset": "job_133/workpiece_sim.stl",
+      "vector_json": "job_133/weld_vectors.json",
+      "raw_topology_json": "job_133/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 115.7760633619723
+    },
+    {
+      "id": "job_134",
+      "source_stem": "simple_parallel_ribs_2_124_x_rot93.9",
+      "workpiece_asset": "job_134/workpiece_sim.stl",
+      "path_json": "job_134/path.json",
+      "origin": [
+        268.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_134/workpiece.step",
+      "stl_asset": "job_134/workpiece.stl",
+      "sim_stl_asset": "job_134/workpiece_sim.stl",
+      "vector_json": "job_134/weld_vectors.json",
+      "raw_topology_json": "job_134/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 93.88395133583586
+    },
+    {
+      "id": "job_135",
+      "source_stem": "simple_parallel_ribs_2_125_y_rot90.9",
+      "workpiece_asset": "job_135/workpiece_sim.stl",
+      "path_json": "job_135/path.json",
+      "origin": [
+        270.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_135/workpiece.step",
+      "stl_asset": "job_135/workpiece.stl",
+      "sim_stl_asset": "job_135/workpiece_sim.stl",
+      "vector_json": "job_135/weld_vectors.json",
+      "raw_topology_json": "job_135/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "Y",
+      "rotation_angle_deg": 90.93714449629232
+    },
+    {
+      "id": "job_136",
+      "source_stem": "simple_parallel_ribs_2_126_y_rot170.6",
+      "workpiece_asset": "job_136/workpiece_sim.stl",
+      "path_json": "job_136/path.json",
+      "origin": [
+        272.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_136/workpiece.step",
+      "stl_asset": "job_136/workpiece.stl",
+      "sim_stl_asset": "job_136/workpiece_sim.stl",
+      "vector_json": "job_136/weld_vectors.json",
+      "raw_topology_json": "job_136/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "Y",
+      "rotation_angle_deg": 170.61773726281947
+    },
+    {
+      "id": "job_137",
+      "source_stem": "simple_parallel_ribs_2_127_y_rot95.0",
+      "workpiece_asset": "job_137/workpiece_sim.stl",
+      "path_json": "job_137/path.json",
+      "origin": [
+        274.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_137/workpiece.step",
+      "stl_asset": "job_137/workpiece.stl",
+      "sim_stl_asset": "job_137/workpiece_sim.stl",
+      "vector_json": "job_137/weld_vectors.json",
+      "raw_topology_json": "job_137/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "Y",
+      "rotation_angle_deg": 95.0247380100204
+    },
+    {
+      "id": "job_138",
+      "source_stem": "simple_parallel_ribs_2_128_x_rot83.0",
+      "workpiece_asset": "job_138/workpiece_sim.stl",
+      "path_json": "job_138/path.json",
+      "origin": [
+        276.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_138/workpiece.step",
+      "stl_asset": "job_138/workpiece.stl",
+      "sim_stl_asset": "job_138/workpiece_sim.stl",
+      "vector_json": "job_138/weld_vectors.json",
+      "raw_topology_json": "job_138/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "X",
+      "rotation_angle_deg": 82.9734168520627
+    },
+    {
+      "id": "job_139",
+      "source_stem": "simple_parallel_ribs_2_129_y_rot171.0",
+      "workpiece_asset": "job_139/workpiece_sim.stl",
+      "path_json": "job_139/path.json",
+      "origin": [
+        278.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_139/workpiece.step",
+      "stl_asset": "job_139/workpiece.stl",
+      "sim_stl_asset": "job_139/workpiece_sim.stl",
+      "vector_json": "job_139/weld_vectors.json",
+      "raw_topology_json": "job_139/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 2,
+      "orientation": "Y",
+      "rotation_angle_deg": 171.01345670384893
+    },
+    {
+      "id": "job_140",
+      "source_stem": "simple_parallel_ribs_3_120_y_rot58.1",
+      "workpiece_asset": "job_140/workpiece_sim.stl",
+      "path_json": "job_140/path.json",
+      "origin": [
+        280.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_140/workpiece.step",
+      "stl_asset": "job_140/workpiece.stl",
+      "sim_stl_asset": "job_140/workpiece_sim.stl",
+      "vector_json": "job_140/weld_vectors.json",
+      "raw_topology_json": "job_140/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 58.117044687536534
+    },
+    {
+      "id": "job_141",
+      "source_stem": "simple_parallel_ribs_3_121_y_rot42.0",
+      "workpiece_asset": "job_141/workpiece_sim.stl",
+      "path_json": "job_141/path.json",
+      "origin": [
+        282.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_141/workpiece.step",
+      "stl_asset": "job_141/workpiece.stl",
+      "sim_stl_asset": "job_141/workpiece_sim.stl",
+      "vector_json": "job_141/weld_vectors.json",
+      "raw_topology_json": "job_141/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 41.99452564888168
+    },
+    {
+      "id": "job_142",
+      "source_stem": "simple_parallel_ribs_3_122_y_rot29.6",
+      "workpiece_asset": "job_142/workpiece_sim.stl",
+      "path_json": "job_142/path.json",
+      "origin": [
+        284.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_142/workpiece.step",
+      "stl_asset": "job_142/workpiece.stl",
+      "sim_stl_asset": "job_142/workpiece_sim.stl",
+      "vector_json": "job_142/weld_vectors.json",
+      "raw_topology_json": "job_142/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 29.579519243143956
+    },
+    {
+      "id": "job_143",
+      "source_stem": "simple_parallel_ribs_3_123_y_rot153.1",
+      "workpiece_asset": "job_143/workpiece_sim.stl",
+      "path_json": "job_143/path.json",
+      "origin": [
+        286.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_143/workpiece.step",
+      "stl_asset": "job_143/workpiece.stl",
+      "sim_stl_asset": "job_143/workpiece_sim.stl",
+      "vector_json": "job_143/weld_vectors.json",
+      "raw_topology_json": "job_143/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 153.10726895624435
+    },
+    {
+      "id": "job_144",
+      "source_stem": "simple_parallel_ribs_3_124_x_rot174.0",
+      "workpiece_asset": "job_144/workpiece_sim.stl",
+      "path_json": "job_144/path.json",
+      "origin": [
+        288.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_144/workpiece.step",
+      "stl_asset": "job_144/workpiece.stl",
+      "sim_stl_asset": "job_144/workpiece_sim.stl",
+      "vector_json": "job_144/weld_vectors.json",
+      "raw_topology_json": "job_144/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "X",
+      "rotation_angle_deg": 174.00302197900388
+    },
+    {
+      "id": "job_145",
+      "source_stem": "simple_parallel_ribs_3_125_x_rot94.0",
+      "workpiece_asset": "job_145/workpiece_sim.stl",
+      "path_json": "job_145/path.json",
+      "origin": [
+        290.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_145/workpiece.step",
+      "stl_asset": "job_145/workpiece.stl",
+      "sim_stl_asset": "job_145/workpiece_sim.stl",
+      "vector_json": "job_145/weld_vectors.json",
+      "raw_topology_json": "job_145/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "X",
+      "rotation_angle_deg": 93.9955155179703
+    },
+    {
+      "id": "job_146",
+      "source_stem": "simple_parallel_ribs_3_126_y_rot2.9",
+      "workpiece_asset": "job_146/workpiece_sim.stl",
+      "path_json": "job_146/path.json",
+      "origin": [
+        292.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_146/workpiece.step",
+      "stl_asset": "job_146/workpiece.stl",
+      "sim_stl_asset": "job_146/workpiece_sim.stl",
+      "vector_json": "job_146/weld_vectors.json",
+      "raw_topology_json": "job_146/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 2.8573844310905527
+    },
+    {
+      "id": "job_147",
+      "source_stem": "simple_parallel_ribs_3_127_y_rot81.2",
+      "workpiece_asset": "job_147/workpiece_sim.stl",
+      "path_json": "job_147/path.json",
+      "origin": [
+        294.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_147/workpiece.step",
+      "stl_asset": "job_147/workpiece.stl",
+      "sim_stl_asset": "job_147/workpiece_sim.stl",
+      "vector_json": "job_147/weld_vectors.json",
+      "raw_topology_json": "job_147/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 81.22477549415476
+    },
+    {
+      "id": "job_148",
+      "source_stem": "simple_parallel_ribs_3_128_y_rot166.4",
+      "workpiece_asset": "job_148/workpiece_sim.stl",
+      "path_json": "job_148/path.json",
+      "origin": [
+        296.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_148/workpiece.step",
+      "stl_asset": "job_148/workpiece.stl",
+      "sim_stl_asset": "job_148/workpiece_sim.stl",
+      "vector_json": "job_148/weld_vectors.json",
+      "raw_topology_json": "job_148/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 166.43073561655763
+    },
+    {
+      "id": "job_149",
+      "source_stem": "simple_parallel_ribs_3_129_y_rot97.3",
+      "workpiece_asset": "job_149/workpiece_sim.stl",
+      "path_json": "job_149/path.json",
+      "origin": [
+        298.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_149/workpiece.step",
+      "stl_asset": "job_149/workpiece.stl",
+      "sim_stl_asset": "job_149/workpiece_sim.stl",
+      "vector_json": "job_149/weld_vectors.json",
+      "raw_topology_json": "job_149/raw_weld_topology.json",
+      "structure_type": "parallel_ribs",
+      "rib_count": 3,
+      "orientation": "Y",
+      "rotation_angle_deg": 97.26483226014912
+    },
+    {
+      "id": "job_150",
+      "source_stem": "simple_t_ribs_120_y_rot160.2",
+      "workpiece_asset": "job_150/workpiece_sim.stl",
+      "path_json": "job_150/path.json",
+      "origin": [
+        300.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_150/workpiece.step",
+      "stl_asset": "job_150/workpiece.stl",
+      "sim_stl_asset": "job_150/workpiece_sim.stl",
+      "vector_json": "job_150/weld_vectors.json",
+      "raw_topology_json": "job_150/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 160.23019028181486
+    },
+    {
+      "id": "job_151",
+      "source_stem": "simple_t_ribs_121_y_rot41.9",
+      "workpiece_asset": "job_151/workpiece_sim.stl",
+      "path_json": "job_151/path.json",
+      "origin": [
+        302.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_151/workpiece.step",
+      "stl_asset": "job_151/workpiece.stl",
+      "sim_stl_asset": "job_151/workpiece_sim.stl",
+      "vector_json": "job_151/weld_vectors.json",
+      "raw_topology_json": "job_151/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 41.93074003616742
+    },
+    {
+      "id": "job_152",
+      "source_stem": "simple_t_ribs_122_x_rot159.3",
+      "workpiece_asset": "job_152/workpiece_sim.stl",
+      "path_json": "job_152/path.json",
+      "origin": [
+        304.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_152/workpiece.step",
+      "stl_asset": "job_152/workpiece.stl",
+      "sim_stl_asset": "job_152/workpiece_sim.stl",
+      "vector_json": "job_152/weld_vectors.json",
+      "raw_topology_json": "job_152/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 159.3046502710418
+    },
+    {
+      "id": "job_153",
+      "source_stem": "simple_t_ribs_123_x_rot68.7",
+      "workpiece_asset": "job_153/workpiece_sim.stl",
+      "path_json": "job_153/path.json",
+      "origin": [
+        306.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_153/workpiece.step",
+      "stl_asset": "job_153/workpiece.stl",
+      "sim_stl_asset": "job_153/workpiece_sim.stl",
+      "vector_json": "job_153/weld_vectors.json",
+      "raw_topology_json": "job_153/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 68.73823723580578
+    },
+    {
+      "id": "job_154",
+      "source_stem": "simple_t_ribs_124_y_rot171.4",
+      "workpiece_asset": "job_154/workpiece_sim.stl",
+      "path_json": "job_154/path.json",
+      "origin": [
+        308.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_154/workpiece.step",
+      "stl_asset": "job_154/workpiece.stl",
+      "sim_stl_asset": "job_154/workpiece_sim.stl",
+      "vector_json": "job_154/weld_vectors.json",
+      "raw_topology_json": "job_154/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 171.39425532267268
+    },
+    {
+      "id": "job_155",
+      "source_stem": "simple_t_ribs_125_x_rot148.2",
+      "workpiece_asset": "job_155/workpiece_sim.stl",
+      "path_json": "job_155/path.json",
+      "origin": [
+        310.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_155/workpiece.step",
+      "stl_asset": "job_155/workpiece.stl",
+      "sim_stl_asset": "job_155/workpiece_sim.stl",
+      "vector_json": "job_155/weld_vectors.json",
+      "raw_topology_json": "job_155/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 148.2455979250424
+    },
+    {
+      "id": "job_156",
+      "source_stem": "simple_t_ribs_126_y_rot164.4",
+      "workpiece_asset": "job_156/workpiece_sim.stl",
+      "path_json": "job_156/path.json",
+      "origin": [
+        312.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_156/workpiece.step",
+      "stl_asset": "job_156/workpiece.stl",
+      "sim_stl_asset": "job_156/workpiece_sim.stl",
+      "vector_json": "job_156/weld_vectors.json",
+      "raw_topology_json": "job_156/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 164.41690761097058
+    },
+    {
+      "id": "job_157",
+      "source_stem": "simple_t_ribs_127_x_rot98.9",
+      "workpiece_asset": "job_157/workpiece_sim.stl",
+      "path_json": "job_157/path.json",
+      "origin": [
+        314.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_157/workpiece.step",
+      "stl_asset": "job_157/workpiece.stl",
+      "sim_stl_asset": "job_157/workpiece_sim.stl",
+      "vector_json": "job_157/weld_vectors.json",
+      "raw_topology_json": "job_157/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 98.89466484392548
+    },
+    {
+      "id": "job_158",
+      "source_stem": "simple_t_ribs_128_y_rot61.6",
+      "workpiece_asset": "job_158/workpiece_sim.stl",
+      "path_json": "job_158/path.json",
+      "origin": [
+        316.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_158/workpiece.step",
+      "stl_asset": "job_158/workpiece.stl",
+      "sim_stl_asset": "job_158/workpiece_sim.stl",
+      "vector_json": "job_158/weld_vectors.json",
+      "raw_topology_json": "job_158/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 61.63526335817931
+    },
+    {
+      "id": "job_159",
+      "source_stem": "simple_t_ribs_129_x_rot127.1",
+      "workpiece_asset": "job_159/workpiece_sim.stl",
+      "path_json": "job_159/path.json",
+      "origin": [
+        318.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_159/workpiece.step",
+      "stl_asset": "job_159/workpiece.stl",
+      "sim_stl_asset": "job_159/workpiece_sim.stl",
+      "vector_json": "job_159/weld_vectors.json",
+      "raw_topology_json": "job_159/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 127.09582595758502
+    },
+    {
+      "id": "job_160",
+      "source_stem": "simple_t_ribs_130_x_rot23.4",
+      "workpiece_asset": "job_160/workpiece_sim.stl",
+      "path_json": "job_160/path.json",
+      "origin": [
+        320.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_160/workpiece.step",
+      "stl_asset": "job_160/workpiece.stl",
+      "sim_stl_asset": "job_160/workpiece_sim.stl",
+      "vector_json": "job_160/weld_vectors.json",
+      "raw_topology_json": "job_160/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 23.37721215949886
+    },
+    {
+      "id": "job_161",
+      "source_stem": "simple_t_ribs_131_y_rot160.1",
+      "workpiece_asset": "job_161/workpiece_sim.stl",
+      "path_json": "job_161/path.json",
+      "origin": [
+        322.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_161/workpiece.step",
+      "stl_asset": "job_161/workpiece.stl",
+      "sim_stl_asset": "job_161/workpiece_sim.stl",
+      "vector_json": "job_161/weld_vectors.json",
+      "raw_topology_json": "job_161/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 160.08967424690292
+    },
+    {
+      "id": "job_162",
+      "source_stem": "simple_t_ribs_132_y_rot171.8",
+      "workpiece_asset": "job_162/workpiece_sim.stl",
+      "path_json": "job_162/path.json",
+      "origin": [
+        324.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_162/workpiece.step",
+      "stl_asset": "job_162/workpiece.stl",
+      "sim_stl_asset": "job_162/workpiece_sim.stl",
+      "vector_json": "job_162/weld_vectors.json",
+      "raw_topology_json": "job_162/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 171.79514766773175
+    },
+    {
+      "id": "job_163",
+      "source_stem": "simple_t_ribs_133_x_rot157.4",
+      "workpiece_asset": "job_163/workpiece_sim.stl",
+      "path_json": "job_163/path.json",
+      "origin": [
+        326.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_163/workpiece.step",
+      "stl_asset": "job_163/workpiece.stl",
+      "sim_stl_asset": "job_163/workpiece_sim.stl",
+      "vector_json": "job_163/weld_vectors.json",
+      "raw_topology_json": "job_163/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 157.43298030775443
+    },
+    {
+      "id": "job_164",
+      "source_stem": "simple_t_ribs_134_y_rot20.7",
+      "workpiece_asset": "job_164/workpiece_sim.stl",
+      "path_json": "job_164/path.json",
+      "origin": [
+        328.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_164/workpiece.step",
+      "stl_asset": "job_164/workpiece.stl",
+      "sim_stl_asset": "job_164/workpiece_sim.stl",
+      "vector_json": "job_164/weld_vectors.json",
+      "raw_topology_json": "job_164/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 20.71329650180495
+    },
+    {
+      "id": "job_165",
+      "source_stem": "simple_t_ribs_135_y_rot79.5",
+      "workpiece_asset": "job_165/workpiece_sim.stl",
+      "path_json": "job_165/path.json",
+      "origin": [
+        330.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_165/workpiece.step",
+      "stl_asset": "job_165/workpiece.stl",
+      "sim_stl_asset": "job_165/workpiece_sim.stl",
+      "vector_json": "job_165/weld_vectors.json",
+      "raw_topology_json": "job_165/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 79.49086038065661
+    },
+    {
+      "id": "job_166",
+      "source_stem": "simple_t_ribs_136_x_rot30.0",
+      "workpiece_asset": "job_166/workpiece_sim.stl",
+      "path_json": "job_166/path.json",
+      "origin": [
+        332.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_166/workpiece.step",
+      "stl_asset": "job_166/workpiece.stl",
+      "sim_stl_asset": "job_166/workpiece_sim.stl",
+      "vector_json": "job_166/weld_vectors.json",
+      "raw_topology_json": "job_166/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 30.03427306555936
+    },
+    {
+      "id": "job_167",
+      "source_stem": "simple_t_ribs_137_y_rot161.7",
+      "workpiece_asset": "job_167/workpiece_sim.stl",
+      "path_json": "job_167/path.json",
+      "origin": [
+        334.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_167/workpiece.step",
+      "stl_asset": "job_167/workpiece.stl",
+      "sim_stl_asset": "job_167/workpiece_sim.stl",
+      "vector_json": "job_167/weld_vectors.json",
+      "raw_topology_json": "job_167/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 161.69051197606527
+    },
+    {
+      "id": "job_168",
+      "source_stem": "simple_t_ribs_138_y_rot52.6",
+      "workpiece_asset": "job_168/workpiece_sim.stl",
+      "path_json": "job_168/path.json",
+      "origin": [
+        336.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_168/workpiece.step",
+      "stl_asset": "job_168/workpiece.stl",
+      "sim_stl_asset": "job_168/workpiece_sim.stl",
+      "vector_json": "job_168/weld_vectors.json",
+      "raw_topology_json": "job_168/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 52.59203444549601
+    },
+    {
+      "id": "job_169",
+      "source_stem": "simple_t_ribs_139_y_rot139.7",
+      "workpiece_asset": "job_169/workpiece_sim.stl",
+      "path_json": "job_169/path.json",
+      "origin": [
+        338.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_169/workpiece.step",
+      "stl_asset": "job_169/workpiece.stl",
+      "sim_stl_asset": "job_169/workpiece_sim.stl",
+      "vector_json": "job_169/weld_vectors.json",
+      "raw_topology_json": "job_169/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 139.6576858360044
+    },
+    {
+      "id": "job_170",
+      "source_stem": "simple_t_ribs_140_y_rot11.4",
+      "workpiece_asset": "job_170/workpiece_sim.stl",
+      "path_json": "job_170/path.json",
+      "origin": [
+        340.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_170/workpiece.step",
+      "stl_asset": "job_170/workpiece.stl",
+      "sim_stl_asset": "job_170/workpiece_sim.stl",
+      "vector_json": "job_170/weld_vectors.json",
+      "raw_topology_json": "job_170/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 11.371026167265848
+    },
+    {
+      "id": "job_171",
+      "source_stem": "simple_t_ribs_141_y_rot84.9",
+      "workpiece_asset": "job_171/workpiece_sim.stl",
+      "path_json": "job_171/path.json",
+      "origin": [
+        342.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_171/workpiece.step",
+      "stl_asset": "job_171/workpiece.stl",
+      "sim_stl_asset": "job_171/workpiece_sim.stl",
+      "vector_json": "job_171/weld_vectors.json",
+      "raw_topology_json": "job_171/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 84.90409888675903
+    },
+    {
+      "id": "job_172",
+      "source_stem": "simple_t_ribs_142_y_rot108.6",
+      "workpiece_asset": "job_172/workpiece_sim.stl",
+      "path_json": "job_172/path.json",
+      "origin": [
+        344.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_172/workpiece.step",
+      "stl_asset": "job_172/workpiece.stl",
+      "sim_stl_asset": "job_172/workpiece_sim.stl",
+      "vector_json": "job_172/weld_vectors.json",
+      "raw_topology_json": "job_172/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 108.56776332787943
+    },
+    {
+      "id": "job_173",
+      "source_stem": "simple_t_ribs_143_x_rot172.6",
+      "workpiece_asset": "job_173/workpiece_sim.stl",
+      "path_json": "job_173/path.json",
+      "origin": [
+        346.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_173/workpiece.step",
+      "stl_asset": "job_173/workpiece.stl",
+      "sim_stl_asset": "job_173/workpiece_sim.stl",
+      "vector_json": "job_173/weld_vectors.json",
+      "raw_topology_json": "job_173/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 172.63320898380738
+    },
+    {
+      "id": "job_174",
+      "source_stem": "simple_t_ribs_144_x_rot88.3",
+      "workpiece_asset": "job_174/workpiece_sim.stl",
+      "path_json": "job_174/path.json",
+      "origin": [
+        348.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_174/workpiece.step",
+      "stl_asset": "job_174/workpiece.stl",
+      "sim_stl_asset": "job_174/workpiece_sim.stl",
+      "vector_json": "job_174/weld_vectors.json",
+      "raw_topology_json": "job_174/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 88.30135250659377
+    },
+    {
+      "id": "job_175",
+      "source_stem": "simple_t_ribs_145_x_rot47.7",
+      "workpiece_asset": "job_175/workpiece_sim.stl",
+      "path_json": "job_175/path.json",
+      "origin": [
+        350.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_175/workpiece.step",
+      "stl_asset": "job_175/workpiece.stl",
+      "sim_stl_asset": "job_175/workpiece_sim.stl",
+      "vector_json": "job_175/weld_vectors.json",
+      "raw_topology_json": "job_175/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 47.72058665772583
+    },
+    {
+      "id": "job_176",
+      "source_stem": "simple_t_ribs_146_y_rot136.0",
+      "workpiece_asset": "job_176/workpiece_sim.stl",
+      "path_json": "job_176/path.json",
+      "origin": [
+        352.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_176/workpiece.step",
+      "stl_asset": "job_176/workpiece.stl",
+      "sim_stl_asset": "job_176/workpiece_sim.stl",
+      "vector_json": "job_176/weld_vectors.json",
+      "raw_topology_json": "job_176/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 135.95788277487875
+    },
+    {
+      "id": "job_177",
+      "source_stem": "simple_t_ribs_147_y_rot179.4",
+      "workpiece_asset": "job_177/workpiece_sim.stl",
+      "path_json": "job_177/path.json",
+      "origin": [
+        354.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_177/workpiece.step",
+      "stl_asset": "job_177/workpiece.stl",
+      "sim_stl_asset": "job_177/workpiece_sim.stl",
+      "vector_json": "job_177/weld_vectors.json",
+      "raw_topology_json": "job_177/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 179.3830454388004
+    },
+    {
+      "id": "job_178",
+      "source_stem": "simple_t_ribs_148_y_rot32.1",
+      "workpiece_asset": "job_178/workpiece_sim.stl",
+      "path_json": "job_178/path.json",
+      "origin": [
+        356.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_178/workpiece.step",
+      "stl_asset": "job_178/workpiece.stl",
+      "sim_stl_asset": "job_178/workpiece_sim.stl",
+      "vector_json": "job_178/weld_vectors.json",
+      "raw_topology_json": "job_178/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 32.147026527250105
+    },
+    {
+      "id": "job_179",
+      "source_stem": "simple_t_ribs_149_x_rot58.9",
+      "workpiece_asset": "job_179/workpiece_sim.stl",
+      "path_json": "job_179/path.json",
+      "origin": [
+        358.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_179/workpiece.step",
+      "stl_asset": "job_179/workpiece.stl",
+      "sim_stl_asset": "job_179/workpiece_sim.stl",
+      "vector_json": "job_179/weld_vectors.json",
+      "raw_topology_json": "job_179/raw_weld_topology.json",
+      "structure_type": "t_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 58.86398036275901
+    },
+    {
+      "id": "job_180",
+      "source_stem": "simple_sandwich_ribs_120_y_rot141.5",
+      "workpiece_asset": "job_180/workpiece_sim.stl",
+      "path_json": "job_180/path.json",
+      "origin": [
+        360.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_180/workpiece.step",
+      "stl_asset": "job_180/workpiece.stl",
+      "sim_stl_asset": "job_180/workpiece_sim.stl",
+      "vector_json": "job_180/weld_vectors.json",
+      "raw_topology_json": "job_180/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 141.46715794627613
+    },
+    {
+      "id": "job_181",
+      "source_stem": "simple_sandwich_ribs_121_y_rot81.4",
+      "workpiece_asset": "job_181/workpiece_sim.stl",
+      "path_json": "job_181/path.json",
+      "origin": [
+        362.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_181/workpiece.step",
+      "stl_asset": "job_181/workpiece.stl",
+      "sim_stl_asset": "job_181/workpiece_sim.stl",
+      "vector_json": "job_181/weld_vectors.json",
+      "raw_topology_json": "job_181/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 81.37485319561328
+    },
+    {
+      "id": "job_182",
+      "source_stem": "simple_sandwich_ribs_122_y_rot18.5",
+      "workpiece_asset": "job_182/workpiece_sim.stl",
+      "path_json": "job_182/path.json",
+      "origin": [
+        364.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_182/workpiece.step",
+      "stl_asset": "job_182/workpiece.stl",
+      "sim_stl_asset": "job_182/workpiece_sim.stl",
+      "vector_json": "job_182/weld_vectors.json",
+      "raw_topology_json": "job_182/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 18.549349613823388
+    },
+    {
+      "id": "job_183",
+      "source_stem": "simple_sandwich_ribs_123_y_rot161.5",
+      "workpiece_asset": "job_183/workpiece_sim.stl",
+      "path_json": "job_183/path.json",
+      "origin": [
+        366.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_183/workpiece.step",
+      "stl_asset": "job_183/workpiece.stl",
+      "sim_stl_asset": "job_183/workpiece_sim.stl",
+      "vector_json": "job_183/weld_vectors.json",
+      "raw_topology_json": "job_183/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 161.45110242380665
+    },
+    {
+      "id": "job_184",
+      "source_stem": "simple_sandwich_ribs_124_x_rot77.7",
+      "workpiece_asset": "job_184/workpiece_sim.stl",
+      "path_json": "job_184/path.json",
+      "origin": [
+        368.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_184/workpiece.step",
+      "stl_asset": "job_184/workpiece.stl",
+      "sim_stl_asset": "job_184/workpiece_sim.stl",
+      "vector_json": "job_184/weld_vectors.json",
+      "raw_topology_json": "job_184/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 77.6776609477875
+    },
+    {
+      "id": "job_185",
+      "source_stem": "simple_sandwich_ribs_125_y_rot175.1",
+      "workpiece_asset": "job_185/workpiece_sim.stl",
+      "path_json": "job_185/path.json",
+      "origin": [
+        370.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_185/workpiece.step",
+      "stl_asset": "job_185/workpiece.stl",
+      "sim_stl_asset": "job_185/workpiece_sim.stl",
+      "vector_json": "job_185/weld_vectors.json",
+      "raw_topology_json": "job_185/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 175.13577433128145
+    },
+    {
+      "id": "job_186",
+      "source_stem": "simple_sandwich_ribs_126_y_rot55.7",
+      "workpiece_asset": "job_186/workpiece_sim.stl",
+      "path_json": "job_186/path.json",
+      "origin": [
+        372.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_186/workpiece.step",
+      "stl_asset": "job_186/workpiece.stl",
+      "sim_stl_asset": "job_186/workpiece_sim.stl",
+      "vector_json": "job_186/weld_vectors.json",
+      "raw_topology_json": "job_186/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 55.727456453154986
+    },
+    {
+      "id": "job_187",
+      "source_stem": "simple_sandwich_ribs_127_y_rot124.5",
+      "workpiece_asset": "job_187/workpiece_sim.stl",
+      "path_json": "job_187/path.json",
+      "origin": [
+        374.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_187/workpiece.step",
+      "stl_asset": "job_187/workpiece.stl",
+      "sim_stl_asset": "job_187/workpiece_sim.stl",
+      "vector_json": "job_187/weld_vectors.json",
+      "raw_topology_json": "job_187/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 124.51390254299828
+    },
+    {
+      "id": "job_188",
+      "source_stem": "simple_sandwich_ribs_128_y_rot91.5",
+      "workpiece_asset": "job_188/workpiece_sim.stl",
+      "path_json": "job_188/path.json",
+      "origin": [
+        376.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_188/workpiece.step",
+      "stl_asset": "job_188/workpiece.stl",
+      "sim_stl_asset": "job_188/workpiece_sim.stl",
+      "vector_json": "job_188/weld_vectors.json",
+      "raw_topology_json": "job_188/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 91.52223331817824
+    },
+    {
+      "id": "job_189",
+      "source_stem": "simple_sandwich_ribs_129_x_rot43.7",
+      "workpiece_asset": "job_189/workpiece_sim.stl",
+      "path_json": "job_189/path.json",
+      "origin": [
+        378.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_189/workpiece.step",
+      "stl_asset": "job_189/workpiece.stl",
+      "sim_stl_asset": "job_189/workpiece_sim.stl",
+      "vector_json": "job_189/weld_vectors.json",
+      "raw_topology_json": "job_189/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 43.71187292691178
+    },
+    {
+      "id": "job_190",
+      "source_stem": "simple_sandwich_ribs_130_y_rot92.0",
+      "workpiece_asset": "job_190/workpiece_sim.stl",
+      "path_json": "job_190/path.json",
+      "origin": [
+        380.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_190/workpiece.step",
+      "stl_asset": "job_190/workpiece.stl",
+      "sim_stl_asset": "job_190/workpiece_sim.stl",
+      "vector_json": "job_190/weld_vectors.json",
+      "raw_topology_json": "job_190/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 91.99806604730112
+    },
+    {
+      "id": "job_191",
+      "source_stem": "simple_sandwich_ribs_131_y_rot8.1",
+      "workpiece_asset": "job_191/workpiece_sim.stl",
+      "path_json": "job_191/path.json",
+      "origin": [
+        382.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_191/workpiece.step",
+      "stl_asset": "job_191/workpiece.stl",
+      "sim_stl_asset": "job_191/workpiece_sim.stl",
+      "vector_json": "job_191/weld_vectors.json",
+      "raw_topology_json": "job_191/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 8.118812512613555
+    },
+    {
+      "id": "job_192",
+      "source_stem": "simple_sandwich_ribs_132_y_rot8.7",
+      "workpiece_asset": "job_192/workpiece_sim.stl",
+      "path_json": "job_192/path.json",
+      "origin": [
+        384.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_192/workpiece.step",
+      "stl_asset": "job_192/workpiece.stl",
+      "sim_stl_asset": "job_192/workpiece_sim.stl",
+      "vector_json": "job_192/weld_vectors.json",
+      "raw_topology_json": "job_192/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 8.741742306323738
+    },
+    {
+      "id": "job_193",
+      "source_stem": "simple_sandwich_ribs_133_x_rot62.3",
+      "workpiece_asset": "job_193/workpiece_sim.stl",
+      "path_json": "job_193/path.json",
+      "origin": [
+        386.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_193/workpiece.step",
+      "stl_asset": "job_193/workpiece.stl",
+      "sim_stl_asset": "job_193/workpiece_sim.stl",
+      "vector_json": "job_193/weld_vectors.json",
+      "raw_topology_json": "job_193/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 62.26370145690031
+    },
+    {
+      "id": "job_194",
+      "source_stem": "simple_sandwich_ribs_134_y_rot117.4",
+      "workpiece_asset": "job_194/workpiece_sim.stl",
+      "path_json": "job_194/path.json",
+      "origin": [
+        388.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_194/workpiece.step",
+      "stl_asset": "job_194/workpiece.stl",
+      "sim_stl_asset": "job_194/workpiece_sim.stl",
+      "vector_json": "job_194/weld_vectors.json",
+      "raw_topology_json": "job_194/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 117.3891986510319
+    },
+    {
+      "id": "job_195",
+      "source_stem": "simple_sandwich_ribs_135_y_rot13.5",
+      "workpiece_asset": "job_195/workpiece_sim.stl",
+      "path_json": "job_195/path.json",
+      "origin": [
+        390.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_195/workpiece.step",
+      "stl_asset": "job_195/workpiece.stl",
+      "sim_stl_asset": "job_195/workpiece_sim.stl",
+      "vector_json": "job_195/weld_vectors.json",
+      "raw_topology_json": "job_195/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 13.533850546043384
+    },
+    {
+      "id": "job_196",
+      "source_stem": "simple_sandwich_ribs_136_x_rot119.3",
+      "workpiece_asset": "job_196/workpiece_sim.stl",
+      "path_json": "job_196/path.json",
+      "origin": [
+        392.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_196/workpiece.step",
+      "stl_asset": "job_196/workpiece.stl",
+      "sim_stl_asset": "job_196/workpiece_sim.stl",
+      "vector_json": "job_196/weld_vectors.json",
+      "raw_topology_json": "job_196/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 119.30008116110052
+    },
+    {
+      "id": "job_197",
+      "source_stem": "simple_sandwich_ribs_137_y_rot168.0",
+      "workpiece_asset": "job_197/workpiece_sim.stl",
+      "path_json": "job_197/path.json",
+      "origin": [
+        394.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_197/workpiece.step",
+      "stl_asset": "job_197/workpiece.stl",
+      "sim_stl_asset": "job_197/workpiece_sim.stl",
+      "vector_json": "job_197/weld_vectors.json",
+      "raw_topology_json": "job_197/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 167.99956037166314
+    },
+    {
+      "id": "job_198",
+      "source_stem": "simple_sandwich_ribs_138_x_rot91.0",
+      "workpiece_asset": "job_198/workpiece_sim.stl",
+      "path_json": "job_198/path.json",
+      "origin": [
+        396.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_198/workpiece.step",
+      "stl_asset": "job_198/workpiece.stl",
+      "sim_stl_asset": "job_198/workpiece_sim.stl",
+      "vector_json": "job_198/weld_vectors.json",
+      "raw_topology_json": "job_198/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 91.03957882850918
+    },
+    {
+      "id": "job_199",
+      "source_stem": "simple_sandwich_ribs_139_y_rot75.0",
+      "workpiece_asset": "job_199/workpiece_sim.stl",
+      "path_json": "job_199/path.json",
+      "origin": [
+        398.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_199/workpiece.step",
+      "stl_asset": "job_199/workpiece.stl",
+      "sim_stl_asset": "job_199/workpiece_sim.stl",
+      "vector_json": "job_199/weld_vectors.json",
+      "raw_topology_json": "job_199/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 75.00665894587434
+    },
+    {
+      "id": "job_200",
+      "source_stem": "simple_sandwich_ribs_140_y_rot91.3",
+      "workpiece_asset": "job_200/workpiece_sim.stl",
+      "path_json": "job_200/path.json",
+      "origin": [
+        400.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_200/workpiece.step",
+      "stl_asset": "job_200/workpiece.stl",
+      "sim_stl_asset": "job_200/workpiece_sim.stl",
+      "vector_json": "job_200/weld_vectors.json",
+      "raw_topology_json": "job_200/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 91.32789681524183
+    },
+    {
+      "id": "job_201",
+      "source_stem": "simple_sandwich_ribs_141_x_rot50.4",
+      "workpiece_asset": "job_201/workpiece_sim.stl",
+      "path_json": "job_201/path.json",
+      "origin": [
+        402.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_201/workpiece.step",
+      "stl_asset": "job_201/workpiece.stl",
+      "sim_stl_asset": "job_201/workpiece_sim.stl",
+      "vector_json": "job_201/weld_vectors.json",
+      "raw_topology_json": "job_201/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 50.41803224784653
+    },
+    {
+      "id": "job_202",
+      "source_stem": "simple_sandwich_ribs_142_y_rot85.8",
+      "workpiece_asset": "job_202/workpiece_sim.stl",
+      "path_json": "job_202/path.json",
+      "origin": [
+        404.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_202/workpiece.step",
+      "stl_asset": "job_202/workpiece.stl",
+      "sim_stl_asset": "job_202/workpiece_sim.stl",
+      "vector_json": "job_202/weld_vectors.json",
+      "raw_topology_json": "job_202/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 85.78136297742104
+    },
+    {
+      "id": "job_203",
+      "source_stem": "simple_sandwich_ribs_143_x_rot138.2",
+      "workpiece_asset": "job_203/workpiece_sim.stl",
+      "path_json": "job_203/path.json",
+      "origin": [
+        406.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_203/workpiece.step",
+      "stl_asset": "job_203/workpiece.stl",
+      "sim_stl_asset": "job_203/workpiece_sim.stl",
+      "vector_json": "job_203/weld_vectors.json",
+      "raw_topology_json": "job_203/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 138.18171542709158
+    },
+    {
+      "id": "job_204",
+      "source_stem": "simple_sandwich_ribs_144_x_rot11.2",
+      "workpiece_asset": "job_204/workpiece_sim.stl",
+      "path_json": "job_204/path.json",
+      "origin": [
+        408.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_204/workpiece.step",
+      "stl_asset": "job_204/workpiece.stl",
+      "sim_stl_asset": "job_204/workpiece_sim.stl",
+      "vector_json": "job_204/weld_vectors.json",
+      "raw_topology_json": "job_204/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 11.225775683543732
+    },
+    {
+      "id": "job_205",
+      "source_stem": "simple_sandwich_ribs_145_y_rot5.5",
+      "workpiece_asset": "job_205/workpiece_sim.stl",
+      "path_json": "job_205/path.json",
+      "origin": [
+        410.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_205/workpiece.step",
+      "stl_asset": "job_205/workpiece.stl",
+      "sim_stl_asset": "job_205/workpiece_sim.stl",
+      "vector_json": "job_205/weld_vectors.json",
+      "raw_topology_json": "job_205/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 5.486454148926874
+    },
+    {
+      "id": "job_206",
+      "source_stem": "simple_sandwich_ribs_146_y_rot83.9",
+      "workpiece_asset": "job_206/workpiece_sim.stl",
+      "path_json": "job_206/path.json",
+      "origin": [
+        412.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_206/workpiece.step",
+      "stl_asset": "job_206/workpiece.stl",
+      "sim_stl_asset": "job_206/workpiece_sim.stl",
+      "vector_json": "job_206/weld_vectors.json",
+      "raw_topology_json": "job_206/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 83.86176037760978
+    },
+    {
+      "id": "job_207",
+      "source_stem": "simple_sandwich_ribs_147_x_rot21.9",
+      "workpiece_asset": "job_207/workpiece_sim.stl",
+      "path_json": "job_207/path.json",
+      "origin": [
+        414.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_207/workpiece.step",
+      "stl_asset": "job_207/workpiece.stl",
+      "sim_stl_asset": "job_207/workpiece_sim.stl",
+      "vector_json": "job_207/weld_vectors.json",
+      "raw_topology_json": "job_207/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 21.87974127240139
+    },
+    {
+      "id": "job_208",
+      "source_stem": "simple_sandwich_ribs_148_x_rot77.4",
+      "workpiece_asset": "job_208/workpiece_sim.stl",
+      "path_json": "job_208/path.json",
+      "origin": [
+        416.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_208/workpiece.step",
+      "stl_asset": "job_208/workpiece.stl",
+      "sim_stl_asset": "job_208/workpiece_sim.stl",
+      "vector_json": "job_208/weld_vectors.json",
+      "raw_topology_json": "job_208/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 77.39036603925719
+    },
+    {
+      "id": "job_209",
+      "source_stem": "simple_sandwich_ribs_149_x_rot88.5",
+      "workpiece_asset": "job_209/workpiece_sim.stl",
+      "path_json": "job_209/path.json",
+      "origin": [
+        418.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_209/workpiece.step",
+      "stl_asset": "job_209/workpiece.stl",
+      "sim_stl_asset": "job_209/workpiece_sim.stl",
+      "vector_json": "job_209/weld_vectors.json",
+      "raw_topology_json": "job_209/raw_weld_topology.json",
+      "structure_type": "sandwich_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 88.45209618303998
+    },
+    {
+      "id": "job_210",
+      "source_stem": "simple_grid_ribs_120_y_rot98.5",
+      "workpiece_asset": "job_210/workpiece_sim.stl",
+      "path_json": "job_210/path.json",
+      "origin": [
+        420.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_210/workpiece.step",
+      "stl_asset": "job_210/workpiece.stl",
+      "sim_stl_asset": "job_210/workpiece_sim.stl",
+      "vector_json": "job_210/weld_vectors.json",
+      "raw_topology_json": "job_210/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 98.5153957181658
+    },
+    {
+      "id": "job_211",
+      "source_stem": "simple_grid_ribs_121_x_rot17.9",
+      "workpiece_asset": "job_211/workpiece_sim.stl",
+      "path_json": "job_211/path.json",
+      "origin": [
+        422.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_211/workpiece.step",
+      "stl_asset": "job_211/workpiece.stl",
+      "sim_stl_asset": "job_211/workpiece_sim.stl",
+      "vector_json": "job_211/weld_vectors.json",
+      "raw_topology_json": "job_211/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 17.87896563464664
+    },
+    {
+      "id": "job_212",
+      "source_stem": "simple_grid_ribs_122_y_rot93.5",
+      "workpiece_asset": "job_212/workpiece_sim.stl",
+      "path_json": "job_212/path.json",
+      "origin": [
+        424.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_212/workpiece.step",
+      "stl_asset": "job_212/workpiece.stl",
+      "sim_stl_asset": "job_212/workpiece_sim.stl",
+      "vector_json": "job_212/weld_vectors.json",
+      "raw_topology_json": "job_212/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 93.45705342467267
+    },
+    {
+      "id": "job_213",
+      "source_stem": "simple_grid_ribs_123_x_rot12.2",
+      "workpiece_asset": "job_213/workpiece_sim.stl",
+      "path_json": "job_213/path.json",
+      "origin": [
+        426.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_213/workpiece.step",
+      "stl_asset": "job_213/workpiece.stl",
+      "sim_stl_asset": "job_213/workpiece_sim.stl",
+      "vector_json": "job_213/weld_vectors.json",
+      "raw_topology_json": "job_213/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 12.18003603633893
+    },
+    {
+      "id": "job_214",
+      "source_stem": "simple_grid_ribs_124_y_rot108.2",
+      "workpiece_asset": "job_214/workpiece_sim.stl",
+      "path_json": "job_214/path.json",
+      "origin": [
+        428.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_214/workpiece.step",
+      "stl_asset": "job_214/workpiece.stl",
+      "sim_stl_asset": "job_214/workpiece_sim.stl",
+      "vector_json": "job_214/weld_vectors.json",
+      "raw_topology_json": "job_214/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 108.23006860947639
+    },
+    {
+      "id": "job_215",
+      "source_stem": "simple_grid_ribs_125_y_rot147.5",
+      "workpiece_asset": "job_215/workpiece_sim.stl",
+      "path_json": "job_215/path.json",
+      "origin": [
+        430.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_215/workpiece.step",
+      "stl_asset": "job_215/workpiece.stl",
+      "sim_stl_asset": "job_215/workpiece_sim.stl",
+      "vector_json": "job_215/weld_vectors.json",
+      "raw_topology_json": "job_215/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 147.47888929650836
+    },
+    {
+      "id": "job_216",
+      "source_stem": "simple_grid_ribs_126_y_rot88.2",
+      "workpiece_asset": "job_216/workpiece_sim.stl",
+      "path_json": "job_216/path.json",
+      "origin": [
+        432.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_216/workpiece.step",
+      "stl_asset": "job_216/workpiece.stl",
+      "sim_stl_asset": "job_216/workpiece_sim.stl",
+      "vector_json": "job_216/weld_vectors.json",
+      "raw_topology_json": "job_216/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 88.1619841208135
+    },
+    {
+      "id": "job_217",
+      "source_stem": "simple_grid_ribs_127_x_rot8.8",
+      "workpiece_asset": "job_217/workpiece_sim.stl",
+      "path_json": "job_217/path.json",
+      "origin": [
+        434.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_217/workpiece.step",
+      "stl_asset": "job_217/workpiece.stl",
+      "sim_stl_asset": "job_217/workpiece_sim.stl",
+      "vector_json": "job_217/weld_vectors.json",
+      "raw_topology_json": "job_217/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 8.768476888080452
+    },
+    {
+      "id": "job_218",
+      "source_stem": "simple_grid_ribs_128_y_rot147.8",
+      "workpiece_asset": "job_218/workpiece_sim.stl",
+      "path_json": "job_218/path.json",
+      "origin": [
+        436.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_218/workpiece.step",
+      "stl_asset": "job_218/workpiece.stl",
+      "sim_stl_asset": "job_218/workpiece_sim.stl",
+      "vector_json": "job_218/weld_vectors.json",
+      "raw_topology_json": "job_218/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 147.8302056555606
+    },
+    {
+      "id": "job_219",
+      "source_stem": "simple_grid_ribs_129_x_rot170.5",
+      "workpiece_asset": "job_219/workpiece_sim.stl",
+      "path_json": "job_219/path.json",
+      "origin": [
+        438.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_219/workpiece.step",
+      "stl_asset": "job_219/workpiece.stl",
+      "sim_stl_asset": "job_219/workpiece_sim.stl",
+      "vector_json": "job_219/weld_vectors.json",
+      "raw_topology_json": "job_219/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 170.5084075510484
+    },
+    {
+      "id": "job_220",
+      "source_stem": "simple_grid_ribs_130_x_rot84.9",
+      "workpiece_asset": "job_220/workpiece_sim.stl",
+      "path_json": "job_220/path.json",
+      "origin": [
+        440.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_220/workpiece.step",
+      "stl_asset": "job_220/workpiece.stl",
+      "sim_stl_asset": "job_220/workpiece_sim.stl",
+      "vector_json": "job_220/weld_vectors.json",
+      "raw_topology_json": "job_220/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 84.938241439583
+    },
+    {
+      "id": "job_221",
+      "source_stem": "simple_grid_ribs_131_x_rot179.0",
+      "workpiece_asset": "job_221/workpiece_sim.stl",
+      "path_json": "job_221/path.json",
+      "origin": [
+        442.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_221/workpiece.step",
+      "stl_asset": "job_221/workpiece.stl",
+      "sim_stl_asset": "job_221/workpiece_sim.stl",
+      "vector_json": "job_221/weld_vectors.json",
+      "raw_topology_json": "job_221/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 178.98937209364274
+    },
+    {
+      "id": "job_222",
+      "source_stem": "simple_grid_ribs_132_y_rot163.5",
+      "workpiece_asset": "job_222/workpiece_sim.stl",
+      "path_json": "job_222/path.json",
+      "origin": [
+        444.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_222/workpiece.step",
+      "stl_asset": "job_222/workpiece.stl",
+      "sim_stl_asset": "job_222/workpiece_sim.stl",
+      "vector_json": "job_222/weld_vectors.json",
+      "raw_topology_json": "job_222/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 163.54281718302204
+    },
+    {
+      "id": "job_223",
+      "source_stem": "simple_grid_ribs_133_x_rot85.8",
+      "workpiece_asset": "job_223/workpiece_sim.stl",
+      "path_json": "job_223/path.json",
+      "origin": [
+        446.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_223/workpiece.step",
+      "stl_asset": "job_223/workpiece.stl",
+      "sim_stl_asset": "job_223/workpiece_sim.stl",
+      "vector_json": "job_223/weld_vectors.json",
+      "raw_topology_json": "job_223/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 85.80409951528269
+    },
+    {
+      "id": "job_224",
+      "source_stem": "simple_grid_ribs_134_x_rot137.3",
+      "workpiece_asset": "job_224/workpiece_sim.stl",
+      "path_json": "job_224/path.json",
+      "origin": [
+        448.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_224/workpiece.step",
+      "stl_asset": "job_224/workpiece.stl",
+      "sim_stl_asset": "job_224/workpiece_sim.stl",
+      "vector_json": "job_224/weld_vectors.json",
+      "raw_topology_json": "job_224/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 137.27843070720974
+    },
+    {
+      "id": "job_225",
+      "source_stem": "simple_grid_ribs_135_y_rot42.8",
+      "workpiece_asset": "job_225/workpiece_sim.stl",
+      "path_json": "job_225/path.json",
+      "origin": [
+        450.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_225/workpiece.step",
+      "stl_asset": "job_225/workpiece.stl",
+      "sim_stl_asset": "job_225/workpiece_sim.stl",
+      "vector_json": "job_225/weld_vectors.json",
+      "raw_topology_json": "job_225/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 42.83623135972381
+    },
+    {
+      "id": "job_226",
+      "source_stem": "simple_grid_ribs_136_x_rot5.3",
+      "workpiece_asset": "job_226/workpiece_sim.stl",
+      "path_json": "job_226/path.json",
+      "origin": [
+        452.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_226/workpiece.step",
+      "stl_asset": "job_226/workpiece.stl",
+      "sim_stl_asset": "job_226/workpiece_sim.stl",
+      "vector_json": "job_226/weld_vectors.json",
+      "raw_topology_json": "job_226/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 5.329021856222191
+    },
+    {
+      "id": "job_227",
+      "source_stem": "simple_grid_ribs_137_y_rot64.1",
+      "workpiece_asset": "job_227/workpiece_sim.stl",
+      "path_json": "job_227/path.json",
+      "origin": [
+        454.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_227/workpiece.step",
+      "stl_asset": "job_227/workpiece.stl",
+      "sim_stl_asset": "job_227/workpiece_sim.stl",
+      "vector_json": "job_227/weld_vectors.json",
+      "raw_topology_json": "job_227/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 64.06973194004142
+    },
+    {
+      "id": "job_228",
+      "source_stem": "simple_grid_ribs_138_x_rot63.7",
+      "workpiece_asset": "job_228/workpiece_sim.stl",
+      "path_json": "job_228/path.json",
+      "origin": [
+        456.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_228/workpiece.step",
+      "stl_asset": "job_228/workpiece.stl",
+      "sim_stl_asset": "job_228/workpiece_sim.stl",
+      "vector_json": "job_228/weld_vectors.json",
+      "raw_topology_json": "job_228/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 63.716353165966325
+    },
+    {
+      "id": "job_229",
+      "source_stem": "simple_grid_ribs_139_y_rot21.4",
+      "workpiece_asset": "job_229/workpiece_sim.stl",
+      "path_json": "job_229/path.json",
+      "origin": [
+        458.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_229/workpiece.step",
+      "stl_asset": "job_229/workpiece.stl",
+      "sim_stl_asset": "job_229/workpiece_sim.stl",
+      "vector_json": "job_229/weld_vectors.json",
+      "raw_topology_json": "job_229/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 21.4085058794134
+    },
+    {
+      "id": "job_230",
+      "source_stem": "simple_grid_ribs_140_y_rot101.4",
+      "workpiece_asset": "job_230/workpiece_sim.stl",
+      "path_json": "job_230/path.json",
+      "origin": [
+        460.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_230/workpiece.step",
+      "stl_asset": "job_230/workpiece.stl",
+      "sim_stl_asset": "job_230/workpiece_sim.stl",
+      "vector_json": "job_230/weld_vectors.json",
+      "raw_topology_json": "job_230/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 101.38702661652898
+    },
+    {
+      "id": "job_231",
+      "source_stem": "simple_grid_ribs_141_x_rot95.4",
+      "workpiece_asset": "job_231/workpiece_sim.stl",
+      "path_json": "job_231/path.json",
+      "origin": [
+        462.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_231/workpiece.step",
+      "stl_asset": "job_231/workpiece.stl",
+      "sim_stl_asset": "job_231/workpiece_sim.stl",
+      "vector_json": "job_231/weld_vectors.json",
+      "raw_topology_json": "job_231/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 95.38913783189429
+    },
+    {
+      "id": "job_232",
+      "source_stem": "simple_grid_ribs_142_x_rot83.0",
+      "workpiece_asset": "job_232/workpiece_sim.stl",
+      "path_json": "job_232/path.json",
+      "origin": [
+        464.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_232/workpiece.step",
+      "stl_asset": "job_232/workpiece.stl",
+      "sim_stl_asset": "job_232/workpiece_sim.stl",
+      "vector_json": "job_232/weld_vectors.json",
+      "raw_topology_json": "job_232/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 82.97517251688346
+    },
+    {
+      "id": "job_233",
+      "source_stem": "simple_grid_ribs_143_y_rot13.1",
+      "workpiece_asset": "job_233/workpiece_sim.stl",
+      "path_json": "job_233/path.json",
+      "origin": [
+        466.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_233/workpiece.step",
+      "stl_asset": "job_233/workpiece.stl",
+      "sim_stl_asset": "job_233/workpiece_sim.stl",
+      "vector_json": "job_233/weld_vectors.json",
+      "raw_topology_json": "job_233/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 13.09222150374806
+    },
+    {
+      "id": "job_234",
+      "source_stem": "simple_grid_ribs_144_x_rot5.8",
+      "workpiece_asset": "job_234/workpiece_sim.stl",
+      "path_json": "job_234/path.json",
+      "origin": [
+        468.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_234/workpiece.step",
+      "stl_asset": "job_234/workpiece.stl",
+      "sim_stl_asset": "job_234/workpiece_sim.stl",
+      "vector_json": "job_234/weld_vectors.json",
+      "raw_topology_json": "job_234/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 5.842019870469413
+    },
+    {
+      "id": "job_235",
+      "source_stem": "simple_grid_ribs_145_x_rot179.8",
+      "workpiece_asset": "job_235/workpiece_sim.stl",
+      "path_json": "job_235/path.json",
+      "origin": [
+        470.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_235/workpiece.step",
+      "stl_asset": "job_235/workpiece.stl",
+      "sim_stl_asset": "job_235/workpiece_sim.stl",
+      "vector_json": "job_235/weld_vectors.json",
+      "raw_topology_json": "job_235/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 179.82307419962098
+    },
+    {
+      "id": "job_236",
+      "source_stem": "simple_grid_ribs_146_y_rot8.7",
+      "workpiece_asset": "job_236/workpiece_sim.stl",
+      "path_json": "job_236/path.json",
+      "origin": [
+        472.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_236/workpiece.step",
+      "stl_asset": "job_236/workpiece.stl",
+      "sim_stl_asset": "job_236/workpiece_sim.stl",
+      "vector_json": "job_236/weld_vectors.json",
+      "raw_topology_json": "job_236/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 8.744586015776335
+    },
+    {
+      "id": "job_237",
+      "source_stem": "simple_grid_ribs_147_x_rot94.0",
+      "workpiece_asset": "job_237/workpiece_sim.stl",
+      "path_json": "job_237/path.json",
+      "origin": [
+        474.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_237/workpiece.step",
+      "stl_asset": "job_237/workpiece.stl",
+      "sim_stl_asset": "job_237/workpiece_sim.stl",
+      "vector_json": "job_237/weld_vectors.json",
+      "raw_topology_json": "job_237/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 93.96877118914098
+    },
+    {
+      "id": "job_238",
+      "source_stem": "simple_grid_ribs_148_y_rot123.7",
+      "workpiece_asset": "job_238/workpiece_sim.stl",
+      "path_json": "job_238/path.json",
+      "origin": [
+        476.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_238/workpiece.step",
+      "stl_asset": "job_238/workpiece.stl",
+      "sim_stl_asset": "job_238/workpiece_sim.stl",
+      "vector_json": "job_238/weld_vectors.json",
+      "raw_topology_json": "job_238/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "Y",
+      "rotation_angle_deg": 123.69928654798437
+    },
+    {
+      "id": "job_239",
+      "source_stem": "simple_grid_ribs_149_x_rot95.0",
+      "workpiece_asset": "job_239/workpiece_sim.stl",
+      "path_json": "job_239/path.json",
+      "origin": [
+        478.0,
+        0.0,
+        0.0
+      ],
+      "workpiece_offset": [
+        0.5,
+        0.0,
+        0.0
+      ],
+      "frame": "workpiece",
+      "units": "mm",
+      "step_asset": "job_239/workpiece.step",
+      "stl_asset": "job_239/workpiece.stl",
+      "sim_stl_asset": "job_239/workpiece_sim.stl",
+      "vector_json": "job_239/weld_vectors.json",
+      "raw_topology_json": "job_239/raw_weld_topology.json",
+      "structure_type": "grid_ribs",
+      "orientation": "X",
+      "rotation_angle_deg": 94.993057045164
+    }
+  ]
+}
