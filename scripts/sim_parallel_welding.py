@@ -120,39 +120,70 @@ def prepare_recording_paths(args: argparse.Namespace) -> Path:
 
 
 def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
+    frames_dir = frames_dir.resolve()
+    output_path = output_path.resolve()
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    frame_candidates = sorted(
+        path for path in frames_dir.glob("*.png") if "_encode_sequence" not in path.parts
+    )
+    if not frame_candidates:
+        frame_candidates = sorted(
+            path for path in frames_dir.glob("**/*.png") if "_encode_sequence" not in path.parts
+        )
+    if not frame_candidates:
+        raise RuntimeError(f"No PNG frames were written under: {frames_dir}")
+
+    encode_dir = frames_dir / "_encode_sequence"
+    if encode_dir.exists():
+        shutil.rmtree(encode_dir)
+    encode_dir.mkdir(parents=True)
+    for index, source in enumerate(frame_candidates):
+        target = encode_dir / f"frame_{index:06d}.png"
+        try:
+            target.hardlink_to(source.resolve())
+        except OSError:
+            shutil.copy2(source, target)
+
+    log(f"[weldRobot] Encoding {len(frame_candidates)} PNG frames to MP4: {output_path}")
+
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is None:
-        raise RuntimeError(
-            "ffmpeg was not found. RGB frames were written, but MP4 encoding cannot run. "
-            f"Inspect frames in: {frames_dir}"
-        )
+        try:
+            import imageio.v2 as imageio
+        except ImportError as exc:
+            raise RuntimeError(
+                "ffmpeg was not found and imageio is not installed, so MP4 encoding cannot run. "
+                f"RGB frames remain in: {frames_dir}. Install ffmpeg or install imageio/imageio-ffmpeg."
+            ) from exc
 
-    frame_candidates = sorted(frames_dir.glob("*.png")) or sorted(frames_dir.glob("**/*.png"))
-    if not frame_candidates:
-        raise RuntimeError(f"No PNG frames were written in: {frames_dir}")
-
-    if not sorted(frames_dir.glob("*.png")):
-        raise RuntimeError(
-            "PNG frames were written in nested Replicator directories, but MP4 encoding expects them directly under "
-            f"{frames_dir}. Inspect nested files or set --frames-dir to a clean directory and rerun."
-        )
+        with imageio.get_writer(str(output_path), fps=fps, codec="libx264", pixelformat="yuv420p") as writer:
+            for frame_path in sorted(encode_dir.glob("frame_*.png")):
+                writer.append_data(imageio.imread(frame_path))
+        if not output_path.is_file() or output_path.stat().st_size == 0:
+            raise RuntimeError(f"imageio finished but MP4 was not created: {output_path}")
+        log(f"[weldRobot] Encoded MP4 size: {output_path.stat().st_size} bytes")
+        return
 
     command = [
         ffmpeg,
         "-y",
         "-framerate",
         str(fps),
-        "-pattern_type",
-        "glob",
         "-i",
-        str(frames_dir / "*.png"),
+        str(encode_dir / "frame_%06d.png"),
         "-c:v",
         "libx264",
         "-pix_fmt",
         "yuv420p",
+        "-movflags",
+        "+faststart",
         str(output_path),
     ]
     subprocess.run(command, check=True)
+    if not output_path.is_file() or output_path.stat().st_size == 0:
+        raise RuntimeError(f"ffmpeg finished but MP4 was not created: {output_path}")
+    log(f"[weldRobot] Encoded MP4 size: {output_path.stat().st_size} bytes")
 
 
 def resolve_job_path(manifest_dir: Path, value: str | Path) -> Path:
