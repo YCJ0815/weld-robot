@@ -96,7 +96,7 @@ def parse_args() -> argparse.Namespace:
         choices=("auto", "absolute", "delta"),
         default="auto",
         help="Interpret trajectory waypoints as absolute joint angles or joint-angle deltas. "
-        "In auto mode, .npy/.npz default to delta and text formats default to absolute.",
+        "In auto mode, all supported formats default to absolute.",
     )
     parser.add_argument("--urdf", type=Path, default=DEFAULT_URDF, help="UR5e welding-arm URDF.")
     parser.add_argument("--stl", type=Path, default=None, help="Optional STL workpiece path.")
@@ -352,8 +352,6 @@ def load_joint_trajectory(
 def resolve_trajectory_representation(path: Path, requested: str) -> str:
     if requested != "auto":
         return requested
-    if path.suffix.lower() in {".npy", ".npz"}:
-        return "delta"
     return "absolute"
 
 

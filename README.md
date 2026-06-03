@@ -104,12 +104,11 @@ python scripts/sim_parallel_welding.py \
   --overwrite
 ```
 
-Replay a joint-angle trajectory, import one STL workpiece with the same default offset as the parallel scene, and record MP4:
+Replay an absolute joint-angle trajectory, import one STL workpiece with the same default offset as the parallel scene, and record MP4:
 
 ```bash
 python scripts/replay_joint_trajectory.py \
-  --trajectory data/joint_delta.npy \
-  --start-npz data/start_state.npz \
+  --trajectory data/joint_trajectory.npy \
   --stl workpiece1.stl \
   --headless \
   --record \
@@ -118,13 +117,13 @@ python scripts/replay_joint_trajectory.py \
   --overwrite
 ```
 
-The replay script accepts `json/csv/txt/npy/npz`. In `auto` mode, `npy/npz` trajectories are treated as joint-angle deltas. The delta start state can come from `--start-npz`, which is read directly as absolute joint angles, or from `--start-joint-positions` if you want to provide the absolute start state on the command line. If the file does not include joint names, it defaults to the 6 UR5e joints in the repository's initial-joint order; otherwise pass `--joint-names ...` explicitly.
+The replay script accepts `json/csv/txt/npy/npz`. In `auto` mode, trajectories are treated as absolute joint angles. If you need to replay joint-angle deltas, pass `--trajectory-representation delta`; the delta start state can come from `--start-npz`, which is read directly as absolute joint angles, or from `--start-joint-positions` if you want to provide the absolute start state on the command line. If the file does not include joint names, it defaults to the 6 UR5e joints in the repository's initial-joint order; otherwise pass `--joint-names ...` explicitly.
 
 For comparison playback, provide `--reference-npz` to spawn a second robot with an offset and replay the reference trajectory side by side:
 
 ```bash
 python scripts/replay_joint_trajectory.py \
-  --trajectory data/pred_delta.npy \
+  --trajectory data/pred_trajectory.npy \
   --start-npz data/start_state.npz \
   --reference-npz data/reference_traj.npz \
   --reference-key ground_truth \
