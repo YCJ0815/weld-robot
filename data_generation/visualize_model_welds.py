@@ -49,6 +49,35 @@ def parse_args() -> argparse.Namespace:
         help="Displayed weld line width.",
     )
     parser.add_argument(
+        "--show-weld-ids",
+        action="store_true",
+        default=True,
+        help="Show weld seam id labels. Enabled by default for Matplotlib backend.",
+    )
+    parser.add_argument(
+        "--hide-weld-ids",
+        dest="show_weld_ids",
+        action="store_false",
+        help="Hide weld seam id labels.",
+    )
+    parser.add_argument(
+        "--weld-id-size",
+        type=float,
+        default=9.0,
+        help="Font size for weld seam id labels.",
+    )
+    parser.add_argument(
+        "--weld-id-color",
+        default="black",
+        help="Matplotlib color for weld seam id labels.",
+    )
+    parser.add_argument(
+        "--weld-id-offset",
+        type=float,
+        default=3.0,
+        help="Offset weld seam id labels along +Z in model units.",
+    )
+    parser.add_argument(
         "--point-radius",
         type=float,
         default=1.8,
@@ -209,7 +238,7 @@ def autodetect_inputs(args: argparse.Namespace) -> tuple[Path, Path]:
         return step_path.resolve(), weld_json_path
 
     # Check for generated_jobs/job_000 first
-    generated_jobs_dir = ROOT / "data" / "generated_jobs" /"simple_jobs"/ "job_031"
+    generated_jobs_dir = ROOT / "data" / "generated_jobs" /"simple_jobs"/ "job_000"
     if generated_jobs_dir.exists():
         workpiece_step = generated_jobs_dir / "workpiece.step"
         weld_vectors = generated_jobs_dir / "weld_vectors.json"
@@ -296,6 +325,8 @@ def convert_weld_vectors_to_contact_edges(weld_vectors_data: dict[str, Any]) -> 
         
         if start_xyz and end_xyz:
             contact_edges[str(idx)] = {
+                "id": f"weld_{idx:04d}",
+                "weld_index": idx,
                 "start": start_xyz,
                 "end": end_xyz,
                 "samples": [start_xyz, end_xyz],
@@ -554,9 +585,26 @@ def weld_edge_records(weld_data: dict[str, Any]) -> list[dict[str, Any]]:
         for polyline in iter_edge_samples(edge):
             records.append({
                 "edge_id": str(edge_id),
+                "id": edge.get("id", edge_id),
+                "weld_index": edge.get("weld_index"),
                 "polyline": polyline,
             })
     return records
+
+
+def weld_record_label(record: dict[str, Any]) -> str:
+    weld_index = record.get("weld_index")
+    if isinstance(weld_index, int):
+        return str(weld_index)
+
+    edge_id = str(record.get("edge_id", ""))
+    if edge_id.isdigit():
+        return str(int(edge_id))
+
+    weld_id = str(record.get("id", edge_id))
+    if weld_id.startswith("weld_") and weld_id[5:].isdigit():
+        return str(int(weld_id[5:]))
+    return weld_id
 
 
 def set_axes_equal(ax: Any, points: list[list[float]]) -> None:
@@ -642,6 +690,32 @@ def visualize_with_matplotlib(args: argparse.Namespace, weld_data: dict[str, Any
             solid_capstyle="round",
         )
         all_points.extend(polyline)
+        if args.show_weld_ids:
+            midpoint = polyline_midpoint(polyline)
+            label_position = [
+                midpoint[0],
+                midpoint[1],
+                midpoint[2] + args.weld_id_offset,
+            ]
+            ax.text(
+                label_position[0],
+                label_position[1],
+                label_position[2],
+                weld_record_label(record),
+                color=args.weld_id_color,
+                fontsize=args.weld_id_size,
+                fontweight="bold",
+                horizontalalignment="center",
+                verticalalignment="center",
+                bbox={
+                    "boxstyle": "round,pad=0.22",
+                    "facecolor": "white",
+                    "edgecolor": WELD_COLOR,
+                    "alpha": 0.82,
+                    "linewidth": 0.6,
+                },
+            )
+            all_points.append(label_position)
 
     if not args.no_points and args.point_radius > 0:
         if args.show_endpoints and endpoints:
@@ -987,6 +1061,8 @@ def visualize_with_occ(args: argparse.Namespace, weld_data: dict[str, Any]) -> N
 
     display_step_model(display, step_path, args.model_transparency)
     display_weld_edges(display, weld_data, args.weld_width)
+    if args.show_weld_ids:
+        print("[visualize] weld id labels are currently available in the Matplotlib backend only.")
 
     if not args.no_points and args.point_radius > 0:
         endpoints, breakpoints = collect_marker_points(weld_data)

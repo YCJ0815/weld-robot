@@ -85,7 +85,12 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Replay a robot joint-angle trajectory in Isaac Sim with optional STL workpiece import."
     )
-    parser.add_argument("--trajectory", type=Path, required=True, help="Joint trajectory file: json/csv/txt/npy/npz.")
+    parser.add_argument(
+        "--trajectory",
+        type=Path,
+        default=None,
+        help="Joint trajectory file: json/csv/txt/npy/npz. Not required with --encode-only.",
+    )
     parser.add_argument(
         "--trajectory-representation",
         choices=("auto", "absolute", "delta"),
@@ -129,6 +134,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--frames-dir", type=Path, default=None, help="Directory used for RGB frame images.")
     parser.add_argument("--keep-frames", action="store_true", help="Keep exported RGB frames after MP4 encoding.")
     parser.add_argument("--overwrite", action="store_true", help="Overwrite an existing video and frame directory.")
+    parser.add_argument("--encode-only", action="store_true", help="Encode an existing --frames-dir to --output without replaying.")
+    parser.add_argument(
+        "--ffmpeg",
+        type=Path,
+        default=None,
+        help="Optional ffmpeg executable path. Can also be set with WELDROBOT_FFMPEG.",
+    )
     parser.add_argument("--rt-subframes", type=int, default=8, help="Replicator render subframes per captured frame.")
     parser.add_argument(
         "--camera-eye",
@@ -533,6 +545,20 @@ def main() -> None:
         raise RuntimeError("--hold-steps must be >= 1")
     if args.loop < 1:
         raise RuntimeError("--loop must be >= 1")
+    if args.encode_only:
+        args.output = args.output.expanduser().resolve()
+        if args.frames_dir is None:
+            args.frames_dir = args.output.parent / f"{args.output.stem}_frames"
+        frames_dir = args.frames_dir.expanduser().resolve()
+        if not frames_dir.is_dir():
+            raise RuntimeError(f"--encode-only requires an existing frame directory: {frames_dir}")
+        if args.output.exists() and not args.overwrite:
+            raise FileExistsError(f"Output already exists. Use --overwrite to replace it: {args.output}")
+        encode_video(frames_dir, args.output, args.fps, args.ffmpeg)
+        log(f"[weldRobot] Video saved to: {args.output}")
+        return
+    if args.trajectory is None:
+        raise RuntimeError("--trajectory is required unless --encode-only is used.")
 
     trajectory_path = args.trajectory.expanduser().resolve()
     trajectory, requested_joint_names = load_joint_trajectory(trajectory_path, args.joint_names)
@@ -735,7 +761,7 @@ def main() -> None:
         simulation_app.close()
 
     if args.record and frames_dir is not None:
-        encode_video(frames_dir, args.output, args.fps)
+        encode_video(frames_dir, args.output, args.fps, args.ffmpeg)
         if not args.keep_frames:
             import shutil
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import struct
 import subprocess
@@ -119,7 +120,7 @@ def prepare_recording_paths(args: argparse.Namespace) -> Path:
     return args.frames_dir
 
 
-def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
+def encode_video(frames_dir: Path, output_path: Path, fps: int, ffmpeg_path: Path | str | None = None) -> None:
     frames_dir = frames_dir.resolve()
     output_path = output_path.resolve()
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -147,7 +148,13 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
 
     log(f"[weldRobot] Encoding {len(frame_candidates)} PNG frames to MP4: {output_path}")
 
-    ffmpeg = shutil.which("ffmpeg")
+    ffmpeg = str(ffmpeg_path) if ffmpeg_path is not None else os.environ.get("WELDROBOT_FFMPEG")
+    if ffmpeg:
+        ffmpeg = str(Path(ffmpeg).expanduser())
+        if not Path(ffmpeg).is_file():
+            raise RuntimeError(f"Configured ffmpeg does not exist: {ffmpeg}")
+    else:
+        ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is None:
         try:
             import imageio.v2 as imageio
@@ -165,22 +172,44 @@ def encode_video(frames_dir: Path, output_path: Path, fps: int) -> None:
         log(f"[weldRobot] Encoded MP4 size: {output_path.stat().st_size} bytes")
         return
 
-    command = [
-        ffmpeg,
-        "-y",
-        "-framerate",
-        str(fps),
-        "-i",
-        str(encode_dir / "frame_%06d.png"),
-        "-c:v",
-        "libx264",
-        "-pix_fmt",
-        "yuv420p",
-        "-movflags",
-        "+faststart",
-        str(output_path),
+    commands = [
+        [
+            ffmpeg,
+            "-y",
+            "-framerate",
+            str(fps),
+            "-i",
+            str(encode_dir / "frame_%06d.png"),
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-movflags",
+            "+faststart",
+            str(output_path),
+        ],
+        [
+            ffmpeg,
+            "-y",
+            "-framerate",
+            str(fps),
+            "-i",
+            str(encode_dir / "frame_%06d.png"),
+            "-c:v",
+            "mpeg4",
+            "-q:v",
+            "3",
+            str(output_path),
+        ],
     ]
-    subprocess.run(command, check=True)
+    errors: list[str] = []
+    for command in commands:
+        result = subprocess.run(command, check=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        if result.returncode == 0:
+            break
+        errors.append(result.stdout[-4000:])
+    else:
+        raise RuntimeError("ffmpeg failed to encode MP4. Last ffmpeg output:\n" + "\n".join(errors[-1:]))
     if not output_path.is_file() or output_path.stat().st_size == 0:
         raise RuntimeError(f"ffmpeg finished but MP4 was not created: {output_path}")
     log(f"[weldRobot] Encoded MP4 size: {output_path.stat().st_size} bytes")
