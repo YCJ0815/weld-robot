@@ -134,9 +134,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--overlay-reference-visual",
-        choices=("skeleton", "articulation"),
-        default="skeleton",
-        help="Render the overlaid reference as a pure visual FK skeleton or as a second Isaac articulation.",
+        choices=("skeleton", "visual_mesh", "articulation"),
+        default="visual_mesh",
+        help="Render the overlaid reference as a pure visual FK skeleton, visual meshes, or a second Isaac articulation.",
     )
     parser.add_argument(
         "--overlay-visual-offset",
@@ -887,6 +887,26 @@ def set_debug_translation(xformable: Any, translation: np.ndarray) -> None:
     xformable.AddTranslateOp().Set(Gf.Vec3d(*translation))
 
 
+def set_transform_matrix(xformable: Any, matrix: Any) -> None:
+    from pxr import UsdGeom
+
+    for op in xformable.GetOrderedXformOps():
+        if op.GetOpType() == UsdGeom.XformOp.TypeTransform:
+            op.Set(matrix)
+            return
+    xformable.MakeMatrixXform().Set(matrix)
+
+
+def numpy_to_gf_matrix(matrix: np.ndarray) -> Any:
+    from pxr import Gf
+
+    matrix = np.asarray(matrix, dtype=float)
+    gf_matrix = Gf.Matrix4d(1.0)
+    for row_idx in range(4):
+        gf_matrix.SetRow(row_idx, Gf.Vec4d(*[float(v) for v in matrix[row_idx]]))
+    return gf_matrix
+
+
 def draw_debug_curve(stage: Any, prim_path: str, points: list[np.ndarray], color: Any, width: float) -> None:
     from pxr import Gf, UsdGeom
 
@@ -996,6 +1016,76 @@ def update_reference_ghost_skeleton(
         )
 
 
+def ensure_reference_visual_mesh(stage: Any, kinematics: "ReplayURDFKinematics", opacity: float) -> None:
+    from pxr import Gf, Sdf, UsdGeom, UsdShade
+
+    root_path = "/World/ReplayDebug/ReferenceVisualMesh"
+    ensure_xform(stage, root_path)
+
+    material_path = f"{root_path}/GhostMaterial"
+    material = UsdShade.Material.Define(stage, material_path)
+    shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
+    shader.CreateIdAttr("UsdPreviewSurface")
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(1.0, 0.5, 0.08))
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.85)
+    shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+    shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(max(0.0, min(1.0, float(opacity))))
+    material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
+    UsdShade.MaterialBindingAPI(stage.GetPrimAtPath(root_path)).Bind(material)
+
+    for visual in kinematics.visual_links.values():
+        if not visual.mesh_path.is_file():
+            log(f"[weldRobot] WARNING: visual mesh does not exist for {visual.link_name}: {visual.mesh_path}")
+            continue
+        link_path = f"{root_path}/{visual.link_name}"
+        prim = stage.GetPrimAtPath(link_path)
+        if not prim.IsValid():
+            prim = UsdGeom.Xform.Define(stage, link_path).GetPrim()
+            prim.GetReferences().AddReference(str(visual.mesh_path))
+        UsdShade.MaterialBindingAPI(prim).Bind(material)
+
+    # Referenced DAE meshes may materialize below their link prims; bind/update any that are already present.
+    root_prefix = root_path.rstrip("/") + "/"
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if path != root_path and not path.startswith(root_prefix):
+            continue
+        if prim.IsA(UsdGeom.Mesh):
+            mesh = UsdGeom.Mesh(prim)
+            mesh.CreateDisplayColorAttr([Gf.Vec3f(1.0, 0.5, 0.08)])
+            mesh.CreateDisplayOpacityAttr([max(0.0, min(1.0, float(opacity)))])
+            UsdShade.MaterialBindingAPI(prim).Bind(material)
+
+
+def update_reference_visual_mesh(
+    stage: Any,
+    kinematics: "ReplayURDFKinematics",
+    waypoint: np.ndarray,
+    joint_names: list[str],
+    visible: bool,
+    offset: np.ndarray,
+) -> None:
+    from pxr import UsdGeom
+
+    root_path = "/World/ReplayDebug/ReferenceVisualMesh"
+    ensure_xform(stage, root_path)
+    set_prim_visibility(stage, root_path, visible)
+    if not visible:
+        return
+
+    offset_tf = np.eye(4)
+    offset_tf[:3, 3] = np.asarray(offset, dtype=float).reshape(3)
+    link_transforms = kinematics.link_transforms(trajectory_q_by_name(waypoint, joint_names))
+    for link_name, visual in kinematics.visual_links.items():
+        if link_name not in link_transforms:
+            continue
+        prim = stage.GetPrimAtPath(f"{root_path}/{link_name}")
+        if not prim.IsValid():
+            continue
+        world_tf = offset_tf @ link_transforms[link_name] @ visual.visual_origin
+        set_transform_matrix(UsdGeom.Xformable(prim), numpy_to_gf_matrix(world_tf))
+
+
 def rpy_matrix(rpy: np.ndarray) -> np.ndarray:
     roll, pitch, yaw = np.asarray(rpy, dtype=float)
     cr, sr = math.cos(roll), math.sin(roll)
@@ -1034,9 +1124,18 @@ def urdf_transform_matrix(xyz: np.ndarray, rpy: np.ndarray) -> np.ndarray:
 @dataclass
 class ReplayChainJoint:
     name: str
+    child_link: str
     joint_type: str
     axis: np.ndarray
     origin: np.ndarray
+
+
+@dataclass
+class ReplayVisualLink:
+    link_name: str
+    mesh_path: Path
+    visual_origin: np.ndarray
+    mesh_scale: np.ndarray
 
 
 class ReplayURDFKinematics:
@@ -1059,6 +1158,8 @@ class ReplayURDFKinematics:
             current = parent_link
         chain_xml.reverse()
 
+        self.base_link = base_link
+        self.visual_links = self._parse_visual_links(root, urdf_path)
         self.chain: list[ReplayChainJoint] = []
         self.active_names: list[str] = []
         for joint in chain_xml:
@@ -1067,8 +1168,10 @@ class ReplayURDFKinematics:
             rpy = np.fromstring(origin_xml.attrib.get("rpy", "0 0 0"), sep=" ") if origin_xml is not None else np.zeros(3)
             axis_xml = joint.find("axis")
             axis = np.fromstring(axis_xml.attrib.get("xyz", "0 0 1"), sep=" ") if axis_xml is not None else np.array([0.0, 0.0, 1.0])
+            child_xml = joint.find("child")
             item = ReplayChainJoint(
                 name=joint.attrib["name"],
+                child_link=child_xml.attrib["link"] if child_xml is not None else "",
                 joint_type=joint.attrib.get("type", "fixed"),
                 axis=axis.astype(float),
                 origin=urdf_transform_matrix(xyz.astype(float), rpy.astype(float)),
@@ -1076,6 +1179,55 @@ class ReplayURDFKinematics:
             self.chain.append(item)
             if item.joint_type in {"revolute", "continuous", "prismatic"}:
                 self.active_names.append(item.name)
+
+    @staticmethod
+    def _parse_visual_links(root: ET.Element, urdf_path: Path) -> dict[str, ReplayVisualLink]:
+        visual_links: dict[str, ReplayVisualLink] = {}
+        for link in root.findall("link"):
+            link_name = link.attrib.get("name")
+            visual = link.find("visual")
+            if not link_name or visual is None:
+                continue
+            mesh = visual.find("./geometry/mesh")
+            if mesh is None:
+                continue
+            filename = mesh.attrib.get("filename")
+            if not filename:
+                continue
+            mesh_path = Path(filename)
+            if not mesh_path.is_absolute():
+                mesh_path = (urdf_path.parent / mesh_path).resolve()
+            origin_xml = visual.find("origin")
+            xyz = np.fromstring(origin_xml.attrib.get("xyz", "0 0 0"), sep=" ") if origin_xml is not None else np.zeros(3)
+            rpy = np.fromstring(origin_xml.attrib.get("rpy", "0 0 0"), sep=" ") if origin_xml is not None else np.zeros(3)
+            scale = np.fromstring(mesh.attrib.get("scale", "1 1 1"), sep=" ")
+            if scale.size != 3:
+                scale = np.ones(3, dtype=float)
+            scale_tf = np.eye(4)
+            scale_tf[0, 0], scale_tf[1, 1], scale_tf[2, 2] = scale.astype(float)
+            visual_links[link_name] = ReplayVisualLink(
+                link_name=link_name,
+                mesh_path=mesh_path,
+                visual_origin=urdf_transform_matrix(xyz.astype(float), rpy.astype(float)) @ scale_tf,
+                mesh_scale=scale.astype(float),
+            )
+        return visual_links
+
+    def link_transforms(self, q_by_name: dict[str, float]) -> dict[str, np.ndarray]:
+        tf = np.eye(4)
+        transforms = {self.base_link: tf.copy()}
+        for joint in self.chain:
+            tf = tf @ joint.origin
+            if joint.name in q_by_name:
+                motion = np.eye(4)
+                if joint.joint_type in {"revolute", "continuous"}:
+                    motion[:3, :3] = axis_angle_matrix(joint.axis, float(q_by_name[joint.name]))
+                elif joint.joint_type == "prismatic":
+                    motion[:3, 3] = joint.axis * float(q_by_name[joint.name])
+                tf = tf @ motion
+            if joint.child_link:
+                transforms[joint.child_link] = tf.copy()
+        return transforms
 
     def forward(self, q_by_name: dict[str, float]) -> np.ndarray:
         tf = np.eye(4)
@@ -1512,6 +1664,12 @@ def main() -> None:
             pred_tcp_path=pred_tcp_path,
             reference_tcp_path=reference_tcp_path,
         )
+        if (
+            reference_trajectory is not None
+            and args.playback_mode == "overlay"
+            and args.overlay_reference_visual == "visual_mesh"
+        ):
+            ensure_reference_visual_mesh(stage, replay_kinematics, args.reference_ghost_opacity)
         log(f"[weldRobot] Predicted TCP path points: {len(pred_tcp_path)}")
         if reference_tcp_path is not None:
             log(f"[weldRobot] Reference TCP path points: {len(reference_tcp_path)}")
@@ -1600,6 +1758,16 @@ def main() -> None:
                         resolved_reference_joint_names or joint_names,
                         visible=True,
                     )
+                elif args.overlay_reference_visual == "visual_mesh":
+                    update_reference_visual_mesh(
+                        stage,
+                        replay_kinematics,
+                        reference_trajectory[0],
+                        resolved_reference_joint_names or joint_names,
+                        visible=True,
+                        offset=np.asarray(args.reference_offset, dtype=float)
+                        + np.asarray(args.overlay_visual_offset, dtype=float),
+                    )
                 for waypoint_idx in range(total_waypoints):
                     pred_active = waypoint_idx < trajectory.shape[0]
                     gt_active = waypoint_idx < reference_trajectory.shape[0]
@@ -1618,6 +1786,17 @@ def main() -> None:
                                 reference_waypoint.reshape(-1),
                                 resolved_reference_joint_names or joint_names,
                                 visible=skeleton_visible,
+                            )
+                        elif args.overlay_reference_visual == "visual_mesh":
+                            visual_mesh_visible = gt_active or args.overlay_finish_behavior == "hold"
+                            update_reference_visual_mesh(
+                                stage,
+                                replay_kinematics,
+                                reference_waypoint.reshape(-1),
+                                resolved_reference_joint_names or joint_names,
+                                visible=visual_mesh_visible,
+                                offset=np.asarray(args.reference_offset, dtype=float)
+                                + np.asarray(args.overlay_visual_offset, dtype=float),
                             )
                         if not pred_active and args.overlay_finish_behavior == "hide":
                             set_prim_visibility(stage, robot_prim_path, False)
