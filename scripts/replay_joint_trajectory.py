@@ -1016,16 +1016,6 @@ def update_reference_ghost_skeleton(
         )
 
 
-def _copy_prim_spec(stage: Any, source_path: str, target_path: str) -> None:
-    from pxr import Sdf
-
-    root_layer = stage.GetRootLayer()
-    stage.RemovePrim(target_path)
-    copied = Sdf.CopySpec(root_layer, source_path, root_layer, target_path)
-    if not copied:
-        raise RuntimeError(f"Failed to copy prim from {source_path} to {target_path}")
-
-
 def _find_descendant_prim_by_name(stage: Any, root_path: str, prim_name: str) -> Any | None:
     root_prefix = root_path.rstrip("/") + "/"
     for prim in stage.Traverse():
@@ -1037,16 +1027,25 @@ def _find_descendant_prim_by_name(stage: Any, root_path: str, prim_name: str) ->
     return None
 
 
-def _copy_local_visual_children(
+def _subtree_contains_mesh(stage: Any, root_path: str) -> bool:
+    from pxr import UsdGeom
+
+    root_prefix = root_path.rstrip("/") + "/"
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if path != root_path and not path.startswith(root_prefix):
+            continue
+        if prim.IsA(UsdGeom.Mesh):
+            return True
+    return False
+
+
+def _collect_local_visual_source_roots(
     stage: Any,
     source_root_path: str,
-    target_root_path: str,
     link_names: set[str],
-) -> int:
-    from pxr import Sdf
-
-    root_layer = stage.GetRootLayer()
-    copied = 0
+) -> list[str]:
+    source_roots: list[str] = []
     source_prefix = source_root_path.rstrip("/") + "/"
     for prim in stage.Traverse():
         source_path = str(prim.GetPath())
@@ -1062,16 +1061,31 @@ def _copy_local_visual_children(
         path_lower = source_path.lower()
         if "collision" in path_lower or "collider" in path_lower:
             continue
-        target_path = target_root_path.rstrip("/") + "/" + "/".join(parts)
-        target_parent = "/".join(target_path.split("/")[:-1])
-        if target_parent:
-            ensure_xform(stage, target_parent)
+        if any(source_path.startswith(existing.rstrip("/") + "/") for existing in source_roots):
+            continue
+        if not _subtree_contains_mesh(stage, source_path):
+            continue
+        source_roots.append(source_path)
+    return source_roots
+
+
+def _reference_local_visual_children(
+    stage: Any,
+    source_root_path: str,
+    target_root_path: str,
+    link_names: set[str],
+) -> list[str]:
+    source_roots = _collect_local_visual_source_roots(stage, source_root_path, link_names)
+    referenced_paths: list[str] = []
+    for source_path in source_roots:
+        child_name = source_path.rsplit("/", 1)[-1]
+        target_path = target_root_path.rstrip("/") + "/" + child_name
         stage.RemovePrim(target_path)
-        ok = Sdf.CopySpec(root_layer, source_path, root_layer, target_path)
-        if not ok:
-            raise RuntimeError(f"Failed to copy visual prim from {source_path} to {target_path}")
-        copied += 1
-    return copied
+        target_prim = stage.OverridePrim(target_path)
+        target_prim.GetReferences().ClearReferences()
+        target_prim.GetReferences().AddInternalReference(source_path)
+        referenced_paths.append(target_path)
+    return referenced_paths
 
 
 def _count_mesh_prims_under(stage: Any, root_path: str) -> int:
@@ -1150,9 +1164,14 @@ def ensure_reference_visual_mesh(
             f"source={source_prim.GetPath()} target={target_path}"
         )
         ensure_xform(stage, target_path)
-        copied = _copy_local_visual_children(stage, str(source_prim.GetPath()), target_path, link_names)
-        if copied == 0:
-            log(f"[weldRobot] WARNING: no local visual prims copied for link {visual.link_name}")
+        referenced_paths = _reference_local_visual_children(stage, str(source_prim.GetPath()), target_path, link_names)
+        if not referenced_paths:
+            log(f"[weldRobot] WARNING: no local visual prims referenced for link {visual.link_name}")
+        else:
+            log(
+                f"[weldRobot] Referenced {len(referenced_paths)} local visual roots for {visual.link_name}: "
+                + ", ".join(referenced_paths)
+            )
         disable_collisions_under_prim(stage, target_path)
         local_mesh_count = _bind_material_recursively(stage, target_path, (1.0, 0.5, 0.08), opacity)
         mesh_count += local_mesh_count
@@ -1161,7 +1180,7 @@ def ensure_reference_visual_mesh(
         final_meshes = _count_mesh_prims_under(stage, target_path)
         log(
             f"[weldRobot] Reference visual link ready {visual.link_name}: "
-            f"copied_prims={copied}, bound_meshes={local_mesh_count}, final_meshes={final_meshes}"
+            f"referenced_roots={len(referenced_paths)}, bound_meshes={local_mesh_count}, final_meshes={final_meshes}"
         )
     total_meshes = _count_mesh_prims_under(stage, root_path)
     log(f"[weldRobot] Reference visual ghost meshes ready: bound_total={mesh_count}, root_total={total_meshes}")
