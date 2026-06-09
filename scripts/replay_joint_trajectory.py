@@ -5,8 +5,11 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import sys
 import traceback
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -75,6 +78,15 @@ DEFAULT_REFERENCE_KEY_CANDIDATES = (
     "q",
     "positions",
 )
+DEFAULT_CONTROL_POINT_KEY_CANDIDATES = (
+    "pred_w_star",
+    "gt_w_star",
+    "w_star",
+    "control_points",
+    "joint_control_points",
+    "w",
+    "positions",
+)
 
 
 def log(message: str) -> None:
@@ -102,6 +114,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--stl", type=Path, default=None, help="Optional STL workpiece path.")
     parser.add_argument("--robot-prim-path", default="/World/UR5ePen", help="USD prim path for the imported robot.")
     parser.add_argument("--workpiece-prim-path", default="/World/Workpiece", help="USD prim path for the imported STL workpiece.")
+    parser.add_argument(
+        "--reference-trajectory",
+        type=Path,
+        default=None,
+        help="Optional reference/original joint trajectory file: json/csv/txt/npy/npz.",
+    )
     parser.add_argument("--reference-npz", type=Path, default=None, help="Optional NPZ file containing the reference trajectory.")
     parser.add_argument("--reference-key", default=None, help="Key inside --reference-npz for the reference trajectory.")
     parser.add_argument(
@@ -222,6 +240,35 @@ def parse_args() -> argparse.Namespace:
         help="Local STL workpiece offset relative to the robot base, in meters.",
     )
     parser.add_argument("--debug-workpiece-box", action="store_true", help="Add debug axes at the STL workpiece center.")
+    parser.add_argument(
+        "--visualization-file",
+        type=Path,
+        default=None,
+        help="Optional JSON/NPZ replay overlay containing start/end markers, vectors, and spline control points.",
+    )
+    parser.add_argument(
+        "--visualization-frame",
+        choices=("workpiece_mm", "world_m"),
+        default="workpiece_mm",
+        help="Coordinate frame for --visualization-file positions. workpiece_mm is transformed with workpiece scale/offset/z-offset.",
+    )
+    parser.add_argument("--control-point-radius", type=float, default=0.008, help="Replay overlay control-point sphere radius in meters.")
+    parser.add_argument("--control-polyline-width", type=float, default=0.004, help="Replay overlay control polygon width in meters.")
+    parser.add_argument("--debug-vector-length", type=float, default=0.12, help="Replay overlay start/end vector length in meters.")
+    parser.add_argument(
+        "--pred-control-points",
+        type=Path,
+        default=None,
+        help="Optional predicted spline control-point file in joint space: json/csv/txt/npy/npz.",
+    )
+    parser.add_argument(
+        "--gt-control-points",
+        type=Path,
+        default=None,
+        help="Optional ground-truth/original spline control-point file in joint space: json/csv/txt/npy/npz.",
+    )
+    parser.add_argument("--pred-control-key", default=None, help="Optional key inside --pred-control-points when it is an NPZ.")
+    parser.add_argument("--gt-control-key", default=None, help="Optional key inside --gt-control-points when it is an NPZ.")
     return parser.parse_args()
 
 
@@ -319,6 +366,10 @@ def _load_npz_trajectory(path: Path, preferred_key: str | None = None) -> tuple[
     return _load_npz_array(path, preferred_key, DEFAULT_TRAJECTORY_KEY_CANDIDATES, "Trajectory")
 
 
+def _load_npz_control_points(path: Path, preferred_key: str | None = None) -> tuple[np.ndarray, list[str] | None]:
+    return _load_npz_array(path, preferred_key, DEFAULT_CONTROL_POINT_KEY_CANDIDATES, "Control-point")
+
+
 def load_joint_trajectory(
     path: Path,
     cli_joint_names: list[str] | None,
@@ -345,6 +396,36 @@ def load_joint_trajectory(
         raise RuntimeError(
             f"Joint-name count {len(joint_names)} does not match waypoint width {waypoints.shape[1]} "
             f"for trajectory {path}"
+        )
+    return waypoints, joint_names
+
+
+def load_joint_control_points(
+    path: Path,
+    cli_joint_names: list[str] | None,
+    preferred_npz_key: str | None = None,
+) -> tuple[np.ndarray, list[str] | None]:
+    path = path.expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Control-point file does not exist: {path}")
+
+    suffix = path.suffix.lower()
+    if suffix == ".json":
+        waypoints, file_joint_names = _load_json_trajectory(path)
+    elif suffix in {".csv", ".txt"}:
+        waypoints, file_joint_names = _load_csv_trajectory(path)
+    elif suffix == ".npy":
+        waypoints, file_joint_names = _coerce_trajectory_array(np.load(path, allow_pickle=False), "NPY control points"), None
+    elif suffix == ".npz":
+        waypoints, file_joint_names = _load_npz_control_points(path, preferred_npz_key)
+    else:
+        raise RuntimeError(f"Unsupported control-point format '{suffix}'. Use json/csv/txt/npy/npz.")
+
+    joint_names = cli_joint_names or file_joint_names
+    if joint_names is not None and len(joint_names) != waypoints.shape[1]:
+        raise RuntimeError(
+            f"Joint-name count {len(joint_names)} does not match control-point width {waypoints.shape[1]} "
+            f"for control-point file {path}"
         )
     return waypoints, joint_names
 
@@ -503,6 +584,444 @@ def shifted_offset(base_offset: list[float], world_offset: list[float]) -> tuple
     )
 
 
+def normalize_vector(vector: Any, label: str) -> np.ndarray:
+    arr = np.asarray(vector, dtype=float).reshape(-1)
+    if arr.size != 3:
+        raise RuntimeError(f"{label} must contain exactly 3 values, got shape={arr.shape}")
+    norm = float(np.linalg.norm(arr))
+    if norm < 1e-12:
+        raise RuntimeError(f"{label} must be non-zero")
+    return arr / norm
+
+
+def coerce_optional_points(value: Any, label: str) -> np.ndarray | None:
+    if value is None:
+        return None
+    arr = np.asarray(value, dtype=float)
+    if arr.size == 0:
+        return None
+    if arr.ndim != 2 or arr.shape[1] != 3:
+        raise RuntimeError(f"{label} must have shape (N, 3), got shape={arr.shape}")
+    if not np.all(np.isfinite(arr)):
+        raise RuntimeError(f"{label} contains non-finite values")
+    return arr
+
+
+def transform_overlay_points(points: np.ndarray | None, args: argparse.Namespace) -> np.ndarray | None:
+    if points is None:
+        return None
+    points = np.asarray(points, dtype=float)
+    if args.visualization_frame == "world_m":
+        return points.copy()
+    transformed = points * float(args.workpiece_scale) + np.asarray(args.workpiece_offset, dtype=float)[None, :]
+    transformed[:, 2] += float(args.workpiece_z_offset)
+    return transformed
+
+
+def transform_overlay_position(position: Any, args: argparse.Namespace, label: str) -> np.ndarray:
+    arr = np.asarray(position, dtype=float).reshape(-1)
+    if arr.size != 3:
+        raise RuntimeError(f"{label} must contain exactly 3 values, got shape={arr.shape}")
+    return transform_overlay_points(arr.reshape(1, 3), args)[0]
+
+
+def transform_optional_overlay_position(position: Any, args: argparse.Namespace, label: str) -> np.ndarray | None:
+    if position is None:
+        return None
+    return transform_overlay_position(position, args, label)
+
+
+def _json_overlay_field(payload: dict[str, Any], *names: str) -> Any:
+    for name in names:
+        if name in payload:
+            return payload[name]
+    return None
+
+
+def load_replay_visualization_overlay(args: argparse.Namespace) -> dict[str, Any] | None:
+    if args.visualization_file is None:
+        return None
+    path = args.visualization_file.expanduser().resolve()
+    if not path.is_file():
+        raise FileNotFoundError(f"Visualization file does not exist: {path}")
+
+    if path.suffix.lower() == ".json":
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise RuntimeError("Visualization JSON must be an object.")
+        start = payload.get("start") or {}
+        end = payload.get("end") or {}
+        if not isinstance(start, dict) or not isinstance(end, dict):
+            raise RuntimeError("Visualization JSON fields 'start' and 'end' must be objects when provided.")
+        start_position = transform_optional_overlay_position(start.get("position"), args, "start.position")
+        end_position = transform_optional_overlay_position(end.get("position"), args, "end.position")
+        start_vector = normalize_vector(start.get("vector"), "start.vector") if start.get("vector") is not None else None
+        end_vector = normalize_vector(end.get("vector"), "end.vector") if end.get("vector") is not None else None
+        pred_control_points = coerce_optional_points(
+            _json_overlay_field(payload, "pred_control_points", "predicted_control_points"),
+            "pred_control_points",
+        )
+        gt_control_points = coerce_optional_points(
+            _json_overlay_field(payload, "gt_control_points", "ground_truth_control_points", "true_control_points"),
+            "gt_control_points",
+        )
+    elif path.suffix.lower() == ".npz":
+        with np.load(path, allow_pickle=False) as data:
+            start_position = transform_optional_overlay_position(
+                data["start_position"] if "start_position" in data else None,
+                args,
+                "start_position",
+            )
+            end_position = transform_optional_overlay_position(
+                data["end_position"] if "end_position" in data else None,
+                args,
+                "end_position",
+            )
+            start_vector = normalize_vector(data["start_vector"], "start_vector") if "start_vector" in data else None
+            end_vector = normalize_vector(data["end_vector"], "end_vector") if "end_vector" in data else None
+            pred_control_points = coerce_optional_points(
+                data["pred_control_points"] if "pred_control_points" in data else None,
+                "pred_control_points",
+            )
+            gt_control_points = coerce_optional_points(
+                data["gt_control_points"] if "gt_control_points" in data else None,
+                "gt_control_points",
+            )
+    else:
+        raise RuntimeError(f"Unsupported visualization file extension: {path.suffix}")
+
+    overlay = {
+        "path": path,
+        "start_position": start_position,
+        "end_position": end_position,
+        "start_vector": start_vector,
+        "end_vector": end_vector,
+        "pred_control_points": transform_overlay_points(pred_control_points, args),
+        "gt_control_points": transform_overlay_points(gt_control_points, args),
+    }
+    log(f"[weldRobot] Loaded replay visualization overlay: {path}")
+    return overlay
+
+
+def set_debug_translation(xformable: Any, translation: np.ndarray) -> None:
+    from pxr import Gf, UsdGeom
+
+    translate_attr = xformable.GetPrim().GetAttribute("xformOp:translate")
+    if translate_attr.IsValid():
+        translate_attr.Set(Gf.Vec3d(*translation))
+        return
+    for op in xformable.GetOrderedXformOps():
+        if op.GetOpType() == UsdGeom.XformOp.TypeTranslate:
+            op.Set(Gf.Vec3d(*translation))
+            return
+    xformable.AddTranslateOp().Set(Gf.Vec3d(*translation))
+
+
+def draw_debug_curve(stage: Any, prim_path: str, points: list[np.ndarray], color: Any, width: float) -> None:
+    from pxr import Gf, UsdGeom
+
+    if len(points) < 2:
+        return
+    curve = UsdGeom.BasisCurves.Define(stage, prim_path)
+    curve.CreateTypeAttr("linear")
+    curve.CreateCurveVertexCountsAttr([len(points)])
+    curve.CreatePointsAttr([Gf.Vec3f(*np.asarray(point, dtype=float)) for point in points])
+    curve.CreateWidthsAttr([float(width)])
+    curve.CreateDisplayColorAttr([color])
+
+
+def draw_debug_sphere(stage: Any, prim_path: str, point: np.ndarray, color: Any, radius: float) -> None:
+    from pxr import UsdGeom
+
+    sphere = UsdGeom.Sphere.Define(stage, prim_path)
+    sphere.CreateRadiusAttr(float(radius))
+    sphere.CreateDisplayColorAttr([color])
+    set_debug_translation(UsdGeom.Xformable(sphere.GetPrim()), np.asarray(point, dtype=float))
+
+
+def draw_debug_vector(stage: Any, prim_path: str, origin: np.ndarray, vector: np.ndarray | None, color: Any, length: float) -> None:
+    if vector is None:
+        return
+    start = np.asarray(origin, dtype=float)
+    end = start + np.asarray(vector, dtype=float) * float(length)
+    draw_debug_curve(stage, prim_path, [start, end], color, width=0.006)
+
+
+def draw_control_polygon(stage: Any, prim_prefix: str, points: np.ndarray | None, color: Any, radius: float, width: float, dashed: bool) -> None:
+    if points is None or len(points) == 0:
+        return
+    pts = [np.asarray(point, dtype=float) for point in points]
+    for idx, point in enumerate(pts):
+        draw_debug_sphere(stage, f"{prim_prefix}/Point_{idx:03d}", point, color, radius)
+    if len(pts) < 2:
+        return
+    if dashed:
+        for idx in range(len(pts) - 1):
+            if idx % 2 == 0:
+                draw_debug_curve(stage, f"{prim_prefix}/Dash_{idx:03d}", [pts[idx], pts[idx + 1]], color, width)
+    else:
+        draw_debug_curve(stage, f"{prim_prefix}/Polyline", pts, color, width)
+
+
+def rpy_matrix(rpy: np.ndarray) -> np.ndarray:
+    roll, pitch, yaw = np.asarray(rpy, dtype=float)
+    cr, sr = math.cos(roll), math.sin(roll)
+    cp, sp = math.cos(pitch), math.sin(pitch)
+    cy, sy = math.cos(yaw), math.sin(yaw)
+    rx = np.array([[1.0, 0.0, 0.0], [0.0, cr, -sr], [0.0, sr, cr]], dtype=float)
+    ry = np.array([[cp, 0.0, sp], [0.0, 1.0, 0.0], [-sp, 0.0, cp]], dtype=float)
+    rz = np.array([[cy, -sy, 0.0], [sy, cy, 0.0], [0.0, 0.0, 1.0]], dtype=float)
+    return rz @ ry @ rx
+
+
+def axis_angle_matrix(axis: np.ndarray, angle: float) -> np.ndarray:
+    axis = np.asarray(axis, dtype=float)
+    axis = axis / max(float(np.linalg.norm(axis)), 1e-12)
+    x, y, z = axis
+    c = math.cos(float(angle))
+    s = math.sin(float(angle))
+    c1 = 1.0 - c
+    return np.array(
+        [
+            [c + x * x * c1, x * y * c1 - z * s, x * z * c1 + y * s],
+            [y * x * c1 + z * s, c + y * y * c1, y * z * c1 - x * s],
+            [z * x * c1 - y * s, z * y * c1 + x * s, c + z * z * c1],
+        ],
+        dtype=float,
+    )
+
+
+def urdf_transform_matrix(xyz: np.ndarray, rpy: np.ndarray) -> np.ndarray:
+    tf = np.eye(4)
+    tf[:3, :3] = rpy_matrix(rpy)
+    tf[:3, 3] = np.asarray(xyz, dtype=float)
+    return tf
+
+
+@dataclass
+class ReplayChainJoint:
+    name: str
+    joint_type: str
+    axis: np.ndarray
+    origin: np.ndarray
+
+
+class ReplayURDFKinematics:
+    def __init__(self, urdf_path: Path, base_link: str = "base_link", tcp_link: str = "tool0") -> None:
+        root = ET.parse(urdf_path).getroot()
+        child_to_joint: dict[str, tuple[str, ET.Element]] = {}
+        for joint in root.findall("joint"):
+            child = joint.find("child")
+            parent = joint.find("parent")
+            if child is not None and parent is not None:
+                child_to_joint[child.attrib["link"]] = (parent.attrib["link"], joint)
+
+        chain_xml: list[ET.Element] = []
+        current = tcp_link
+        while current != base_link:
+            if current not in child_to_joint:
+                raise RuntimeError(f"Cannot build URDF chain from {base_link} to {tcp_link}; stopped at {current}")
+            parent_link, joint = child_to_joint[current]
+            chain_xml.append(joint)
+            current = parent_link
+        chain_xml.reverse()
+
+        self.chain: list[ReplayChainJoint] = []
+        self.active_names: list[str] = []
+        for joint in chain_xml:
+            origin_xml = joint.find("origin")
+            xyz = np.fromstring(origin_xml.attrib.get("xyz", "0 0 0"), sep=" ") if origin_xml is not None else np.zeros(3)
+            rpy = np.fromstring(origin_xml.attrib.get("rpy", "0 0 0"), sep=" ") if origin_xml is not None else np.zeros(3)
+            axis_xml = joint.find("axis")
+            axis = np.fromstring(axis_xml.attrib.get("xyz", "0 0 1"), sep=" ") if axis_xml is not None else np.array([0.0, 0.0, 1.0])
+            item = ReplayChainJoint(
+                name=joint.attrib["name"],
+                joint_type=joint.attrib.get("type", "fixed"),
+                axis=axis.astype(float),
+                origin=urdf_transform_matrix(xyz.astype(float), rpy.astype(float)),
+            )
+            self.chain.append(item)
+            if item.joint_type in {"revolute", "continuous", "prismatic"}:
+                self.active_names.append(item.name)
+
+    def forward(self, q_by_name: dict[str, float]) -> np.ndarray:
+        tf = np.eye(4)
+        for joint in self.chain:
+            tf = tf @ joint.origin
+            if joint.name not in q_by_name:
+                continue
+            motion = np.eye(4)
+            if joint.joint_type in {"revolute", "continuous"}:
+                motion[:3, :3] = axis_angle_matrix(joint.axis, float(q_by_name[joint.name]))
+            elif joint.joint_type == "prismatic":
+                motion[:3, 3] = joint.axis * float(q_by_name[joint.name])
+            tf = tf @ motion
+        return tf
+
+
+def joint_names_for_trajectory(joint_names: list[str] | None, width: int) -> list[str]:
+    if joint_names is not None:
+        return list(joint_names)
+    if width == len(DEFAULT_TRAJECTORY_JOINT_NAMES):
+        return list(DEFAULT_TRAJECTORY_JOINT_NAMES)
+    raise RuntimeError(
+        f"Cannot compute TCP path for trajectory width={width} without joint names. "
+        "Provide --joint-names or use a 6-joint trajectory in the default UR5e order."
+    )
+
+
+def compute_tcp_path(
+    kinematics: ReplayURDFKinematics,
+    trajectory: np.ndarray,
+    joint_names: list[str] | None,
+) -> np.ndarray:
+    names = joint_names_for_trajectory(joint_names, trajectory.shape[1])
+    missing = [name for name in kinematics.active_names if name not in names]
+    if missing:
+        raise RuntimeError(f"Trajectory is missing joint(s) needed for TCP FK: {missing}")
+    tcp_points = []
+    for waypoint in np.asarray(trajectory, dtype=float):
+        q_by_name = {name: float(waypoint[idx]) for idx, name in enumerate(names)}
+        tcp_points.append(kinematics.forward(q_by_name)[:3, 3])
+    return np.asarray(tcp_points, dtype=float)
+
+
+def endpoint_vector_from_path(path: np.ndarray, at_start: bool) -> np.ndarray | None:
+    if path is None or len(path) < 2:
+        return None
+    vec = path[1] - path[0] if at_start else path[-1] - path[-2]
+    norm = float(np.linalg.norm(vec))
+    if norm < 1e-12:
+        return None
+    return vec / norm
+
+
+def merged_overlay(
+    overlay: dict[str, Any] | None,
+    pred_tcp_path: np.ndarray,
+    pred_control_tcp_points: np.ndarray | None = None,
+    gt_control_tcp_points: np.ndarray | None = None,
+) -> dict[str, Any]:
+    merged = dict(overlay or {})
+    if pred_tcp_path is not None and len(pred_tcp_path) > 0:
+        merged["start_position"] = merged.get("start_position")
+        if merged["start_position"] is None:
+            merged["start_position"] = pred_tcp_path[0]
+        merged["end_position"] = merged.get("end_position")
+        if merged["end_position"] is None:
+            merged["end_position"] = pred_tcp_path[-1]
+        if merged.get("start_vector") is None:
+            merged["start_vector"] = endpoint_vector_from_path(pred_tcp_path, at_start=True)
+        if merged.get("end_vector") is None:
+            merged["end_vector"] = endpoint_vector_from_path(pred_tcp_path, at_start=False)
+    if pred_control_tcp_points is not None:
+        merged["pred_control_points"] = np.asarray(pred_control_tcp_points, dtype=float)
+    if gt_control_tcp_points is not None:
+        merged["gt_control_points"] = np.asarray(gt_control_tcp_points, dtype=float)
+    return merged
+
+
+def draw_tcp_path_overlay(
+    stage: Any,
+    tcp_path: np.ndarray | None,
+    prim_prefix: str,
+    color: Any,
+    marker_radius: float,
+    width: float,
+) -> None:
+    if tcp_path is None or len(tcp_path) == 0:
+        return
+    points = [np.asarray(point, dtype=float) for point in tcp_path]
+    draw_debug_curve(stage, f"{prim_prefix}/Path", points, color, width)
+    draw_debug_sphere(stage, f"{prim_prefix}/Start", points[0], color, marker_radius)
+    draw_debug_sphere(stage, f"{prim_prefix}/End", points[-1], color, marker_radius)
+
+
+def draw_replay_visualization_overlay(
+    stage: Any,
+    overlay: dict[str, Any] | None,
+    args: argparse.Namespace,
+    pred_tcp_path: np.ndarray | None = None,
+    reference_tcp_path: np.ndarray | None = None,
+    pred_control_tcp_points: np.ndarray | None = None,
+    gt_control_tcp_points: np.ndarray | None = None,
+) -> None:
+    overlay = merged_overlay(
+        overlay,
+        pred_tcp_path,
+        pred_control_tcp_points=pred_control_tcp_points,
+        gt_control_tcp_points=gt_control_tcp_points,
+    )
+    if overlay.get("start_position") is None or overlay.get("end_position") is None:
+        return
+    from pxr import Gf
+
+    try:
+        stage.RemovePrim("/World/ReplayDebug")
+    except Exception:
+        pass
+    ensure_xform(stage, "/World/ReplayDebug")
+    ensure_xform(stage, "/World/ReplayDebug/PredControl")
+    ensure_xform(stage, "/World/ReplayDebug/GtControl")
+    ensure_xform(stage, "/World/ReplayDebug/PredTcp")
+    ensure_xform(stage, "/World/ReplayDebug/ReferenceTcp")
+
+    start_position = np.asarray(overlay["start_position"], dtype=float)
+    end_position = np.asarray(overlay["end_position"], dtype=float)
+    draw_debug_sphere(stage, "/World/ReplayDebug/Start", start_position, Gf.Vec3f(0.1, 1.0, 0.1), radius=0.01)
+    draw_debug_sphere(stage, "/World/ReplayDebug/End", end_position, Gf.Vec3f(1.0, 0.1, 0.1), radius=0.01)
+    draw_debug_vector(
+        stage,
+        "/World/ReplayDebug/StartVector",
+        start_position,
+        overlay.get("start_vector"),
+        Gf.Vec3f(0.0, 1.0, 0.0),
+        args.debug_vector_length,
+    )
+    draw_debug_vector(
+        stage,
+        "/World/ReplayDebug/EndVector",
+        end_position,
+        overlay.get("end_vector"),
+        Gf.Vec3f(0.0, 1.0, 0.0),
+        args.debug_vector_length,
+    )
+    draw_control_polygon(
+        stage,
+        "/World/ReplayDebug/PredControl",
+        overlay.get("pred_control_points"),
+        Gf.Vec3f(1.0, 0.55, 0.05),
+        args.control_point_radius,
+        args.control_polyline_width,
+        dashed=True,
+    )
+    draw_control_polygon(
+        stage,
+        "/World/ReplayDebug/GtControl",
+        overlay.get("gt_control_points"),
+        Gf.Vec3f(0.65, 0.25, 1.0),
+        args.control_point_radius,
+        args.control_polyline_width,
+        dashed=False,
+    )
+    draw_tcp_path_overlay(
+        stage,
+        pred_tcp_path,
+        "/World/ReplayDebug/PredTcp",
+        Gf.Vec3f(0.05, 0.85, 1.0),
+        marker_radius=0.006,
+        width=0.005,
+    )
+    draw_tcp_path_overlay(
+        stage,
+        reference_tcp_path,
+        "/World/ReplayDebug/ReferenceTcp",
+        Gf.Vec3f(0.25, 0.35, 1.0),
+        marker_radius=0.006,
+        width=0.005,
+    )
+
+
 def apply_joint_waypoint(robot: Any, dof_indices: list[int], waypoint: np.ndarray) -> None:
     if waypoint.shape != (len(dof_indices),):
         raise RuntimeError(
@@ -564,8 +1083,9 @@ def main() -> None:
     reference_trajectory = None
     reference_joint_names = None
     reference_trajectory_representation = args.reference_representation
-    if args.reference_npz is not None:
-        reference_npz_path = args.reference_npz.expanduser().resolve()
+    reference_path = args.reference_trajectory or args.reference_npz
+    if reference_path is not None:
+        reference_npz_path = reference_path.expanduser().resolve()
         reference_trajectory, reference_joint_names = load_joint_trajectory(
             reference_npz_path,
             args.joint_names,
@@ -574,6 +1094,23 @@ def main() -> None:
         reference_trajectory_representation = resolve_trajectory_representation(
             reference_npz_path, args.reference_representation
         )
+    pred_control_points = None
+    pred_control_joint_names = None
+    if args.pred_control_points is not None:
+        pred_control_points, pred_control_joint_names = load_joint_control_points(
+            args.pred_control_points,
+            args.joint_names,
+            preferred_npz_key=args.pred_control_key,
+        )
+    gt_control_points = None
+    gt_control_joint_names = None
+    if args.gt_control_points is not None:
+        gt_control_points, gt_control_joint_names = load_joint_control_points(
+            args.gt_control_points,
+            args.joint_names,
+            preferred_npz_key=args.gt_control_key,
+        )
+    visualization_overlay = load_replay_visualization_overlay(args)
     frames_dir = prepare_recording_paths(args) if args.record else None
 
     if args.stl is not None:
@@ -666,6 +1203,8 @@ def main() -> None:
             start_joint_positions=start_joint_positions,
         )
         reference_robot = None
+        reference_dof_indices = None
+        resolved_reference_joint_names = None
         if reference_robot_prim_path is not None and reference_trajectory is not None:
             reference_robot = create_articulation(reference_robot_prim_path)
             resolved_reference_joint_names, reference_dof_indices = resolve_dof_indices(
@@ -685,6 +1224,46 @@ def main() -> None:
                 representation=reference_trajectory_representation,
                 start_joint_positions=reference_start_joint_positions,
             )
+
+        replay_kinematics = ReplayURDFKinematics(resolved_urdf)
+        pred_tcp_path = compute_tcp_path(replay_kinematics, trajectory, joint_names)
+        reference_tcp_path = None
+        if reference_trajectory is not None:
+            reference_tcp_path = compute_tcp_path(
+                replay_kinematics,
+                reference_trajectory,
+                resolved_reference_joint_names or reference_joint_names or args.joint_names,
+            )
+        pred_control_tcp_points = None
+        if pred_control_points is not None:
+            pred_control_tcp_points = compute_tcp_path(
+                replay_kinematics,
+                pred_control_points,
+                pred_control_joint_names or args.joint_names,
+            )
+        gt_control_tcp_points = None
+        if gt_control_points is not None:
+            gt_control_tcp_points = compute_tcp_path(
+                replay_kinematics,
+                gt_control_points,
+                gt_control_joint_names or args.joint_names,
+            )
+        draw_replay_visualization_overlay(
+            stage,
+            visualization_overlay,
+            args,
+            pred_tcp_path=pred_tcp_path,
+            reference_tcp_path=reference_tcp_path,
+            pred_control_tcp_points=pred_control_tcp_points,
+            gt_control_tcp_points=gt_control_tcp_points,
+        )
+        log(f"[weldRobot] Predicted TCP path points: {len(pred_tcp_path)}")
+        if reference_tcp_path is not None:
+            log(f"[weldRobot] Reference TCP path points: {len(reference_tcp_path)}")
+        if pred_control_tcp_points is not None:
+            log(f"[weldRobot] Predicted control points: {len(pred_control_tcp_points)}")
+        if gt_control_tcp_points is not None:
+            log(f"[weldRobot] Ground-truth control points: {len(gt_control_tcp_points)}")
 
         writer = None
         if args.record:
