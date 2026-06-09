@@ -127,6 +127,12 @@ def parse_args() -> argparse.Namespace:
         help="Replay predicted and reference trajectories sequentially on one robot, or overlaid on two robots.",
     )
     parser.add_argument(
+        "--overlay-finish-behavior",
+        choices=("hide", "hold"),
+        default="hide",
+        help="When one overlaid trajectory finishes before the other, hide it or hold its final pose.",
+    )
+    parser.add_argument(
         "--reference-representation",
         choices=("auto", "absolute", "delta"),
         default="absolute",
@@ -709,6 +715,18 @@ def disable_collisions_under_prim(stage: Any, root_prim_path: str) -> None:
     log(f"[weldRobot] Disabled collisions on {disabled} prims under {root_prim_path}")
 
 
+def set_prim_visibility(stage: Any, prim_path: str, visible: bool) -> None:
+    from pxr import UsdGeom
+
+    prim = stage.GetPrimAtPath(prim_path)
+    if not prim.IsValid():
+        return
+    imageable = UsdGeom.Imageable(prim)
+    if not imageable:
+        return
+    imageable.MakeVisible() if visible else imageable.MakeInvisible()
+
+
 def normalize_vector(vector: Any, label: str) -> np.ndarray:
     arr = np.asarray(vector, dtype=float).reshape(-1)
     if arr.size != 3:
@@ -1271,6 +1289,7 @@ def main() -> None:
             requested_prim_path=args.robot_prim_path,
             fix_base=not args.floating,
         )
+        set_prim_visibility(stage, robot_prim_path, True)
         reference_robot_prim_path = None
         if reference_trajectory is not None and args.playback_mode == "overlay":
             reference_robot_prim_path = import_robot_instance(
@@ -1282,6 +1301,7 @@ def main() -> None:
             )
             apply_reference_ghost_material(stage, reference_robot_prim_path, args.reference_ghost_opacity)
             disable_collisions_under_prim(stage, reference_robot_prim_path)
+            set_prim_visibility(stage, reference_robot_prim_path, True)
         world.reset()
         set_initial_joint_positions(robot_prim_path)
         if reference_robot_prim_path is not None:
@@ -1418,6 +1438,11 @@ def main() -> None:
                     "[weldRobot] Overlapped dual-robot replay: ghost collisions disabled. "
                     "Without this, overlapping collision bodies can cause visible twitching."
                 )
+            if args.playback_mode == "overlay":
+                log(
+                    f"[weldRobot] Overlay finish behavior={args.overlay_finish_behavior}. "
+                    "Independent trajectory completion avoids forcing both robots to finish together."
+                )
             if args.playback_mode == "sequential":
                 log(
                     "[weldRobot] Sequential replay uses one robot and interpolated waypoints. "
@@ -1432,13 +1457,23 @@ def main() -> None:
         frame_idx = 0
         for loop_idx in range(args.loop):
             if reference_trajectory is not None and args.playback_mode == "overlay":
+                set_prim_visibility(stage, robot_prim_path, True)
+                if reference_robot_prim_path is not None:
+                    set_prim_visibility(stage, reference_robot_prim_path, True)
                 for waypoint_idx in range(total_waypoints):
+                    pred_active = waypoint_idx < trajectory.shape[0]
+                    gt_active = waypoint_idx < reference_trajectory.shape[0]
                     waypoint = trajectory[min(waypoint_idx, trajectory.shape[0] - 1)]
                     reference_waypoint = reference_trajectory[min(waypoint_idx, reference_trajectory.shape[0] - 1)]
                     for _ in range(args.hold_steps):
-                        apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
-                        if reference_robot is not None:
+                        if pred_active or args.overlay_finish_behavior == "hold":
+                            apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
+                        if reference_robot is not None and (gt_active or args.overlay_finish_behavior == "hold"):
                             apply_joint_waypoint(reference_robot, reference_dof_indices, reference_waypoint.reshape(-1))
+                        if not pred_active and args.overlay_finish_behavior == "hide":
+                            set_prim_visibility(stage, robot_prim_path, False)
+                        if reference_robot is not None and not gt_active and args.overlay_finish_behavior == "hide":
+                            set_prim_visibility(stage, reference_robot_prim_path, False)
                         world.step(render=True)
                         if args.record:
                             step_replicator(rep, args)
