@@ -25,6 +25,7 @@ if str(SCRIPT_DIR) not in sys.path:
 from sim_parallel_welding import (  # noqa: E402
     encode_video,
     ensure_xform,
+    load_stl_mesh,
     move_prim_to_path,
     import_stl_as_mesh,
     prepare_recording_paths,
@@ -1038,23 +1039,26 @@ def ensure_reference_visual_mesh(stage: Any, kinematics: "ReplayURDFKinematics",
             log(f"[weldRobot] WARNING: visual mesh does not exist for {visual.link_name}: {visual.mesh_path}")
             continue
         link_path = f"{root_path}/{visual.link_name}"
-        prim = stage.GetPrimAtPath(link_path)
-        if not prim.IsValid():
-            prim = UsdGeom.Xform.Define(stage, link_path).GetPrim()
-            prim.GetReferences().AddReference(str(visual.mesh_path))
-        UsdShade.MaterialBindingAPI(prim).Bind(material)
-
-    # Referenced DAE meshes may materialize below their link prims; bind/update any that are already present.
-    root_prefix = root_path.rstrip("/") + "/"
-    for prim in stage.Traverse():
-        path = str(prim.GetPath())
-        if path != root_path and not path.startswith(root_prefix):
+        points, face_counts, face_indices = load_stl_mesh(visual.mesh_path)
+        scale = visual.mesh_scale.astype(float)
+        scaled_points = [
+            (point[0] * scale[0], point[1] * scale[1], point[2] * scale[2])
+            for point in points
+        ]
+        if not scaled_points:
             continue
-        if prim.IsA(UsdGeom.Mesh):
-            mesh = UsdGeom.Mesh(prim)
-            mesh.CreateDisplayColorAttr([Gf.Vec3f(1.0, 0.5, 0.08)])
-            mesh.CreateDisplayOpacityAttr([max(0.0, min(1.0, float(opacity)))])
-            UsdShade.MaterialBindingAPI(prim).Bind(material)
+        min_point = tuple(min(point[axis] for point in scaled_points) for axis in range(3))
+        max_point = tuple(max(point[axis] for point in scaled_points) for axis in range(3))
+        mesh = UsdGeom.Mesh.Define(stage, link_path)
+        mesh.CreatePointsAttr([Gf.Vec3f(*point) for point in scaled_points])
+        mesh.CreateFaceVertexCountsAttr(face_counts)
+        mesh.CreateFaceVertexIndicesAttr(face_indices)
+        mesh.CreateSubdivisionSchemeAttr("none")
+        mesh.CreateExtentAttr([Gf.Vec3f(*min_point), Gf.Vec3f(*max_point)])
+        mesh.CreateDoubleSidedAttr(True)
+        mesh.CreateDisplayColorAttr([Gf.Vec3f(1.0, 0.5, 0.08)])
+        mesh.CreateDisplayOpacityAttr([max(0.0, min(1.0, float(opacity)))])
+        UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
 
 
 def update_reference_visual_mesh(
@@ -1185,10 +1189,10 @@ class ReplayURDFKinematics:
         visual_links: dict[str, ReplayVisualLink] = {}
         for link in root.findall("link"):
             link_name = link.attrib.get("name")
-            visual = link.find("visual")
-            if not link_name or visual is None:
+            collision = link.find("collision")
+            if not link_name or collision is None:
                 continue
-            mesh = visual.find("./geometry/mesh")
+            mesh = collision.find("./geometry/mesh")
             if mesh is None:
                 continue
             filename = mesh.attrib.get("filename")
@@ -1197,18 +1201,16 @@ class ReplayURDFKinematics:
             mesh_path = Path(filename)
             if not mesh_path.is_absolute():
                 mesh_path = (urdf_path.parent / mesh_path).resolve()
-            origin_xml = visual.find("origin")
+            origin_xml = collision.find("origin")
             xyz = np.fromstring(origin_xml.attrib.get("xyz", "0 0 0"), sep=" ") if origin_xml is not None else np.zeros(3)
             rpy = np.fromstring(origin_xml.attrib.get("rpy", "0 0 0"), sep=" ") if origin_xml is not None else np.zeros(3)
             scale = np.fromstring(mesh.attrib.get("scale", "1 1 1"), sep=" ")
             if scale.size != 3:
                 scale = np.ones(3, dtype=float)
-            scale_tf = np.eye(4)
-            scale_tf[0, 0], scale_tf[1, 1], scale_tf[2, 2] = scale.astype(float)
             visual_links[link_name] = ReplayVisualLink(
                 link_name=link_name,
                 mesh_path=mesh_path,
-                visual_origin=urdf_transform_matrix(xyz.astype(float), rpy.astype(float)) @ scale_tf,
+                visual_origin=urdf_transform_matrix(xyz.astype(float), rpy.astype(float)),
                 mesh_scale=scale.astype(float),
             )
         return visual_links
