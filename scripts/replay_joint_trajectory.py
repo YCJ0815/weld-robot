@@ -106,9 +106,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--trajectory-representation",
         choices=("auto", "absolute", "delta"),
-        default="auto",
+        default="absolute",
         help="Interpret trajectory waypoints as absolute joint angles or joint-angle deltas. "
-        "In auto mode, all supported formats default to absolute.",
+        "Use delta explicitly for relative joint-angle increments.",
     )
     parser.add_argument("--urdf", type=Path, default=DEFAULT_URDF, help="UR5e welding-arm URDF.")
     parser.add_argument("--stl", type=Path, default=None, help="Optional STL workpiece path.")
@@ -279,7 +279,7 @@ def parse_args() -> argparse.Namespace:
         "--reference-display",
         choices=("ghost", "sequence", "hidden"),
         default="ghost",
-        help="How to show --reference-trajectory. ghost=static semi-transparent snapshots, sequence=replay it after prediction on the same robot, hidden=no robot-level GT display.",
+        help="How to show --reference-trajectory. ghost=static semi-transparent snapshots plus TCP overlay, sequence=replay it after prediction on the same robot, hidden=no GT display.",
     )
     parser.add_argument(
         "--ghost-samples",
@@ -1387,9 +1387,9 @@ def main() -> None:
             visualization_overlay,
             args,
             pred_tcp_path=pred_tcp_path,
-            reference_tcp_path=reference_tcp_path,
+            reference_tcp_path=reference_tcp_path if args.reference_display != "hidden" else None,
             pred_control_tcp_points=pred_control_tcp_points,
-            gt_control_tcp_points=gt_control_tcp_points,
+            gt_control_tcp_points=gt_control_tcp_points if args.reference_display != "hidden" else None,
         )
         log(f"[weldRobot] Predicted TCP path points: {len(pred_tcp_path)}")
         if reference_tcp_path is not None:
