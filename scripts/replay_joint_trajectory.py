@@ -121,6 +121,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reference-npz", type=Path, default=None, help="Optional NPZ file containing the reference trajectory.")
     parser.add_argument("--reference-key", default=None, help="Key inside --reference-npz for the reference trajectory.")
     parser.add_argument(
+        "--playback-mode",
+        choices=("sequential", "overlay"),
+        default="sequential",
+        help="Replay predicted and reference trajectories sequentially on one robot, or overlaid on two robots.",
+    )
+    parser.add_argument(
         "--reference-representation",
         choices=("auto", "absolute", "delta"),
         default="absolute",
@@ -151,6 +157,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--physics-dt", type=float, default=1.0 / 60.0, help="Physics timestep in seconds.")
     parser.add_argument("--rendering-dt", type=float, default=1.0 / 60.0, help="Rendering timestep in seconds.")
     parser.add_argument("--hold-steps", type=int, default=None, help="Simulation steps to hold each waypoint.")
+    parser.add_argument(
+        "--waypoint-substeps",
+        type=int,
+        default=None,
+        help="Linear interpolation substeps inserted between adjacent waypoints to slow and smooth playback.",
+    )
+    parser.add_argument(
+        "--segment-gap-steps",
+        type=int,
+        default=20,
+        help="Extra simulation steps to hold between sequential predicted/ground-truth segments.",
+    )
     parser.add_argument("--loop", type=int, default=1, help="Repeat count for the entire trajectory.")
     parser.add_argument("--fps", type=int, default=30, help="Recording frame rate.")
     parser.add_argument("--width", type=int, default=1280, help="Recording width.")
@@ -433,6 +451,8 @@ def apply_pred_check_defaults(args: argparse.Namespace) -> None:
     if args.pred_check_dir is None:
         if args.hold_steps is None:
             args.hold_steps = 1
+        if args.waypoint_substeps is None:
+            args.waypoint_substeps = 1
         return
 
     pred_check_dir = args.pred_check_dir.expanduser().resolve()
@@ -469,8 +489,10 @@ def apply_pred_check_defaults(args: argparse.Namespace) -> None:
                 log(f"[weldRobot] Could not resolve workpiece STL from: {summary_path}")
 
     if args.hold_steps is None:
-        args.hold_steps = 4
-        log("[weldRobot] pred-check replay defaulting to hold_steps=4 for slower playback")
+        args.hold_steps = 1
+    if args.waypoint_substeps is None:
+        args.waypoint_substeps = 6
+        log("[weldRobot] pred-check replay defaulting to waypoint_substeps=6 for slower, smoother playback")
 
 
 def create_articulation(robot_prim_path: str):
@@ -595,6 +617,22 @@ def build_absolute_trajectory(
     if lower_limits is not None and upper_limits is not None:
         absolute = np.clip(absolute, lower_limits.reshape(1, -1), upper_limits.reshape(1, -1))
     return absolute
+
+
+def densify_trajectory(trajectory: np.ndarray, substeps: int) -> np.ndarray:
+    trajectory = np.asarray(trajectory, dtype=float)
+    if substeps <= 1 or len(trajectory) <= 1:
+        return trajectory.copy()
+
+    dense_waypoints: list[np.ndarray] = []
+    for idx in range(len(trajectory) - 1):
+        start = trajectory[idx]
+        end = trajectory[idx + 1]
+        for substep_idx in range(substeps):
+            alpha = float(substep_idx) / float(substeps)
+            dense_waypoints.append((1.0 - alpha) * start + alpha * end)
+    dense_waypoints.append(trajectory[-1].copy())
+    return np.asarray(dense_waypoints, dtype=float)
 
 
 def import_robot_instance(
@@ -1157,6 +1195,10 @@ def main() -> None:
     apply_pred_check_defaults(args)
     if args.hold_steps < 1:
         raise RuntimeError("--hold-steps must be >= 1")
+    if args.waypoint_substeps < 1:
+        raise RuntimeError("--waypoint-substeps must be >= 1")
+    if args.segment_gap_steps < 0:
+        raise RuntimeError("--segment-gap-steps must be >= 0")
     if args.loop < 1:
         raise RuntimeError("--loop must be >= 1")
     if args.encode_only:
@@ -1230,7 +1272,7 @@ def main() -> None:
             fix_base=not args.floating,
         )
         reference_robot_prim_path = None
-        if reference_trajectory is not None:
+        if reference_trajectory is not None and args.playback_mode == "overlay":
             reference_robot_prim_path = import_robot_instance(
                 stage=stage,
                 resolved_urdf=resolved_urdf,
@@ -1275,28 +1317,41 @@ def main() -> None:
             representation=trajectory_representation,
             start_joint_positions=start_joint_positions,
         )
+        trajectory = densify_trajectory(trajectory, args.waypoint_substeps)
         reference_robot = None
         reference_dof_indices = None
         resolved_reference_joint_names = None
-        if reference_robot_prim_path is not None and reference_trajectory is not None:
-            reference_robot = create_articulation(reference_robot_prim_path)
-            resolved_reference_joint_names, reference_dof_indices = resolve_dof_indices(
-                reference_robot,
-                reference_joint_names or args.joint_names,
-                reference_trajectory.shape[1],
-            )
-            reference_start_joint_positions = resolve_start_joint_positions(
-                robot=reference_robot,
-                dof_indices=reference_dof_indices,
-                cli_start_joint_positions=args.reference_start_joint_positions,
-                start_npz=args.reference_start_npz,
-                start_key=args.reference_start_key,
-            )
+        if reference_trajectory is not None:
+            if reference_robot_prim_path is not None:
+                reference_robot = create_articulation(reference_robot_prim_path)
+                resolved_reference_joint_names, reference_dof_indices = resolve_dof_indices(
+                    reference_robot,
+                    reference_joint_names or args.joint_names,
+                    reference_trajectory.shape[1],
+                )
+                reference_start_joint_positions = resolve_start_joint_positions(
+                    robot=reference_robot,
+                    dof_indices=reference_dof_indices,
+                    cli_start_joint_positions=args.reference_start_joint_positions,
+                    start_npz=args.reference_start_npz,
+                    start_key=args.reference_start_key,
+                )
+            else:
+                resolved_reference_joint_names = joint_names
+                reference_dof_indices = dof_indices
+                reference_start_joint_positions = resolve_start_joint_positions(
+                    robot=robot,
+                    dof_indices=dof_indices,
+                    cli_start_joint_positions=args.reference_start_joint_positions,
+                    start_npz=args.reference_start_npz,
+                    start_key=args.reference_start_key,
+                )
             reference_trajectory = build_absolute_trajectory(
                 trajectory=reference_trajectory,
                 representation=reference_trajectory_representation,
                 start_joint_positions=reference_start_joint_positions,
             )
+            reference_trajectory = densify_trajectory(reference_trajectory, args.waypoint_substeps)
 
         replay_kinematics = ReplayURDFKinematics(resolved_urdf)
         pred_tcp_path = compute_tcp_path(replay_kinematics, trajectory, joint_names)
@@ -1331,16 +1386,25 @@ def main() -> None:
         elif not args.headless:
             add_camera_view()
 
-        total_frames = trajectory.shape[0] * args.hold_steps * args.loop
+        playback_segments: list[tuple[str, np.ndarray]] = [("pred", trajectory)]
         if reference_trajectory is not None:
-            total_waypoints = max(trajectory.shape[0], reference_trajectory.shape[0])
-            total_frames = total_waypoints * args.hold_steps * args.loop
+            if args.playback_mode == "overlay":
+                total_waypoints = max(trajectory.shape[0], reference_trajectory.shape[0])
+            else:
+                total_waypoints = trajectory.shape[0] + reference_trajectory.shape[0]
+                playback_segments.append(("gt", reference_trajectory))
         else:
             total_waypoints = trajectory.shape[0]
+
+        if reference_trajectory is not None and args.playback_mode == "overlay":
+            total_frames = total_waypoints * args.hold_steps * args.loop
+        else:
+            segment_gap_total = args.segment_gap_steps * max(len(playback_segments) - 1, 0)
+            total_frames = (total_waypoints * args.hold_steps + segment_gap_total) * args.loop
         log(
-            f"[weldRobot] Replay ready: waypoints={trajectory.shape[0]}, hold_steps={args.hold_steps}, "
-            f"loop={args.loop}, total_steps={total_frames}, joints={joint_names}, "
-            f"representation={trajectory_representation}"
+            f"[weldRobot] Replay ready: pred_waypoints={trajectory.shape[0]}, hold_steps={args.hold_steps}, "
+            f"waypoint_substeps={args.waypoint_substeps}, loop={args.loop}, total_steps={total_frames}, "
+            f"joints={joint_names}, representation={trajectory_representation}, playback_mode={args.playback_mode}"
         )
         if trajectory_representation == "delta":
             log(f"[weldRobot] Delta trajectory start joint positions: {start_joint_positions.tolist()}")
@@ -1349,10 +1413,15 @@ def main() -> None:
                 f"[weldRobot] Reference replay ready: waypoints={reference_trajectory.shape[0]}, "
                 f"representation={reference_trajectory_representation}, offset={tuple(args.reference_offset)}"
             )
-            if np.allclose(np.asarray(args.reference_offset, dtype=float), 0.0):
+            if args.playback_mode == "overlay" and np.allclose(np.asarray(args.reference_offset, dtype=float), 0.0):
                 log(
                     "[weldRobot] Overlapped dual-robot replay: ghost collisions disabled. "
                     "Without this, overlapping collision bodies can cause visible twitching."
+                )
+            if args.playback_mode == "sequential":
+                log(
+                    "[weldRobot] Sequential replay uses one robot and interpolated waypoints. "
+                    "This avoids dual-robot overlap and reduces large per-step joint jumps."
                 )
         if args.stl is not None:
             log(
@@ -1362,26 +1431,53 @@ def main() -> None:
 
         frame_idx = 0
         for loop_idx in range(args.loop):
-            for waypoint_idx in range(total_waypoints):
-                waypoint = trajectory[min(waypoint_idx, trajectory.shape[0] - 1)]
-                reference_waypoint = None
-                if reference_robot is not None and reference_trajectory is not None:
+            if reference_trajectory is not None and args.playback_mode == "overlay":
+                for waypoint_idx in range(total_waypoints):
+                    waypoint = trajectory[min(waypoint_idx, trajectory.shape[0] - 1)]
                     reference_waypoint = reference_trajectory[min(waypoint_idx, reference_trajectory.shape[0] - 1)]
-                for _ in range(args.hold_steps):
-                    apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
-                    if reference_robot is not None and reference_waypoint is not None:
-                        apply_joint_waypoint(reference_robot, reference_dof_indices, reference_waypoint.reshape(-1))
-                    world.step(render=True)
-                    if args.record:
-                        step_replicator(rep, args)
-                    frame_idx += 1
-                    if args.record and frame_idx % max(args.fps, 1) == 0:
-                        log(f"[weldRobot] Recorded {frame_idx}/{total_frames} frames")
-                if not args.record and (waypoint_idx + 1) % 50 == 0:
-                    log(
-                        f"[weldRobot] Replayed {waypoint_idx + 1}/{total_waypoints} waypoints "
-                        f"in loop {loop_idx + 1}/{args.loop}"
-                    )
+                    for _ in range(args.hold_steps):
+                        apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
+                        if reference_robot is not None:
+                            apply_joint_waypoint(reference_robot, reference_dof_indices, reference_waypoint.reshape(-1))
+                        world.step(render=True)
+                        if args.record:
+                            step_replicator(rep, args)
+                        frame_idx += 1
+                        if args.record and frame_idx % max(args.fps, 1) == 0:
+                            log(f"[weldRobot] Recorded {frame_idx}/{total_frames} frames")
+                    if not args.record and (waypoint_idx + 1) % 50 == 0:
+                        log(
+                            f"[weldRobot] Replayed {waypoint_idx + 1}/{total_waypoints} overlay waypoints "
+                            f"in loop {loop_idx + 1}/{args.loop}"
+                        )
+            else:
+                sequential_index = 0
+                for segment_idx, (segment_name, segment_traj) in enumerate(playback_segments):
+                    for waypoint in segment_traj:
+                        for _ in range(args.hold_steps):
+                            apply_joint_waypoint(robot, dof_indices, np.asarray(waypoint, dtype=float).reshape(-1))
+                            world.step(render=True)
+                            if args.record:
+                                step_replicator(rep, args)
+                            frame_idx += 1
+                            if args.record and frame_idx % max(args.fps, 1) == 0:
+                                log(f"[weldRobot] Recorded {frame_idx}/{total_frames} frames")
+                        sequential_index += 1
+                        if not args.record and sequential_index % 50 == 0:
+                            log(
+                                f"[weldRobot] Replayed {sequential_index}/{total_waypoints} sequential waypoints "
+                                f"in loop {loop_idx + 1}/{args.loop}"
+                            )
+                    if segment_idx < len(playback_segments) - 1:
+                        for _ in range(args.segment_gap_steps):
+                            apply_joint_waypoint(robot, dof_indices, segment_traj[-1].reshape(-1))
+                            world.step(render=True)
+                            if args.record:
+                                step_replicator(rep, args)
+                            frame_idx += 1
+                            if args.record and frame_idx % max(args.fps, 1) == 0:
+                                log(f"[weldRobot] Recorded {frame_idx}/{total_frames} frames")
+                        log(f"[weldRobot] Finished sequential segment '{segment_name}', advancing to next segment")
 
         if args.record and writer is not None:
             rep.orchestrator.wait_until_complete()
