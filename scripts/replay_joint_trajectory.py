@@ -1037,6 +1037,43 @@ def _find_descendant_prim_by_name(stage: Any, root_path: str, prim_name: str) ->
     return None
 
 
+def _copy_local_visual_children(
+    stage: Any,
+    source_root_path: str,
+    target_root_path: str,
+    link_names: set[str],
+) -> int:
+    from pxr import Sdf
+
+    root_layer = stage.GetRootLayer()
+    copied = 0
+    source_prefix = source_root_path.rstrip("/") + "/"
+    for prim in stage.Traverse():
+        source_path = str(prim.GetPath())
+        if source_path == source_root_path or not source_path.startswith(source_prefix):
+            continue
+        rel_path = source_path[len(source_prefix):]
+        parts = [part for part in rel_path.split("/") if part]
+        if not parts:
+            continue
+        # Stop at nested link roots so each copied subtree only contains the local visual payload.
+        if any(part in link_names for part in parts[:-1]):
+            continue
+        path_lower = source_path.lower()
+        if "collision" in path_lower or "collider" in path_lower:
+            continue
+        target_path = target_root_path.rstrip("/") + "/" + "/".join(parts)
+        target_parent = "/".join(target_path.split("/")[:-1])
+        if target_parent:
+            ensure_xform(stage, target_parent)
+        stage.RemovePrim(target_path)
+        ok = Sdf.CopySpec(root_layer, source_path, root_layer, target_path)
+        if not ok:
+            raise RuntimeError(f"Failed to copy visual prim from {source_path} to {target_path}")
+        copied += 1
+    return copied
+
+
 def _bind_material_recursively(stage: Any, root_path: str, color: tuple[float, float, float], opacity: float) -> int:
     from pxr import Gf, Sdf, UsdGeom, UsdShade
 
@@ -1080,6 +1117,7 @@ def ensure_reference_visual_mesh(
     ensure_xform(stage, root_path)
 
     mesh_count = 0
+    link_names = set(kinematics.visual_links.keys())
     for visual in kinematics.visual_links.values():
         target_path = f"{root_path}/{visual.link_name}"
         if stage.GetPrimAtPath(target_path).IsValid():
@@ -1088,7 +1126,10 @@ def ensure_reference_visual_mesh(
         if source_prim is None or not source_prim.IsValid():
             log(f"[weldRobot] WARNING: cannot find imported visual prim for link {visual.link_name}")
             continue
-        _copy_prim_spec(stage, str(source_prim.GetPath()), target_path)
+        ensure_xform(stage, target_path)
+        copied = _copy_local_visual_children(stage, str(source_prim.GetPath()), target_path, link_names)
+        if copied == 0:
+            log(f"[weldRobot] WARNING: no local visual prims copied for link {visual.link_name}")
         disable_collisions_under_prim(stage, target_path)
         mesh_count += _bind_material_recursively(stage, target_path, (1.0, 0.5, 0.08), opacity)
         # Reset copied subtree local transform; per-frame FK drives the root link transform.
