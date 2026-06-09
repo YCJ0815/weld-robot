@@ -133,6 +133,12 @@ def parse_args() -> argparse.Namespace:
         help="When one overlaid trajectory finishes before the other, hide it or hold its final pose.",
     )
     parser.add_argument(
+        "--overlay-reference-visual",
+        choices=("skeleton", "articulation"),
+        default="skeleton",
+        help="Render the overlaid reference as a pure visual FK skeleton or as a second Isaac articulation.",
+    )
+    parser.add_argument(
         "--overlay-visual-offset",
         type=float,
         nargs=3,
@@ -903,6 +909,19 @@ def draw_debug_sphere(stage: Any, prim_path: str, point: np.ndarray, color: Any,
     set_debug_translation(UsdGeom.Xformable(sphere.GetPrim()), np.asarray(point, dtype=float))
 
 
+def set_debug_sphere(stage: Any, prim_path: str, point: np.ndarray, color: Any, radius: float) -> None:
+    from pxr import UsdGeom
+
+    prim = stage.GetPrimAtPath(prim_path)
+    if prim.IsValid() and prim.IsA(UsdGeom.Sphere):
+        sphere = UsdGeom.Sphere(prim)
+    else:
+        sphere = UsdGeom.Sphere.Define(stage, prim_path)
+    sphere.CreateRadiusAttr(float(radius))
+    sphere.CreateDisplayColorAttr([color])
+    set_debug_translation(UsdGeom.Xformable(sphere.GetPrim()), np.asarray(point, dtype=float))
+
+
 def draw_debug_vector(stage: Any, prim_path: str, origin: np.ndarray, vector: np.ndarray | None, color: Any, length: float) -> None:
     if vector is None:
         return
@@ -925,6 +944,56 @@ def draw_control_polygon(stage: Any, prim_prefix: str, points: np.ndarray | None
                 draw_debug_curve(stage, f"{prim_prefix}/Dash_{idx:03d}", [pts[idx], pts[idx + 1]], color, width)
     else:
         draw_debug_curve(stage, f"{prim_prefix}/Polyline", pts, color, width)
+
+
+def update_debug_curve(stage: Any, prim_path: str, points: np.ndarray, color: Any, width: float) -> None:
+    from pxr import Gf, UsdGeom
+
+    if len(points) < 2:
+        return
+    curve = UsdGeom.BasisCurves.Define(stage, prim_path)
+    curve.CreateTypeAttr("linear")
+    curve.CreateCurveVertexCountsAttr([len(points)])
+    curve.CreatePointsAttr([Gf.Vec3f(*np.asarray(point, dtype=float)) for point in points])
+    curve.CreateWidthsAttr([float(width)])
+    curve.CreateDisplayColorAttr([color])
+
+
+def trajectory_q_by_name(waypoint: np.ndarray, joint_names: list[str]) -> dict[str, float]:
+    return {name: float(waypoint[idx]) for idx, name in enumerate(joint_names)}
+
+
+def update_reference_ghost_skeleton(
+    stage: Any,
+    kinematics: "ReplayURDFKinematics",
+    waypoint: np.ndarray,
+    joint_names: list[str],
+    visible: bool,
+) -> None:
+    from pxr import Gf
+
+    root_path = "/World/ReplayDebug/ReferenceGhostSkeleton"
+    ensure_xform(stage, root_path)
+    set_prim_visibility(stage, root_path, visible)
+    if not visible:
+        return
+
+    points = kinematics.chain_points(trajectory_q_by_name(waypoint, joint_names))
+    update_debug_curve(
+        stage,
+        f"{root_path}/Arm",
+        points,
+        Gf.Vec3f(1.0, 0.48, 0.05),
+        width=0.012,
+    )
+    for idx, point in enumerate(points):
+        set_debug_sphere(
+            stage,
+            f"{root_path}/Joint_{idx:02d}",
+            point,
+            Gf.Vec3f(1.0, 0.62, 0.16),
+            radius=0.012 if idx in {0, len(points) - 1} else 0.008,
+        )
 
 
 def rpy_matrix(rpy: np.ndarray) -> np.ndarray:
@@ -1021,6 +1090,21 @@ class ReplayURDFKinematics:
                 motion[:3, 3] = joint.axis * float(q_by_name[joint.name])
             tf = tf @ motion
         return tf
+
+    def chain_points(self, q_by_name: dict[str, float]) -> np.ndarray:
+        tf = np.eye(4)
+        points = [tf[:3, 3].copy()]
+        for joint in self.chain:
+            tf = tf @ joint.origin
+            if joint.name in q_by_name:
+                motion = np.eye(4)
+                if joint.joint_type in {"revolute", "continuous"}:
+                    motion[:3, :3] = axis_angle_matrix(joint.axis, float(q_by_name[joint.name]))
+                elif joint.joint_type == "prismatic":
+                    motion[:3, 3] = joint.axis * float(q_by_name[joint.name])
+                tf = tf @ motion
+            points.append(tf[:3, 3].copy())
+        return np.asarray(points, dtype=float)
 
 
 def joint_names_for_trajectory(joint_names: list[str] | None, width: int) -> list[str]:
@@ -1321,7 +1405,12 @@ def main() -> None:
         )
         set_prim_visibility(stage, robot_prim_path, True)
         reference_robot_prim_path = None
-        if reference_trajectory is not None and args.playback_mode == "overlay":
+        use_reference_articulation = (
+            reference_trajectory is not None
+            and args.playback_mode == "overlay"
+            and args.overlay_reference_visual == "articulation"
+        )
+        if use_reference_articulation:
             reference_world_offset = (
                 np.asarray(args.reference_offset, dtype=float)
                 + np.asarray(args.overlay_visual_offset, dtype=float)
@@ -1468,7 +1557,11 @@ def main() -> None:
                 f"[weldRobot] Reference replay ready: waypoints={reference_trajectory.shape[0]}, "
                 f"representation={reference_trajectory_representation}, offset={tuple(args.reference_offset)}"
             )
-            if args.playback_mode == "overlay" and np.allclose(np.asarray(args.reference_offset, dtype=float), 0.0):
+            if (
+                args.playback_mode == "overlay"
+                and args.overlay_reference_visual == "articulation"
+                and np.allclose(np.asarray(args.reference_offset, dtype=float), 0.0)
+            ):
                 log(
                     "[weldRobot] Overlapped dual-robot replay: ghost collisions disabled. "
                     "Without this, overlapping collision bodies can cause visible twitching."
@@ -1479,7 +1572,8 @@ def main() -> None:
                     "Independent trajectory completion avoids forcing both robots to finish together."
                 )
                 log(
-                    f"[weldRobot] Overlay reference visual offset={tuple(float(v) for v in args.overlay_visual_offset)}"
+                    f"[weldRobot] Overlay reference visual={args.overlay_reference_visual}, "
+                    f"visual offset={tuple(float(v) for v in args.overlay_visual_offset)}"
                 )
             if args.playback_mode == "sequential":
                 log(
@@ -1498,6 +1592,14 @@ def main() -> None:
                 set_prim_visibility(stage, robot_prim_path, True)
                 if reference_robot_prim_path is not None:
                     set_prim_visibility(stage, reference_robot_prim_path, True)
+                if args.overlay_reference_visual == "skeleton":
+                    update_reference_ghost_skeleton(
+                        stage,
+                        replay_kinematics,
+                        reference_trajectory[0],
+                        resolved_reference_joint_names or joint_names,
+                        visible=True,
+                    )
                 for waypoint_idx in range(total_waypoints):
                     pred_active = waypoint_idx < trajectory.shape[0]
                     gt_active = waypoint_idx < reference_trajectory.shape[0]
@@ -1508,6 +1610,15 @@ def main() -> None:
                             apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
                         if reference_robot is not None and (gt_active or args.overlay_finish_behavior == "hold"):
                             apply_joint_waypoint(reference_robot, reference_dof_indices, reference_waypoint.reshape(-1))
+                        if args.overlay_reference_visual == "skeleton":
+                            skeleton_visible = gt_active or args.overlay_finish_behavior == "hold"
+                            update_reference_ghost_skeleton(
+                                stage,
+                                replay_kinematics,
+                                reference_waypoint.reshape(-1),
+                                resolved_reference_joint_names or joint_names,
+                                visible=skeleton_visible,
+                            )
                         if not pred_active and args.overlay_finish_behavior == "hide":
                             set_prim_visibility(stage, robot_prim_path, False)
                         if reference_robot is not None and not gt_active and args.overlay_finish_behavior == "hide":
