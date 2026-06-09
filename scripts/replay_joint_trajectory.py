@@ -185,6 +185,12 @@ def parse_args() -> argparse.Namespace:
         help="Recording camera look-at target in world coordinates.",
     )
     parser.add_argument(
+        "--camera-z-rotation-deg",
+        type=float,
+        default=180.0,
+        help="Rotate the recording camera eye around the look-at target about the world Z axis.",
+    )
+    parser.add_argument(
         "--joint-names",
         nargs="+",
         default=None,
@@ -644,6 +650,27 @@ def apply_reference_ghost_material(stage: Any, robot_prim_path: str, opacity: fl
     )
 
 
+def disable_collisions_under_prim(stage: Any, root_prim_path: str) -> None:
+    from pxr import UsdPhysics
+
+    disabled = 0
+    root_prefix = root_prim_path.rstrip("/") + "/"
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if path != root_prim_path and not path.startswith(root_prefix):
+            continue
+        if not prim.HasAPI(UsdPhysics.CollisionAPI):
+            continue
+        collision_api = UsdPhysics.CollisionAPI(prim)
+        attr = collision_api.GetCollisionEnabledAttr()
+        if attr.IsValid():
+            attr.Set(False)
+        else:
+            collision_api.CreateCollisionEnabledAttr(False)
+        disabled += 1
+    log(f"[weldRobot] Disabled collisions on {disabled} prims under {root_prim_path}")
+
+
 def normalize_vector(vector: Any, label: str) -> np.ndarray:
     arr = np.asarray(vector, dtype=float).reshape(-1)
     if arr.size != 3:
@@ -1089,10 +1116,32 @@ def apply_joint_waypoint(robot: Any, dof_indices: list[int], waypoint: np.ndarra
         pass
 
 
+def rotate_point_about_world_z(point: Any, center: Any, angle_deg: float) -> tuple[float, float, float]:
+    point_arr = np.asarray(point, dtype=float).reshape(3)
+    center_arr = np.asarray(center, dtype=float).reshape(3)
+    relative = point_arr - center_arr
+    angle = math.radians(float(angle_deg))
+    c, s = math.cos(angle), math.sin(angle)
+    rotated = np.array(
+        [
+            c * relative[0] - s * relative[1],
+            s * relative[0] + c * relative[1],
+            relative[2],
+        ],
+        dtype=float,
+    )
+    result = center_arr + rotated
+    return (float(result[0]), float(result[1]), float(result[2]))
+
+
 def add_recording_camera(rep: Any, args: argparse.Namespace):
-    eye = tuple(float(value) for value in args.camera_eye)
     target = tuple(float(value) for value in args.camera_target)
-    log(f"[weldRobot] Recording camera eye={eye}, look_at={target}")
+    eye = rotate_point_about_world_z(args.camera_eye, target, args.camera_z_rotation_deg)
+    target = tuple(float(value) for value in args.camera_target)
+    log(
+        f"[weldRobot] Recording camera eye={eye}, look_at={target}, "
+        f"z_rotation_deg={float(args.camera_z_rotation_deg):.1f}"
+    )
     camera = rep.create.camera(
         position=eye,
         look_at=target,
@@ -1190,6 +1239,7 @@ def main() -> None:
                 world_offset=tuple(float(v) for v in args.reference_offset),
             )
             apply_reference_ghost_material(stage, reference_robot_prim_path, args.reference_ghost_opacity)
+            disable_collisions_under_prim(stage, reference_robot_prim_path)
         world.reset()
         set_initial_joint_positions(robot_prim_path)
         if reference_robot_prim_path is not None:
@@ -1299,6 +1349,11 @@ def main() -> None:
                 f"[weldRobot] Reference replay ready: waypoints={reference_trajectory.shape[0]}, "
                 f"representation={reference_trajectory_representation}, offset={tuple(args.reference_offset)}"
             )
+            if np.allclose(np.asarray(args.reference_offset, dtype=float), 0.0):
+                log(
+                    "[weldRobot] Overlapped dual-robot replay: ghost collisions disabled. "
+                    "Without this, overlapping collision bodies can cause visible twitching."
+                )
         if args.stl is not None:
             log(
                 f"[weldRobot] Imported STL {args.stl.name} with offset={tuple(args.workpiece_offset)} "
@@ -1309,11 +1364,13 @@ def main() -> None:
         for loop_idx in range(args.loop):
             for waypoint_idx in range(total_waypoints):
                 waypoint = trajectory[min(waypoint_idx, trajectory.shape[0] - 1)]
-                apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
+                reference_waypoint = None
                 if reference_robot is not None and reference_trajectory is not None:
                     reference_waypoint = reference_trajectory[min(waypoint_idx, reference_trajectory.shape[0] - 1)]
-                    apply_joint_waypoint(reference_robot, reference_dof_indices, reference_waypoint.reshape(-1))
                 for _ in range(args.hold_steps):
+                    apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
+                    if reference_robot is not None and reference_waypoint is not None:
+                        apply_joint_waypoint(reference_robot, reference_dof_indices, reference_waypoint.reshape(-1))
                     world.step(render=True)
                     if args.record:
                         step_replicator(rep, args)
