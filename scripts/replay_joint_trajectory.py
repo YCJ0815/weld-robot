@@ -133,6 +133,14 @@ def parse_args() -> argparse.Namespace:
         help="When one overlaid trajectory finishes before the other, hide it or hold its final pose.",
     )
     parser.add_argument(
+        "--overlay-visual-offset",
+        type=float,
+        nargs=3,
+        default=[0.0, 0.0, 0.0],
+        metavar=("X", "Y", "Z"),
+        help="Small extra visual/world offset for the overlaid reference robot to reduce z-fighting.",
+    )
+    parser.add_argument(
         "--reference-representation",
         choices=("auto", "absolute", "delta"),
         default="absolute",
@@ -162,6 +170,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--floating", action="store_true", help="Do not fix the robot base to the world.")
     parser.add_argument("--physics-dt", type=float, default=1.0 / 60.0, help="Physics timestep in seconds.")
     parser.add_argument("--rendering-dt", type=float, default=1.0 / 60.0, help="Rendering timestep in seconds.")
+    parser.add_argument(
+        "--render-only-replay",
+        dest="render_only_replay",
+        action="store_true",
+        default=True,
+        help="For replay frames, set joint positions and render without advancing physics.",
+    )
+    parser.add_argument(
+        "--physics-replay",
+        dest="render_only_replay",
+        action="store_false",
+        help="Use the older behavior that advances physics on every replay frame.",
+    )
     parser.add_argument("--hold-steps", type=int, default=None, help="Simulation steps to hold each waypoint.")
     parser.add_argument(
         "--waypoint-substeps",
@@ -1208,6 +1229,15 @@ def add_recording_camera(rep: Any, args: argparse.Namespace):
     return rep.create.render_product(camera, resolution=(args.width, args.height))
 
 
+def render_replay_frame(world: Any, render_only_replay: bool) -> None:
+    if render_only_replay:
+        render = getattr(world, "render", None)
+        if callable(render):
+            render()
+            return
+    world.step(render=True)
+
+
 def main() -> None:
     args = parse_args()
     apply_pred_check_defaults(args)
@@ -1292,12 +1322,16 @@ def main() -> None:
         set_prim_visibility(stage, robot_prim_path, True)
         reference_robot_prim_path = None
         if reference_trajectory is not None and args.playback_mode == "overlay":
+            reference_world_offset = (
+                np.asarray(args.reference_offset, dtype=float)
+                + np.asarray(args.overlay_visual_offset, dtype=float)
+            )
             reference_robot_prim_path = import_robot_instance(
                 stage=stage,
                 resolved_urdf=resolved_urdf,
                 requested_prim_path=args.reference_robot_prim_path,
                 fix_base=not args.floating,
-                world_offset=tuple(float(v) for v in args.reference_offset),
+                world_offset=tuple(float(v) for v in reference_world_offset),
             )
             apply_reference_ghost_material(stage, reference_robot_prim_path, args.reference_ghost_opacity)
             disable_collisions_under_prim(stage, reference_robot_prim_path)
@@ -1424,7 +1458,8 @@ def main() -> None:
         log(
             f"[weldRobot] Replay ready: pred_waypoints={trajectory.shape[0]}, hold_steps={args.hold_steps}, "
             f"waypoint_substeps={args.waypoint_substeps}, loop={args.loop}, total_steps={total_frames}, "
-            f"joints={joint_names}, representation={trajectory_representation}, playback_mode={args.playback_mode}"
+            f"joints={joint_names}, representation={trajectory_representation}, playback_mode={args.playback_mode}, "
+            f"render_only_replay={args.render_only_replay}"
         )
         if trajectory_representation == "delta":
             log(f"[weldRobot] Delta trajectory start joint positions: {start_joint_positions.tolist()}")
@@ -1442,6 +1477,9 @@ def main() -> None:
                 log(
                     f"[weldRobot] Overlay finish behavior={args.overlay_finish_behavior}. "
                     "Independent trajectory completion avoids forcing both robots to finish together."
+                )
+                log(
+                    f"[weldRobot] Overlay reference visual offset={tuple(float(v) for v in args.overlay_visual_offset)}"
                 )
             if args.playback_mode == "sequential":
                 log(
@@ -1474,7 +1512,7 @@ def main() -> None:
                             set_prim_visibility(stage, robot_prim_path, False)
                         if reference_robot is not None and not gt_active and args.overlay_finish_behavior == "hide":
                             set_prim_visibility(stage, reference_robot_prim_path, False)
-                        world.step(render=True)
+                        render_replay_frame(world, args.render_only_replay)
                         if args.record:
                             step_replicator(rep, args)
                         frame_idx += 1
@@ -1491,7 +1529,7 @@ def main() -> None:
                     for waypoint in segment_traj:
                         for _ in range(args.hold_steps):
                             apply_joint_waypoint(robot, dof_indices, np.asarray(waypoint, dtype=float).reshape(-1))
-                            world.step(render=True)
+                            render_replay_frame(world, args.render_only_replay)
                             if args.record:
                                 step_replicator(rep, args)
                             frame_idx += 1
@@ -1506,7 +1544,7 @@ def main() -> None:
                     if segment_idx < len(playback_segments) - 1:
                         for _ in range(args.segment_gap_steps):
                             apply_joint_waypoint(robot, dof_indices, segment_traj[-1].reshape(-1))
-                            world.step(render=True)
+                            render_replay_frame(world, args.render_only_replay)
                             if args.record:
                                 step_replicator(rep, args)
                             frame_idx += 1
