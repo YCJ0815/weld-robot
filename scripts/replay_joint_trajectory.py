@@ -1034,6 +1034,7 @@ def ensure_reference_visual_mesh(stage: Any, kinematics: "ReplayURDFKinematics",
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
     UsdShade.MaterialBindingAPI(stage.GetPrimAtPath(root_path)).Bind(material)
 
+    mesh_count = 0
     for visual in kinematics.visual_links.values():
         if not visual.mesh_path.is_file():
             log(f"[weldRobot] WARNING: visual mesh does not exist for {visual.link_name}: {visual.mesh_path}")
@@ -1059,6 +1060,8 @@ def ensure_reference_visual_mesh(stage: Any, kinematics: "ReplayURDFKinematics",
         mesh.CreateDisplayColorAttr([Gf.Vec3f(1.0, 0.5, 0.08)])
         mesh.CreateDisplayOpacityAttr([max(0.0, min(1.0, float(opacity)))])
         UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
+        mesh_count += 1
+    log(f"[weldRobot] Reference visual ghost meshes ready: {mesh_count}")
 
 
 def update_reference_visual_mesh(
@@ -1753,6 +1756,7 @@ def main() -> None:
                 if reference_robot_prim_path is not None:
                     set_prim_visibility(stage, reference_robot_prim_path, True)
                 if args.overlay_reference_visual == "skeleton":
+                    set_prim_visibility(stage, "/World/ReplayDebug/ReferenceVisualMesh", False)
                     update_reference_ghost_skeleton(
                         stage,
                         replay_kinematics,
@@ -1761,6 +1765,7 @@ def main() -> None:
                         visible=True,
                     )
                 elif args.overlay_reference_visual == "visual_mesh":
+                    set_prim_visibility(stage, "/World/ReplayDebug/ReferenceGhostSkeleton", False)
                     update_reference_visual_mesh(
                         stage,
                         replay_kinematics,
