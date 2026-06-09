@@ -1121,7 +1121,9 @@ def update_reference_visual_mesh(
         prim = stage.GetPrimAtPath(f"{root_path}/{link_name}")
         if not prim.IsValid():
             continue
-        world_tf = offset_tf @ link_transforms[link_name] @ visual.visual_origin
+        # Copied visual subtrees already carry their imported local mesh offsets.
+        # Applying the URDF visual/collision origin again double-transforms the link.
+        world_tf = offset_tf @ link_transforms[link_name]
         set_transform_matrix(UsdGeom.Xformable(prim), numpy_to_gf_matrix(world_tf))
 
 
