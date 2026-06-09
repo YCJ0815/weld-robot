@@ -25,7 +25,6 @@ if str(SCRIPT_DIR) not in sys.path:
 from sim_parallel_welding import (  # noqa: E402
     encode_video,
     ensure_xform,
-    load_stl_mesh,
     move_prim_to_path,
     import_stl_as_mesh,
     prepare_recording_paths,
@@ -1017,50 +1016,83 @@ def update_reference_ghost_skeleton(
         )
 
 
-def ensure_reference_visual_mesh(stage: Any, kinematics: "ReplayURDFKinematics", opacity: float) -> None:
-    from pxr import Gf, Sdf, UsdGeom, UsdShade
+def _copy_prim_spec(stage: Any, source_path: str, target_path: str) -> None:
+    from pxr import Sdf
 
-    root_path = "/World/ReplayDebug/ReferenceVisualMesh"
-    ensure_xform(stage, root_path)
+    root_layer = stage.GetRootLayer()
+    stage.RemovePrim(target_path)
+    copied = Sdf.CopySpec(root_layer, source_path, root_layer, target_path)
+    if not copied:
+        raise RuntimeError(f"Failed to copy prim from {source_path} to {target_path}")
+
+
+def _find_descendant_prim_by_name(stage: Any, root_path: str, prim_name: str) -> Any | None:
+    root_prefix = root_path.rstrip("/") + "/"
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if path != root_path and not path.startswith(root_prefix):
+            continue
+        if path.rsplit("/", 1)[-1] == prim_name:
+            return prim
+    return None
+
+
+def _bind_material_recursively(stage: Any, root_path: str, color: tuple[float, float, float], opacity: float) -> int:
+    from pxr import Gf, Sdf, UsdGeom, UsdShade
 
     material_path = f"{root_path}/GhostMaterial"
     material = UsdShade.Material.Define(stage, material_path)
     shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
     shader.CreateIdAttr("UsdPreviewSurface")
-    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(1.0, 0.5, 0.08))
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*color))
     shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.85)
     shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
     shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(max(0.0, min(1.0, float(opacity))))
     material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
-    UsdShade.MaterialBindingAPI(stage.GetPrimAtPath(root_path)).Bind(material)
+
+    mesh_count = 0
+    root_prefix = root_path.rstrip("/") + "/"
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if path != root_path and not path.startswith(root_prefix):
+            continue
+        path_lower = path.lower()
+        if "collision" in path_lower or "collider" in path_lower:
+            set_prim_visibility(stage, path, False)
+        if prim.IsA(UsdGeom.Mesh):
+            mesh = UsdGeom.Mesh(prim)
+            mesh.CreateDisplayColorAttr([Gf.Vec3f(*color)])
+            mesh.CreateDisplayOpacityAttr([max(0.0, min(1.0, float(opacity)))])
+            UsdShade.MaterialBindingAPI(prim).Bind(material)
+            mesh_count += 1
+    return mesh_count
+
+
+def ensure_reference_visual_mesh(
+    stage: Any,
+    kinematics: "ReplayURDFKinematics",
+    source_robot_prim_path: str,
+    opacity: float,
+) -> None:
+    from pxr import UsdGeom
+
+    root_path = "/World/ReplayDebug/ReferenceVisualMesh"
+    ensure_xform(stage, root_path)
 
     mesh_count = 0
     for visual in kinematics.visual_links.values():
-        if not visual.mesh_path.is_file():
-            log(f"[weldRobot] WARNING: visual mesh does not exist for {visual.link_name}: {visual.mesh_path}")
+        target_path = f"{root_path}/{visual.link_name}"
+        if stage.GetPrimAtPath(target_path).IsValid():
             continue
-        link_path = f"{root_path}/{visual.link_name}"
-        points, face_counts, face_indices = load_stl_mesh(visual.mesh_path)
-        scale = visual.mesh_scale.astype(float)
-        scaled_points = [
-            (point[0] * scale[0], point[1] * scale[1], point[2] * scale[2])
-            for point in points
-        ]
-        if not scaled_points:
+        source_prim = _find_descendant_prim_by_name(stage, source_robot_prim_path, visual.link_name)
+        if source_prim is None or not source_prim.IsValid():
+            log(f"[weldRobot] WARNING: cannot find imported visual prim for link {visual.link_name}")
             continue
-        min_point = tuple(min(point[axis] for point in scaled_points) for axis in range(3))
-        max_point = tuple(max(point[axis] for point in scaled_points) for axis in range(3))
-        mesh = UsdGeom.Mesh.Define(stage, link_path)
-        mesh.CreatePointsAttr([Gf.Vec3f(*point) for point in scaled_points])
-        mesh.CreateFaceVertexCountsAttr(face_counts)
-        mesh.CreateFaceVertexIndicesAttr(face_indices)
-        mesh.CreateSubdivisionSchemeAttr("none")
-        mesh.CreateExtentAttr([Gf.Vec3f(*min_point), Gf.Vec3f(*max_point)])
-        mesh.CreateDoubleSidedAttr(True)
-        mesh.CreateDisplayColorAttr([Gf.Vec3f(1.0, 0.5, 0.08)])
-        mesh.CreateDisplayOpacityAttr([max(0.0, min(1.0, float(opacity)))])
-        UsdShade.MaterialBindingAPI(mesh.GetPrim()).Bind(material)
-        mesh_count += 1
+        _copy_prim_spec(stage, str(source_prim.GetPath()), target_path)
+        disable_collisions_under_prim(stage, target_path)
+        mesh_count += _bind_material_recursively(stage, target_path, (1.0, 0.5, 0.08), opacity)
+        # Reset copied subtree local transform; per-frame FK drives the root link transform.
+        set_transform_matrix(UsdGeom.Xformable(stage.GetPrimAtPath(target_path)), numpy_to_gf_matrix(np.eye(4)))
     log(f"[weldRobot] Reference visual ghost meshes ready: {mesh_count}")
 
 
@@ -1674,7 +1706,7 @@ def main() -> None:
             and args.playback_mode == "overlay"
             and args.overlay_reference_visual == "visual_mesh"
         ):
-            ensure_reference_visual_mesh(stage, replay_kinematics, args.reference_ghost_opacity)
+            ensure_reference_visual_mesh(stage, replay_kinematics, robot_prim_path, args.reference_ghost_opacity)
         log(f"[weldRobot] Predicted TCP path points: {len(pred_tcp_path)}")
         if reference_tcp_path is not None:
             log(f"[weldRobot] Reference TCP path points: {len(reference_tcp_path)}")
