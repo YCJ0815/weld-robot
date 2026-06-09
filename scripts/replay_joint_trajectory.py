@@ -78,15 +78,6 @@ DEFAULT_REFERENCE_KEY_CANDIDATES = (
     "q",
     "positions",
 )
-DEFAULT_CONTROL_POINT_KEY_CANDIDATES = (
-    "pred_w_star",
-    "gt_w_star",
-    "w_star",
-    "control_points",
-    "joint_control_points",
-    "w",
-    "positions",
-)
 
 
 def log(message: str) -> None:
@@ -106,9 +97,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--trajectory-representation",
         choices=("auto", "absolute", "delta"),
-        default="absolute",
+        default="auto",
         help="Interpret trajectory waypoints as absolute joint angles or joint-angle deltas. "
-        "Use delta explicitly for relative joint-angle increments.",
+        "In auto mode, all supported formats default to absolute.",
     )
     parser.add_argument("--urdf", type=Path, default=DEFAULT_URDF, help="UR5e welding-arm URDF.")
     parser.add_argument("--stl", type=Path, default=None, help="Optional STL workpiece path.")
@@ -143,12 +134,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--physics-dt", type=float, default=1.0 / 60.0, help="Physics timestep in seconds.")
     parser.add_argument("--rendering-dt", type=float, default=1.0 / 60.0, help="Rendering timestep in seconds.")
     parser.add_argument("--hold-steps", type=int, default=1, help="Simulation steps to hold each waypoint.")
-    parser.add_argument(
-        "--playback-speed-scale",
-        type=float,
-        default=1.0,
-        help="Playback speed multiplier. Values below 1.0 slow replay by increasing hold steps; values above 1.0 speed up by waypoint subsampling.",
-    )
     parser.add_argument("--loop", type=int, default=1, help="Repeat count for the entire trajectory.")
     parser.add_argument("--fps", type=int, default=30, help="Recording frame rate.")
     parser.add_argument("--width", type=int, default=1280, help="Recording width.")
@@ -261,38 +246,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--control-point-radius", type=float, default=0.008, help="Replay overlay control-point sphere radius in meters.")
     parser.add_argument("--control-polyline-width", type=float, default=0.004, help="Replay overlay control polygon width in meters.")
     parser.add_argument("--debug-vector-length", type=float, default=0.12, help="Replay overlay start/end vector length in meters.")
-    parser.add_argument(
-        "--pred-control-points",
-        type=Path,
-        default=None,
-        help="Optional predicted spline control-point file in joint space: json/csv/txt/npy/npz.",
-    )
-    parser.add_argument(
-        "--gt-control-points",
-        type=Path,
-        default=None,
-        help="Optional ground-truth/original spline control-point file in joint space: json/csv/txt/npy/npz.",
-    )
-    parser.add_argument("--pred-control-key", default=None, help="Optional key inside --pred-control-points when it is an NPZ.")
-    parser.add_argument("--gt-control-key", default=None, help="Optional key inside --gt-control-points when it is an NPZ.")
-    parser.add_argument(
-        "--reference-display",
-        choices=("ghost", "sequence", "hidden"),
-        default="ghost",
-        help="How to show --reference-trajectory. ghost=static semi-transparent snapshots plus TCP overlay, sequence=replay it after prediction on the same robot, hidden=no GT display.",
-    )
-    parser.add_argument(
-        "--ghost-samples",
-        type=int,
-        default=8,
-        help="Number of sampled static ghost robot poses used for the reference trajectory in ghost mode. Use 0 to keep only the reference TCP overlay.",
-    )
-    parser.add_argument(
-        "--ghost-opacity",
-        type=float,
-        default=0.18,
-        help="Opacity used for reference ghost robot materials in ghost mode.",
-    )
     return parser.parse_args()
 
 
@@ -390,10 +343,6 @@ def _load_npz_trajectory(path: Path, preferred_key: str | None = None) -> tuple[
     return _load_npz_array(path, preferred_key, DEFAULT_TRAJECTORY_KEY_CANDIDATES, "Trajectory")
 
 
-def _load_npz_control_points(path: Path, preferred_key: str | None = None) -> tuple[np.ndarray, list[str] | None]:
-    return _load_npz_array(path, preferred_key, DEFAULT_CONTROL_POINT_KEY_CANDIDATES, "Control-point")
-
-
 def load_joint_trajectory(
     path: Path,
     cli_joint_names: list[str] | None,
@@ -420,36 +369,6 @@ def load_joint_trajectory(
         raise RuntimeError(
             f"Joint-name count {len(joint_names)} does not match waypoint width {waypoints.shape[1]} "
             f"for trajectory {path}"
-        )
-    return waypoints, joint_names
-
-
-def load_joint_control_points(
-    path: Path,
-    cli_joint_names: list[str] | None,
-    preferred_npz_key: str | None = None,
-) -> tuple[np.ndarray, list[str] | None]:
-    path = path.expanduser().resolve()
-    if not path.is_file():
-        raise FileNotFoundError(f"Control-point file does not exist: {path}")
-
-    suffix = path.suffix.lower()
-    if suffix == ".json":
-        waypoints, file_joint_names = _load_json_trajectory(path)
-    elif suffix in {".csv", ".txt"}:
-        waypoints, file_joint_names = _load_csv_trajectory(path)
-    elif suffix == ".npy":
-        waypoints, file_joint_names = _coerce_trajectory_array(np.load(path, allow_pickle=False), "NPY control points"), None
-    elif suffix == ".npz":
-        waypoints, file_joint_names = _load_npz_control_points(path, preferred_npz_key)
-    else:
-        raise RuntimeError(f"Unsupported control-point format '{suffix}'. Use json/csv/txt/npy/npz.")
-
-    joint_names = cli_joint_names or file_joint_names
-    if joint_names is not None and len(joint_names) != waypoints.shape[1]:
-        raise RuntimeError(
-            f"Joint-name count {len(joint_names)} does not match control-point width {waypoints.shape[1]} "
-            f"for control-point file {path}"
         )
     return waypoints, joint_names
 
@@ -923,8 +842,6 @@ def endpoint_vector_from_path(path: np.ndarray, at_start: bool) -> np.ndarray | 
 def merged_overlay(
     overlay: dict[str, Any] | None,
     pred_tcp_path: np.ndarray,
-    pred_control_tcp_points: np.ndarray | None = None,
-    gt_control_tcp_points: np.ndarray | None = None,
 ) -> dict[str, Any]:
     merged = dict(overlay or {})
     if pred_tcp_path is not None and len(pred_tcp_path) > 0:
@@ -938,10 +855,6 @@ def merged_overlay(
             merged["start_vector"] = endpoint_vector_from_path(pred_tcp_path, at_start=True)
         if merged.get("end_vector") is None:
             merged["end_vector"] = endpoint_vector_from_path(pred_tcp_path, at_start=False)
-    if pred_control_tcp_points is not None:
-        merged["pred_control_points"] = np.asarray(pred_control_tcp_points, dtype=float)
-    if gt_control_tcp_points is not None:
-        merged["gt_control_points"] = np.asarray(gt_control_tcp_points, dtype=float)
     return merged
 
 
@@ -967,15 +880,8 @@ def draw_replay_visualization_overlay(
     args: argparse.Namespace,
     pred_tcp_path: np.ndarray | None = None,
     reference_tcp_path: np.ndarray | None = None,
-    pred_control_tcp_points: np.ndarray | None = None,
-    gt_control_tcp_points: np.ndarray | None = None,
-    ) -> None:
-    overlay = merged_overlay(
-        overlay,
-        pred_tcp_path,
-        pred_control_tcp_points=pred_control_tcp_points,
-        gt_control_tcp_points=gt_control_tcp_points,
-    )
+) -> None:
+    overlay = merged_overlay(overlay, pred_tcp_path)
     if overlay.get("start_position") is None or overlay.get("end_position") is None:
         return
     from pxr import Gf
@@ -1023,7 +929,7 @@ def draw_replay_visualization_overlay(
         stage,
         "/World/ReplayDebug/GtControl",
         overlay.get("gt_control_points"),
-        Gf.Vec3f(0.55, 0.48, 0.82),
+        Gf.Vec3f(0.65, 0.25, 1.0),
         args.control_point_radius,
         args.control_polyline_width,
         dashed=False,
@@ -1040,160 +946,10 @@ def draw_replay_visualization_overlay(
         stage,
         reference_tcp_path,
         "/World/ReplayDebug/ReferenceTcp",
-        Gf.Vec3f(0.58, 0.62, 0.95),
-        marker_radius=0.005,
-        width=0.003,
+        Gf.Vec3f(0.25, 0.35, 1.0),
+        marker_radius=0.006,
+        width=0.005,
     )
-
-
-def effective_playback_timing(args: argparse.Namespace) -> tuple[int, int, int]:
-    speed_scale = float(args.playback_speed_scale)
-    if speed_scale <= 0.0:
-        raise RuntimeError("--playback-speed-scale must be > 0")
-    hold_steps = int(args.hold_steps)
-    waypoint_stride = 1
-    interpolation_substeps = 1
-    if speed_scale < 1.0:
-        interpolation_substeps = max(1, int(math.ceil(1.0 / speed_scale)))
-    elif speed_scale > 1.0:
-        waypoint_stride = max(1, int(round(speed_scale)))
-    return hold_steps, waypoint_stride, interpolation_substeps
-
-
-def build_replay_waypoints(trajectory: np.ndarray, waypoint_stride: int, interpolation_substeps: int) -> np.ndarray:
-    sampled = np.asarray(trajectory, dtype=float)[:: max(int(waypoint_stride), 1)]
-    if sampled.size == 0:
-        sampled = np.asarray(trajectory, dtype=float)[-1:].copy()
-    elif not np.allclose(sampled[-1], trajectory[-1]):
-        sampled = np.vstack([sampled, np.asarray(trajectory, dtype=float)[-1]])
-    if interpolation_substeps <= 1 or len(sampled) < 2:
-        return sampled
-
-    replay_waypoints = []
-    for idx in range(len(sampled) - 1):
-        start = sampled[idx]
-        end = sampled[idx + 1]
-        for sub_idx in range(interpolation_substeps):
-            alpha = float(sub_idx) / float(interpolation_substeps)
-            replay_waypoints.append((1.0 - alpha) * start + alpha * end)
-    replay_waypoints.append(sampled[-1])
-    return np.asarray(replay_waypoints, dtype=float)
-
-
-def sampled_waypoint_indices(length: int, num_samples: int) -> list[int]:
-    if length <= 0:
-        return []
-    if num_samples <= 1:
-        return [0]
-    idx = np.linspace(0, length - 1, num=min(length, num_samples), dtype=int)
-    return [int(i) for i in np.unique(idx)]
-
-
-def iter_mesh_like_prims(root_prim: Any) -> Any:
-    from pxr import Usd
-
-    for prim in Usd.PrimRange(root_prim):
-        type_name = prim.GetTypeName()
-        if type_name in {"Mesh", "Capsule", "Cylinder", "Cone", "Cube", "Sphere"}:
-            yield prim
-
-
-def bind_preview_material(stage: Any, prim: Any, material_path: str, color_rgb: tuple[float, float, float], opacity: float) -> None:
-    from pxr import Gf, Sdf, UsdGeom, UsdShade
-
-    try:
-        gprim = UsdGeom.Gprim(prim)
-        if gprim:
-            gprim.CreateDisplayColorAttr([Gf.Vec3f(*color_rgb)])
-            gprim.CreateDisplayOpacityAttr([float(opacity)])
-    except Exception:
-        pass
-    material = UsdShade.Material.Define(stage, material_path)
-    shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
-    shader.CreateIdAttr("UsdPreviewSurface")
-    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(*color_rgb))
-    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(1.0)
-    shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
-    shader.CreateInput("specular", Sdf.ValueTypeNames.Float).Set(0.0)
-    shader.CreateInput("clearcoat", Sdf.ValueTypeNames.Float).Set(0.0)
-    shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(float(opacity))
-    material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
-    UsdShade.MaterialBindingAPI(prim).Bind(material)
-
-
-def set_collision_enabled_recursive(root_prim: Any, enabled: bool) -> None:
-    from pxr import UsdPhysics
-
-    for prim in root_prim.GetChildren():
-        set_collision_enabled_recursive(prim, enabled)
-    if prim_has_collision_api(root_prim):
-        api = UsdPhysics.CollisionAPI(root_prim)
-        attr = api.GetCollisionEnabledAttr()
-        if attr.IsValid():
-            attr.Set(bool(enabled))
-        else:
-            api.CreateCollisionEnabledAttr(bool(enabled))
-
-
-def prim_has_collision_api(prim: Any) -> bool:
-    try:
-        from pxr import UsdPhysics
-
-        return prim.HasAPI(UsdPhysics.CollisionAPI)
-    except Exception:
-        return False
-
-
-def configure_robot_ghost_visuals(stage: Any, robot_prim_path: str, color_rgb: tuple[float, float, float], opacity: float) -> None:
-    root_prim = stage.GetPrimAtPath(robot_prim_path)
-    if not root_prim.IsValid():
-        return
-    set_collision_enabled_recursive(root_prim, enabled=False)
-    for mesh_idx, mesh_prim in enumerate(iter_mesh_like_prims(root_prim)):
-        bind_preview_material(
-            stage,
-            mesh_prim,
-            f"{robot_prim_path}_GhostMaterial_{mesh_idx:03d}",
-            color_rgb=color_rgb,
-            opacity=opacity,
-        )
-
-
-def build_reference_ghosts(
-    stage: Any,
-    resolved_urdf: Path,
-    args: argparse.Namespace,
-    reference_trajectory: np.ndarray | None,
-    resolved_reference_joint_names: list[str] | None,
-) -> list[tuple[Any, list[int]]]:
-    if reference_trajectory is None or args.reference_display != "ghost":
-        return []
-    if args.ghost_samples == 0:
-        return []
-    ghost_indices = sampled_waypoint_indices(len(reference_trajectory), args.ghost_samples)
-    if not ghost_indices:
-        return []
-
-    ghost_articulations: list[tuple[Any, list[int]]] = []
-    for ghost_idx, waypoint_idx in enumerate(ghost_indices):
-        ghost_prim_path = f"/World/ReferenceGhost_{ghost_idx:02d}"
-        import_robot_instance(
-            stage=stage,
-            resolved_urdf=resolved_urdf,
-            requested_prim_path=ghost_prim_path,
-            fix_base=True,
-        )
-        set_initial_joint_positions(ghost_prim_path)
-        ghost_robot = create_articulation(ghost_prim_path)
-        _, ghost_dof_indices = resolve_dof_indices(
-            ghost_robot,
-            resolved_reference_joint_names or args.joint_names,
-            reference_trajectory.shape[1],
-        )
-        apply_joint_waypoint(ghost_robot, ghost_dof_indices, reference_trajectory[waypoint_idx].reshape(-1))
-        ghost_articulations.append((ghost_robot, ghost_dof_indices))
-        configure_robot_ghost_visuals(stage, ghost_prim_path, color_rgb=(0.72, 0.74, 0.85), opacity=float(args.ghost_opacity))
-    return ghost_articulations
 
 
 def apply_joint_waypoint(robot: Any, dof_indices: list[int], waypoint: np.ndarray) -> None:
@@ -1236,10 +992,6 @@ def main() -> None:
         raise RuntimeError("--hold-steps must be >= 1")
     if args.loop < 1:
         raise RuntimeError("--loop must be >= 1")
-    if args.ghost_samples < 0:
-        raise RuntimeError("--ghost-samples must be >= 0")
-    if not (0.0 < float(args.ghost_opacity) <= 1.0):
-        raise RuntimeError("--ghost-opacity must be in (0, 1].")
     if args.encode_only:
         args.output = args.output.expanduser().resolve()
         if args.frames_dir is None:
@@ -1271,22 +1023,6 @@ def main() -> None:
         )
         reference_trajectory_representation = resolve_trajectory_representation(
             reference_npz_path, args.reference_representation
-        )
-    pred_control_points = None
-    pred_control_joint_names = None
-    if args.pred_control_points is not None:
-        pred_control_points, pred_control_joint_names = load_joint_control_points(
-            args.pred_control_points,
-            args.joint_names,
-            preferred_npz_key=args.pred_control_key,
-        )
-    gt_control_points = None
-    gt_control_joint_names = None
-    if args.gt_control_points is not None:
-        gt_control_points, gt_control_joint_names = load_joint_control_points(
-            args.gt_control_points,
-            args.joint_names,
-            preferred_npz_key=args.gt_control_key,
         )
     visualization_overlay = load_replay_visualization_overlay(args)
     frames_dir = prepare_recording_paths(args) if args.record else None
@@ -1320,15 +1056,25 @@ def main() -> None:
         resolved_urdf = make_resolved_urdf(args.urdf)
         stage = get_context().get_stage()
         ensure_xform(stage, "/World")
-        effective_hold_steps, waypoint_stride, interpolation_substeps = effective_playback_timing(args)
         robot_prim_path = import_robot_instance(
             stage=stage,
             resolved_urdf=resolved_urdf,
             requested_prim_path=args.robot_prim_path,
             fix_base=not args.floating,
         )
+        reference_robot_prim_path = None
+        if reference_trajectory is not None:
+            reference_robot_prim_path = import_robot_instance(
+                stage=stage,
+                resolved_urdf=resolved_urdf,
+                requested_prim_path=args.reference_robot_prim_path,
+                fix_base=not args.floating,
+                world_offset=tuple(float(v) for v in args.reference_offset),
+            )
         world.reset()
         set_initial_joint_positions(robot_prim_path)
+        if reference_robot_prim_path is not None:
+            set_initial_joint_positions(reference_robot_prim_path)
 
         if args.stl is not None:
             import_stl_as_mesh(
@@ -1340,9 +1086,21 @@ def main() -> None:
                 local_offset=tuple(float(v) for v in args.workpiece_offset),
                 debug_box=args.debug_workpiece_box,
             )
+            if reference_robot_prim_path is not None:
+                import_stl_as_mesh(
+                    stage=stage,
+                    stl_path=args.stl,
+                    prim_path=args.reference_workpiece_prim_path,
+                    scale=args.workpiece_scale,
+                    z_offset=args.workpiece_z_offset,
+                    local_offset=shifted_offset(args.workpiece_offset, args.reference_offset),
+                    debug_box=args.debug_workpiece_box,
+                )
 
         world.step(render=False)
         set_initial_joint_positions(robot_prim_path)
+        if reference_robot_prim_path is not None:
+            set_initial_joint_positions(reference_robot_prim_path)
 
         robot = create_articulation(robot_prim_path)
         joint_names, dof_indices = resolve_dof_indices(robot, requested_joint_names, trajectory.shape[1])
@@ -1358,16 +1116,18 @@ def main() -> None:
             representation=trajectory_representation,
             start_joint_positions=start_joint_positions,
         )
-        resolved_reference_joint_names = None
+        reference_robot = None
         reference_dof_indices = None
-        if reference_trajectory is not None:
+        resolved_reference_joint_names = None
+        if reference_robot_prim_path is not None and reference_trajectory is not None:
+            reference_robot = create_articulation(reference_robot_prim_path)
             resolved_reference_joint_names, reference_dof_indices = resolve_dof_indices(
-                robot,
+                reference_robot,
                 reference_joint_names or args.joint_names,
                 reference_trajectory.shape[1],
             )
             reference_start_joint_positions = resolve_start_joint_positions(
-                robot=robot,
+                robot=reference_robot,
                 dof_indices=reference_dof_indices,
                 cli_start_joint_positions=args.reference_start_joint_positions,
                 start_npz=args.reference_start_npz,
@@ -1378,16 +1138,6 @@ def main() -> None:
                 representation=reference_trajectory_representation,
                 start_joint_positions=reference_start_joint_positions,
             )
-        ghost_articulations = build_reference_ghosts(
-            stage=stage,
-            resolved_urdf=resolved_urdf,
-            args=args,
-            reference_trajectory=reference_trajectory,
-            resolved_reference_joint_names=resolved_reference_joint_names,
-        )
-        if ghost_articulations:
-            world.step(render=False)
-            set_initial_joint_positions(robot_prim_path)
 
         replay_kinematics = ReplayURDFKinematics(resolved_urdf)
         pred_tcp_path = compute_tcp_path(replay_kinematics, trajectory, joint_names)
@@ -1398,36 +1148,16 @@ def main() -> None:
                 reference_trajectory,
                 resolved_reference_joint_names or reference_joint_names or args.joint_names,
             )
-        pred_control_tcp_points = None
-        if pred_control_points is not None:
-            pred_control_tcp_points = compute_tcp_path(
-                replay_kinematics,
-                pred_control_points,
-                pred_control_joint_names or args.joint_names,
-            )
-        gt_control_tcp_points = None
-        if gt_control_points is not None:
-            gt_control_tcp_points = compute_tcp_path(
-                replay_kinematics,
-                gt_control_points,
-                gt_control_joint_names or args.joint_names,
-            )
         draw_replay_visualization_overlay(
             stage,
             visualization_overlay,
             args,
             pred_tcp_path=pred_tcp_path,
-            reference_tcp_path=reference_tcp_path if args.reference_display != "hidden" else None,
-            pred_control_tcp_points=pred_control_tcp_points,
-            gt_control_tcp_points=gt_control_tcp_points if args.reference_display != "hidden" else None,
+            reference_tcp_path=reference_tcp_path,
         )
         log(f"[weldRobot] Predicted TCP path points: {len(pred_tcp_path)}")
         if reference_tcp_path is not None:
             log(f"[weldRobot] Reference TCP path points: {len(reference_tcp_path)}")
-        if pred_control_tcp_points is not None:
-            log(f"[weldRobot] Predicted control points: {len(pred_control_tcp_points)}")
-        if gt_control_tcp_points is not None:
-            log(f"[weldRobot] Ground-truth control points: {len(gt_control_tcp_points)}")
 
         writer = None
         if args.record:
@@ -1442,26 +1172,23 @@ def main() -> None:
         elif not args.headless:
             add_camera_view()
 
-        pred_replay_waypoints = build_replay_waypoints(trajectory, waypoint_stride, interpolation_substeps)
-        reference_replay_waypoints = None
+        total_frames = trajectory.shape[0] * args.hold_steps * args.loop
         if reference_trajectory is not None:
-            reference_replay_waypoints = build_replay_waypoints(reference_trajectory, waypoint_stride, interpolation_substeps)
-        total_frames = len(pred_replay_waypoints) * effective_hold_steps * args.loop
-        if reference_trajectory is not None and args.reference_display == "sequence":
-            total_frames += len(reference_replay_waypoints) * effective_hold_steps * args.loop
+            total_waypoints = max(trajectory.shape[0], reference_trajectory.shape[0])
+            total_frames = total_waypoints * args.hold_steps * args.loop
+        else:
+            total_waypoints = trajectory.shape[0]
         log(
-            f"[weldRobot] Replay ready: waypoints={trajectory.shape[0]}, hold_steps={effective_hold_steps}, "
+            f"[weldRobot] Replay ready: waypoints={trajectory.shape[0]}, hold_steps={args.hold_steps}, "
             f"loop={args.loop}, total_steps={total_frames}, joints={joint_names}, "
-            f"representation={trajectory_representation}, speed_scale={args.playback_speed_scale}, "
-            f"stride={waypoint_stride}, interpolation_substeps={interpolation_substeps}"
+            f"representation={trajectory_representation}"
         )
         if trajectory_representation == "delta":
             log(f"[weldRobot] Delta trajectory start joint positions: {start_joint_positions.tolist()}")
         if reference_trajectory is not None:
             log(
                 f"[weldRobot] Reference replay ready: waypoints={reference_trajectory.shape[0]}, "
-                f"representation={reference_trajectory_representation}, display={args.reference_display}, "
-                f"ghosts={len(ghost_articulations)}"
+                f"representation={reference_trajectory_representation}, offset={tuple(args.reference_offset)}"
             )
         if args.stl is not None:
             log(
@@ -1470,28 +1197,25 @@ def main() -> None:
             )
 
         frame_idx = 0
-        def replay_waypoint_sequence(source_waypoints: np.ndarray, label: str, loop_idx: int) -> int:
-            nonlocal frame_idx
-            for local_idx, waypoint in enumerate(source_waypoints):
+        for loop_idx in range(args.loop):
+            for waypoint_idx in range(total_waypoints):
+                waypoint = trajectory[min(waypoint_idx, trajectory.shape[0] - 1)]
                 apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
-                for _ in range(effective_hold_steps):
+                if reference_robot is not None and reference_trajectory is not None:
+                    reference_waypoint = reference_trajectory[min(waypoint_idx, reference_trajectory.shape[0] - 1)]
+                    apply_joint_waypoint(reference_robot, reference_dof_indices, reference_waypoint.reshape(-1))
+                for _ in range(args.hold_steps):
                     world.step(render=True)
                     if args.record:
                         step_replicator(rep, args)
                     frame_idx += 1
                     if args.record and frame_idx % max(args.fps, 1) == 0:
                         log(f"[weldRobot] Recorded {frame_idx}/{total_frames} frames")
-                if not args.record and (local_idx + 1) % 50 == 0:
+                if not args.record and (waypoint_idx + 1) % 50 == 0:
                     log(
-                        f"[weldRobot] Replayed {label} {local_idx + 1}/{len(source_waypoints)} waypoints "
+                        f"[weldRobot] Replayed {waypoint_idx + 1}/{total_waypoints} waypoints "
                         f"in loop {loop_idx + 1}/{args.loop}"
                     )
-            return frame_idx
-
-        for loop_idx in range(args.loop):
-            replay_waypoint_sequence(pred_replay_waypoints, "prediction", loop_idx)
-            if reference_replay_waypoints is not None and args.reference_display == "sequence":
-                replay_waypoint_sequence(reference_replay_waypoints, "reference", loop_idx)
 
         if args.record and writer is not None:
             rep.orchestrator.wait_until_complete()
