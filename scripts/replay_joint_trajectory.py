@@ -285,7 +285,7 @@ def parse_args() -> argparse.Namespace:
         "--ghost-samples",
         type=int,
         default=8,
-        help="Number of sampled static ghost robot poses used for the reference trajectory in ghost mode.",
+        help="Number of sampled static ghost robot poses used for the reference trajectory in ghost mode. Use 0 to keep only the reference TCP overlay.",
     )
     parser.add_argument(
         "--ghost-opacity",
@@ -1046,17 +1046,38 @@ def draw_replay_visualization_overlay(
     )
 
 
-def effective_playback_timing(args: argparse.Namespace) -> tuple[int, int]:
+def effective_playback_timing(args: argparse.Namespace) -> tuple[int, int, int]:
     speed_scale = float(args.playback_speed_scale)
     if speed_scale <= 0.0:
         raise RuntimeError("--playback-speed-scale must be > 0")
     hold_steps = int(args.hold_steps)
     waypoint_stride = 1
+    interpolation_substeps = 1
     if speed_scale < 1.0:
-        hold_steps = max(1, int(math.ceil(float(args.hold_steps) / speed_scale)))
+        interpolation_substeps = max(1, int(math.ceil(1.0 / speed_scale)))
     elif speed_scale > 1.0:
         waypoint_stride = max(1, int(round(speed_scale)))
-    return hold_steps, waypoint_stride
+    return hold_steps, waypoint_stride, interpolation_substeps
+
+
+def build_replay_waypoints(trajectory: np.ndarray, waypoint_stride: int, interpolation_substeps: int) -> np.ndarray:
+    sampled = np.asarray(trajectory, dtype=float)[:: max(int(waypoint_stride), 1)]
+    if sampled.size == 0:
+        sampled = np.asarray(trajectory, dtype=float)[-1:].copy()
+    elif not np.allclose(sampled[-1], trajectory[-1]):
+        sampled = np.vstack([sampled, np.asarray(trajectory, dtype=float)[-1]])
+    if interpolation_substeps <= 1 or len(sampled) < 2:
+        return sampled
+
+    replay_waypoints = []
+    for idx in range(len(sampled) - 1):
+        start = sampled[idx]
+        end = sampled[idx + 1]
+        for sub_idx in range(interpolation_substeps):
+            alpha = float(sub_idx) / float(interpolation_substeps)
+            replay_waypoints.append((1.0 - alpha) * start + alpha * end)
+    replay_waypoints.append(sampled[-1])
+    return np.asarray(replay_waypoints, dtype=float)
 
 
 def sampled_waypoint_indices(length: int, num_samples: int) -> list[int]:
@@ -1078,8 +1099,15 @@ def iter_mesh_like_prims(root_prim: Any) -> Any:
 
 
 def bind_preview_material(stage: Any, prim: Any, material_path: str, color_rgb: tuple[float, float, float], opacity: float) -> None:
-    from pxr import Gf, Sdf, UsdShade
+    from pxr import Gf, Sdf, UsdGeom, UsdShade
 
+    try:
+        gprim = UsdGeom.Gprim(prim)
+        if gprim:
+            gprim.CreateDisplayColorAttr([Gf.Vec3f(*color_rgb)])
+            gprim.CreateDisplayOpacityAttr([float(opacity)])
+    except Exception:
+        pass
     material = UsdShade.Material.Define(stage, material_path)
     shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
     shader.CreateIdAttr("UsdPreviewSurface")
@@ -1139,6 +1167,8 @@ def build_reference_ghosts(
     resolved_reference_joint_names: list[str] | None,
 ) -> list[tuple[Any, list[int]]]:
     if reference_trajectory is None or args.reference_display != "ghost":
+        return []
+    if args.ghost_samples == 0:
         return []
     ghost_indices = sampled_waypoint_indices(len(reference_trajectory), args.ghost_samples)
     if not ghost_indices:
@@ -1206,8 +1236,8 @@ def main() -> None:
         raise RuntimeError("--hold-steps must be >= 1")
     if args.loop < 1:
         raise RuntimeError("--loop must be >= 1")
-    if args.ghost_samples < 1:
-        raise RuntimeError("--ghost-samples must be >= 1")
+    if args.ghost_samples < 0:
+        raise RuntimeError("--ghost-samples must be >= 0")
     if not (0.0 < float(args.ghost_opacity) <= 1.0):
         raise RuntimeError("--ghost-opacity must be in (0, 1].")
     if args.encode_only:
@@ -1290,7 +1320,7 @@ def main() -> None:
         resolved_urdf = make_resolved_urdf(args.urdf)
         stage = get_context().get_stage()
         ensure_xform(stage, "/World")
-        effective_hold_steps, waypoint_stride = effective_playback_timing(args)
+        effective_hold_steps, waypoint_stride, interpolation_substeps = effective_playback_timing(args)
         robot_prim_path = import_robot_instance(
             stage=stage,
             resolved_urdf=resolved_urdf,
@@ -1412,21 +1442,18 @@ def main() -> None:
         elif not args.headless:
             add_camera_view()
 
-        pred_waypoint_indices = list(range(0, trajectory.shape[0], waypoint_stride))
-        if not pred_waypoint_indices or pred_waypoint_indices[-1] != trajectory.shape[0] - 1:
-            pred_waypoint_indices.append(trajectory.shape[0] - 1)
-        reference_waypoint_indices: list[int] = []
+        pred_replay_waypoints = build_replay_waypoints(trajectory, waypoint_stride, interpolation_substeps)
+        reference_replay_waypoints = None
         if reference_trajectory is not None:
-            reference_waypoint_indices = list(range(0, reference_trajectory.shape[0], waypoint_stride))
-            if not reference_waypoint_indices or reference_waypoint_indices[-1] != reference_trajectory.shape[0] - 1:
-                reference_waypoint_indices.append(reference_trajectory.shape[0] - 1)
-        total_frames = len(pred_waypoint_indices) * effective_hold_steps * args.loop
+            reference_replay_waypoints = build_replay_waypoints(reference_trajectory, waypoint_stride, interpolation_substeps)
+        total_frames = len(pred_replay_waypoints) * effective_hold_steps * args.loop
         if reference_trajectory is not None and args.reference_display == "sequence":
-            total_frames += len(reference_waypoint_indices) * effective_hold_steps * args.loop
+            total_frames += len(reference_replay_waypoints) * effective_hold_steps * args.loop
         log(
             f"[weldRobot] Replay ready: waypoints={trajectory.shape[0]}, hold_steps={effective_hold_steps}, "
             f"loop={args.loop}, total_steps={total_frames}, joints={joint_names}, "
-            f"representation={trajectory_representation}, speed_scale={args.playback_speed_scale}, stride={waypoint_stride}"
+            f"representation={trajectory_representation}, speed_scale={args.playback_speed_scale}, "
+            f"stride={waypoint_stride}, interpolation_substeps={interpolation_substeps}"
         )
         if trajectory_representation == "delta":
             log(f"[weldRobot] Delta trajectory start joint positions: {start_joint_positions.tolist()}")
@@ -1443,10 +1470,9 @@ def main() -> None:
             )
 
         frame_idx = 0
-        def replay_waypoint_sequence(source_trajectory: np.ndarray, waypoint_indices: list[int], label: str, loop_idx: int) -> int:
+        def replay_waypoint_sequence(source_waypoints: np.ndarray, label: str, loop_idx: int) -> int:
             nonlocal frame_idx
-            for local_idx, waypoint_idx in enumerate(waypoint_indices):
-                waypoint = source_trajectory[waypoint_idx]
+            for local_idx, waypoint in enumerate(source_waypoints):
                 apply_joint_waypoint(robot, dof_indices, waypoint.reshape(-1))
                 for _ in range(effective_hold_steps):
                     world.step(render=True)
@@ -1457,15 +1483,15 @@ def main() -> None:
                         log(f"[weldRobot] Recorded {frame_idx}/{total_frames} frames")
                 if not args.record and (local_idx + 1) % 50 == 0:
                     log(
-                        f"[weldRobot] Replayed {label} {local_idx + 1}/{len(waypoint_indices)} waypoints "
+                        f"[weldRobot] Replayed {label} {local_idx + 1}/{len(source_waypoints)} waypoints "
                         f"in loop {loop_idx + 1}/{args.loop}"
                     )
             return frame_idx
 
         for loop_idx in range(args.loop):
-            replay_waypoint_sequence(trajectory, pred_waypoint_indices, "prediction", loop_idx)
-            if reference_trajectory is not None and args.reference_display == "sequence":
-                replay_waypoint_sequence(reference_trajectory, reference_waypoint_indices, "reference", loop_idx)
+            replay_waypoint_sequence(pred_replay_waypoints, "prediction", loop_idx)
+            if reference_replay_waypoints is not None and args.reference_display == "sequence":
+                replay_waypoint_sequence(reference_replay_waypoints, "reference", loop_idx)
 
         if args.record and writer is not None:
             rep.orchestrator.wait_until_complete()
