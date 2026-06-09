@@ -6,6 +6,7 @@ import argparse
 import csv
 import json
 import math
+import re
 import sys
 import traceback
 import xml.etree.ElementTree as ET
@@ -95,6 +96,12 @@ def parse_args() -> argparse.Namespace:
         help="Joint trajectory file: json/csv/txt/npy/npz. Not required with --encode-only.",
     )
     parser.add_argument(
+        "--pred-check-dir",
+        type=Path,
+        default=None,
+        help="Directory containing pred_joint_horizon.npy, gt_joint_horizon.npy, and optional summary.json.",
+    )
+    parser.add_argument(
         "--trajectory-representation",
         choices=("auto", "absolute", "delta"),
         default="auto",
@@ -119,21 +126,31 @@ def parse_args() -> argparse.Namespace:
         default="absolute",
         help="Interpret the reference trajectory as absolute joint angles or joint-angle deltas.",
     )
-    parser.add_argument("--reference-robot-prim-path", default="/World/UR5ePenReference", help="USD prim path for the reference robot.")
-    parser.add_argument("--reference-workpiece-prim-path", default="/World/WorkpieceReference", help="USD prim path for the reference STL workpiece.")
+    parser.add_argument("--reference-robot-prim-path", default="/World/UR5ePenGroundTruth", help="USD prim path for the reference robot.")
+    parser.add_argument(
+        "--reference-workpiece-prim-path",
+        default="/World/WorkpieceReference",
+        help="Deprecated compatibility option; reference replay now uses the single shared workpiece.",
+    )
     parser.add_argument(
         "--reference-offset",
         type=float,
         nargs=3,
-        default=[0.0, 0.8, 0.0],
+        default=[0.0, 0.0, 0.0],
         metavar=("X", "Y", "Z"),
-        help="World-space offset applied to the reference robot and its optional STL workpiece.",
+        help="World-space offset applied to the reference robot.",
+    )
+    parser.add_argument(
+        "--reference-ghost-opacity",
+        type=float,
+        default=0.28,
+        help="Display opacity for the reference/ground-truth robot ghost. Set to 1.0 for opaque.",
     )
     parser.add_argument("--headless", action="store_true", help="Run Isaac Sim without the UI.")
     parser.add_argument("--floating", action="store_true", help="Do not fix the robot base to the world.")
     parser.add_argument("--physics-dt", type=float, default=1.0 / 60.0, help="Physics timestep in seconds.")
     parser.add_argument("--rendering-dt", type=float, default=1.0 / 60.0, help="Rendering timestep in seconds.")
-    parser.add_argument("--hold-steps", type=int, default=1, help="Simulation steps to hold each waypoint.")
+    parser.add_argument("--hold-steps", type=int, default=None, help="Simulation steps to hold each waypoint.")
     parser.add_argument("--loop", type=int, default=1, help="Repeat count for the entire trajectory.")
     parser.add_argument("--fps", type=int, default=30, help="Recording frame rate.")
     parser.add_argument("--width", type=int, default=1280, help="Recording width.")
@@ -379,6 +396,77 @@ def resolve_trajectory_representation(path: Path, requested: str) -> str:
     return "absolute"
 
 
+def _first_existing_path(candidates: list[Path]) -> Path | None:
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
+def _fallback_stl_from_summary(summary: dict[str, Any]) -> Path | None:
+    stl_value = summary.get("stl_path")
+    candidates: list[Path] = []
+    if isinstance(stl_value, str) and stl_value:
+        stl_path = Path(stl_value).expanduser()
+        candidates.append(stl_path)
+        match = re.search(r"(job_\d+)", stl_value)
+        if match:
+            job_name = match.group(1)
+            candidates.extend(
+                [
+                    REPO_ROOT / "data_generation/data/generated_jobs" / job_name / "workpiece.stl",
+                    REPO_ROOT / "data_generation/data/generated_jobs" / job_name / "workpiece_sim.stl",
+                    REPO_ROOT / "data_generation/data/generated_jobs/simple_jobs" / job_name / "workpiece.stl",
+                    REPO_ROOT / "data_generation/data/generated_jobs/simple_jobs" / job_name / "workpiece_sim.stl",
+                ]
+            )
+    return _first_existing_path(candidates)
+
+
+def apply_pred_check_defaults(args: argparse.Namespace) -> None:
+    if args.pred_check_dir is None:
+        if args.hold_steps is None:
+            args.hold_steps = 1
+        return
+
+    pred_check_dir = args.pred_check_dir.expanduser().resolve()
+    if not pred_check_dir.is_dir():
+        raise FileNotFoundError(f"--pred-check-dir does not exist or is not a directory: {pred_check_dir}")
+    args.pred_check_dir = pred_check_dir
+
+    if args.trajectory is None:
+        pred_path = pred_check_dir / "pred_joint_horizon.npy"
+        if not pred_path.is_file():
+            raise FileNotFoundError(f"Missing predicted trajectory: {pred_path}")
+        args.trajectory = pred_path
+        log(f"[weldRobot] Using predicted trajectory from pred-check dir: {pred_path}")
+
+    if args.reference_trajectory is None and args.reference_npz is None:
+        gt_path = pred_check_dir / "gt_joint_horizon.npy"
+        if gt_path.is_file():
+            args.reference_trajectory = gt_path
+            log(f"[weldRobot] Using ground-truth trajectory from pred-check dir: {gt_path}")
+        else:
+            log(f"[weldRobot] No ground-truth trajectory found at: {gt_path}")
+
+    if args.stl is None:
+        summary_path = pred_check_dir / "summary.json"
+        if summary_path.is_file():
+            summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            if not isinstance(summary, dict):
+                raise RuntimeError(f"summary.json must contain a JSON object: {summary_path}")
+            stl_path = _fallback_stl_from_summary(summary)
+            if stl_path is not None:
+                args.stl = stl_path
+                log(f"[weldRobot] Using workpiece STL from pred-check summary/fallback: {stl_path}")
+            else:
+                log(f"[weldRobot] Could not resolve workpiece STL from: {summary_path}")
+
+    if args.hold_steps is None:
+        args.hold_steps = 4
+        log("[weldRobot] pred-check replay defaulting to hold_steps=4 for slower playback")
+
+
 def create_articulation(robot_prim_path: str):
     try:
         from isaacsim.core.prims import SingleArticulation
@@ -519,11 +607,40 @@ def import_robot_instance(
     return robot_prim_path
 
 
-def shifted_offset(base_offset: list[float], world_offset: list[float]) -> tuple[float, float, float]:
-    return (
-        float(base_offset[0]) + float(world_offset[0]),
-        float(base_offset[1]) + float(world_offset[1]),
-        float(base_offset[2]) + float(world_offset[2]),
+def apply_reference_ghost_material(stage: Any, robot_prim_path: str, opacity: float) -> None:
+    opacity = max(0.0, min(1.0, float(opacity)))
+    if opacity >= 0.999:
+        return
+
+    from pxr import Gf, Sdf, UsdGeom, UsdShade
+
+    material_path = f"{robot_prim_path}/GroundTruthGhostMaterial"
+    material = UsdShade.Material.Define(stage, material_path)
+    shader = UsdShade.Shader.Define(stage, f"{material_path}/PreviewSurface")
+    shader.CreateIdAttr("UsdPreviewSurface")
+    shader.CreateInput("diffuseColor", Sdf.ValueTypeNames.Color3f).Set(Gf.Vec3f(1.0, 0.55, 0.12))
+    shader.CreateInput("roughness", Sdf.ValueTypeNames.Float).Set(0.85)
+    shader.CreateInput("metallic", Sdf.ValueTypeNames.Float).Set(0.0)
+    shader.CreateInput("opacity", Sdf.ValueTypeNames.Float).Set(opacity)
+    material.CreateSurfaceOutput().ConnectToSource(shader.ConnectableAPI(), "surface")
+
+    mesh_count = 0
+    root_prefix = robot_prim_path.rstrip("/") + "/"
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if path != robot_prim_path and not path.startswith(root_prefix):
+            continue
+        if not prim.IsA(UsdGeom.Mesh):
+            continue
+        mesh = UsdGeom.Mesh(prim)
+        mesh.CreateDisplayColorAttr([Gf.Vec3f(1.0, 0.55, 0.12)])
+        mesh.CreateDisplayOpacityAttr([opacity])
+        UsdShade.MaterialBindingAPI(prim).Bind(material)
+        mesh_count += 1
+
+    log(
+        f"[weldRobot] Applied ground-truth ghost material to {mesh_count} mesh prims "
+        f"under {robot_prim_path}, opacity={opacity:.2f}"
     )
 
 
@@ -938,7 +1055,7 @@ def draw_replay_visualization_overlay(
         stage,
         pred_tcp_path,
         "/World/ReplayDebug/PredTcp",
-        Gf.Vec3f(0.05, 0.85, 1.0),
+        Gf.Vec3f(0.0, 0.35, 1.0),
         marker_radius=0.006,
         width=0.005,
     )
@@ -946,9 +1063,9 @@ def draw_replay_visualization_overlay(
         stage,
         reference_tcp_path,
         "/World/ReplayDebug/ReferenceTcp",
-        Gf.Vec3f(0.25, 0.35, 1.0),
+        Gf.Vec3f(1.0, 0.48, 0.05),
         marker_radius=0.006,
-        width=0.005,
+        width=0.0035,
     )
 
 
@@ -988,6 +1105,7 @@ def add_recording_camera(rep: Any, args: argparse.Namespace):
 
 def main() -> None:
     args = parse_args()
+    apply_pred_check_defaults(args)
     if args.hold_steps < 1:
         raise RuntimeError("--hold-steps must be >= 1")
     if args.loop < 1:
@@ -1071,6 +1189,7 @@ def main() -> None:
                 fix_base=not args.floating,
                 world_offset=tuple(float(v) for v in args.reference_offset),
             )
+            apply_reference_ghost_material(stage, reference_robot_prim_path, args.reference_ghost_opacity)
         world.reset()
         set_initial_joint_positions(robot_prim_path)
         if reference_robot_prim_path is not None:
@@ -1086,16 +1205,6 @@ def main() -> None:
                 local_offset=tuple(float(v) for v in args.workpiece_offset),
                 debug_box=args.debug_workpiece_box,
             )
-            if reference_robot_prim_path is not None:
-                import_stl_as_mesh(
-                    stage=stage,
-                    stl_path=args.stl,
-                    prim_path=args.reference_workpiece_prim_path,
-                    scale=args.workpiece_scale,
-                    z_offset=args.workpiece_z_offset,
-                    local_offset=shifted_offset(args.workpiece_offset, args.reference_offset),
-                    debug_box=args.debug_workpiece_box,
-                )
 
         world.step(render=False)
         set_initial_joint_positions(robot_prim_path)
