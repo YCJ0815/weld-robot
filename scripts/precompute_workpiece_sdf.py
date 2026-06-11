@@ -18,7 +18,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-z-offset", type=float, default=0.0025, help="Extra Z offset in meters for the workpiece mesh.")
     parser.add_argument("--workpiece-offset", type=float, nargs=3, default=[0.5, 0.0, 0.0], help="World offset in meters for the workpiece mesh.")
     parser.add_argument("--sdf-pitch", type=float, default=0.004, help="Voxel pitch in meters for the cached workpiece SDF.")
-    parser.add_argument("--sdf-margin", type=float, default=0.03, help="Extra world-space margin in meters around the SDF grid.")
+    parser.add_argument("--sdf-lateral-margin", type=float, default=0.05, help="Extra lateral X/Y coverage in meters around the cached SDF grid.")
+    parser.add_argument("--sdf-bottom-margin", type=float, default=0.03, help="Extra downward Z coverage in meters below the workpiece for the cached SDF grid.")
+    parser.add_argument("--sdf-top-margin", type=float, default=0.10, help="Extra upward Z coverage in meters above the workpiece for the cached SDF grid.")
     parser.add_argument("--sdf-voxelize-method", type=str, default="subdivide", choices=["subdivide", "ray"], help="Trimesh voxelization method.")
     parser.add_argument("--sdf-voxelize-max-iter", type=int, default=64, help="Maximum subdivision iterations used by trimesh voxelization.")
     parser.add_argument("--rebuild", action="store_true", help="Force rebuilding existing workpiece_sdf.npz files.")
@@ -56,7 +58,9 @@ def main() -> None:
             npz_path=npz_path,
             config=SDFBuildConfig(
                 voxel_pitch=args.sdf_pitch,
-                margin=args.sdf_margin,
+                lateral_margin=args.sdf_lateral_margin,
+                bottom_margin=args.sdf_bottom_margin,
+                top_margin=args.sdf_top_margin,
                 voxelize_method=args.sdf_voxelize_method,
                 voxelize_max_iter=args.sdf_voxelize_max_iter,
             ),

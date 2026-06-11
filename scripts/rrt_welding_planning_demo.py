@@ -299,7 +299,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--workpiece-sdf-path", type=Path, default=None, help="Optional path to the cached workpiece SDF .npz. Defaults to <job-dir>/workpiece_sdf.npz.")
     parser.add_argument("--rebuild-workpiece-sdf", action="store_true", help="Force rebuilding the cached workpiece SDF for the current job.")
     parser.add_argument("--workpiece-sdf-pitch", type=float, default=0.004, help="Voxel pitch in meters for cached workpiece SDF generation.")
-    parser.add_argument("--workpiece-sdf-margin", type=float, default=0.03, help="Extra world-space margin in meters around the workpiece SDF grid.")
+    parser.add_argument("--workpiece-sdf-lateral-margin", type=float, default=0.05, help="Extra lateral X/Y coverage in meters around the workpiece SDF grid.")
+    parser.add_argument("--workpiece-sdf-bottom-margin", type=float, default=0.03, help="Extra downward Z coverage in meters below the workpiece SDF grid.")
+    parser.add_argument("--workpiece-sdf-top-margin", type=float, default=0.10, help="Extra upward Z coverage in meters above the workpiece SDF grid.")
     parser.add_argument("--workpiece-sdf-voxelize-method", type=str, default="subdivide", choices=["subdivide", "ray"], help="Trimesh voxelization method for cached workpiece SDF generation.")
     parser.add_argument("--workpiece-sdf-voxelize-max-iter", type=int, default=64, help="Maximum subdivision iterations used by trimesh voxelization for cached workpiece SDF generation.")
     parser.add_argument("--sdf-collision-weight", type=float, default=4.0e8, help="Collision penalty weight for SDF TrajOpt.")
@@ -2967,7 +2969,9 @@ def process_job(
             npz_path=sdf_npz_path,
             config=SDFBuildConfig(
                 voxel_pitch=args.workpiece_sdf_pitch,
-                margin=args.workpiece_sdf_margin,
+                lateral_margin=args.workpiece_sdf_lateral_margin,
+                bottom_margin=args.workpiece_sdf_bottom_margin,
+                top_margin=args.workpiece_sdf_top_margin,
                 voxelize_method=args.workpiece_sdf_voxelize_method,
                 voxelize_max_iter=args.workpiece_sdf_voxelize_max_iter,
             ),

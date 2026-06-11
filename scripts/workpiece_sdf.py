@@ -16,7 +16,9 @@ Logger = Callable[[str], None]
 @dataclass(frozen=True)
 class SDFBuildConfig:
     voxel_pitch: float = 0.004
-    margin: float = 0.03
+    lateral_margin: float = 0.05
+    bottom_margin: float = 0.03
+    top_margin: float = 0.10
     voxelize_method: str = "subdivide"
     voxelize_max_iter: int = 64
 
@@ -98,7 +100,14 @@ def _cached_sdf_matches(
     cached_scale = _as_scalar(data, "workpiece_scale")
     cached_z_offset = _as_scalar(data, "workpiece_z_offset")
     cached_pitch = _as_scalar(data, "voxel_pitch")
-    cached_margin = _as_scalar(data, "margin")
+    cached_lateral_margin = _as_scalar(data, "lateral_margin")
+    cached_bottom_margin = _as_scalar(data, "bottom_margin")
+    legacy_margin = _as_scalar(data, "margin")
+    if cached_lateral_margin is None:
+        cached_lateral_margin = legacy_margin
+    if cached_bottom_margin is None:
+        cached_bottom_margin = legacy_margin
+    cached_top_margin = _as_scalar(data, "top_margin", legacy_margin)
     cached_offset = _as_vec3(data, "workpiece_offset")
     cached_sha = str(data["workpiece_source_sha256"].reshape(-1)[0]) if "workpiece_source_sha256" in data else None
 
@@ -111,8 +120,12 @@ def _cached_sdf_matches(
         return False, f"z_offset mismatch: cached={cached_z_offset}, requested={z_offset}"
     if cached_pitch is None or not np.isclose(cached_pitch, float(config.voxel_pitch), atol=1e-12):
         return False, f"voxel_pitch mismatch: cached={cached_pitch}, requested={config.voxel_pitch}"
-    if cached_margin is None or not np.isclose(cached_margin, float(config.margin), atol=1e-12):
-        return False, f"margin mismatch: cached={cached_margin}, requested={config.margin}"
+    if cached_lateral_margin is None or not np.isclose(cached_lateral_margin, float(config.lateral_margin), atol=1e-12):
+        return False, f"lateral_margin mismatch: cached={cached_lateral_margin}, requested={config.lateral_margin}"
+    if cached_bottom_margin is None or not np.isclose(cached_bottom_margin, float(config.bottom_margin), atol=1e-12):
+        return False, f"bottom_margin mismatch: cached={cached_bottom_margin}, requested={config.bottom_margin}"
+    if cached_top_margin is None or not np.isclose(cached_top_margin, float(config.top_margin), atol=1e-12):
+        return False, f"top_margin mismatch: cached={cached_top_margin}, requested={config.top_margin}"
     requested_offset = np.asarray(local_offset, dtype=float).reshape(3)
     if cached_offset is None or not np.allclose(cached_offset, requested_offset, atol=1e-12):
         return False, f"workpiece_offset mismatch: cached={cached_offset}, requested={requested_offset}"
@@ -153,14 +166,24 @@ def build_sdf_from_workpiece_mesh(
     logger: Logger | None = None,
 ) -> Path:
     pitch = float(config.voxel_pitch)
-    margin = float(config.margin)
+    lateral_margin = float(config.lateral_margin)
+    bottom_margin = float(config.bottom_margin)
+    top_margin = float(config.top_margin)
     if pitch <= 0.0:
         raise ValueError(f"voxel_pitch must be positive, got {pitch}")
+    if lateral_margin < 0.0:
+        raise ValueError(f"lateral_margin must be non-negative, got {lateral_margin}")
+    if bottom_margin < 0.0:
+        raise ValueError(f"bottom_margin must be non-negative, got {bottom_margin}")
+    if top_margin < 0.0:
+        raise ValueError(f"top_margin must be non-negative, got {top_margin}")
 
     mesh = _world_transform_mesh(stl_path, scale, z_offset, local_offset)
     bounds = np.asarray(mesh.bounds, dtype=float)
-    world_min = bounds[0] - margin
-    world_max = bounds[1] + margin
+    lower_padding = np.array([lateral_margin, lateral_margin, bottom_margin], dtype=float)
+    upper_padding = np.array([lateral_margin, lateral_margin, top_margin], dtype=float)
+    world_min = bounds[0] - lower_padding
+    world_max = bounds[1] + upper_padding
 
     try:
         filled = mesh.voxelized(
@@ -207,12 +230,15 @@ def build_sdf_from_workpiece_mesh(
         workpiece_source_sha256=np.array([_file_sha256(stl_path)]),
         workpiece_source_path=np.array([str(stl_path.resolve())]),
         voxel_pitch=np.array([pitch], dtype=float),
-        margin=np.array([margin], dtype=float),
+        lateral_margin=np.array([lateral_margin], dtype=float),
+        bottom_margin=np.array([bottom_margin], dtype=float),
+        top_margin=np.array([top_margin], dtype=float),
     )
     if logger is not None:
         logger(
             f"[SDF] Built workpiece SDF at {npz_path} "
-            f"(shape={grid_shape}, pitch={pitch:.4f} m, margin={margin:.4f} m, "
+            f"(shape={grid_shape}, pitch={pitch:.4f} m, lateral_margin={lateral_margin:.4f} m, "
+            f"bottom_margin={bottom_margin:.4f} m, top_margin={top_margin:.4f} m, "
             f"method={config.voxelize_method}, max_iter={config.voxelize_max_iter})"
         )
     return npz_path
