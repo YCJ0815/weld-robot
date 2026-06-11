@@ -33,6 +33,7 @@ SIMPLE_FINAL_OUTPUT_DIR = ROOT / "data" / "simple_path"
 SIMPLE_VECTOR_OUTPUT_DIR = ROOT / "data" / "simple_vector"
 SIMPLE_JOBS_OUTPUT_DIR = JOBS_OUTPUT_DIR / "simple_jobs"
 SIMPLE_SAMPLES_PER_TYPE = 30
+DEFAULT_SIMPLE_STRUCTURE_TYPES = ("single_rib", "parallel_ribs", "t_ribs")
 SEAM_EXTRACT_DIR = ROOT / "seam_extract"
 DEFAULT_EXTRACT_PYTHON = Path("/Users/ycj/miniconda3/bin/python")
 CACHE_DIR = ROOT / "data" / ".cache"
@@ -97,6 +98,45 @@ def existing_job_indices(jobs_dir: Path) -> list[int]:
             continue
         indices.append(int(match.group(1)))
     return sorted(indices)
+
+
+def existing_simple_structure_indices(*paths: Path) -> list[int]:
+    indices: set[int] = set()
+    job_pattern = re.compile(r"job_(\d+)$")
+    simple_pattern = re.compile(r"_(\d+)_([xy])_rot")
+    for path in paths:
+        if not path.exists():
+            continue
+        for child in path.iterdir():
+            match = job_pattern.search(child.name)
+            if match is not None:
+                indices.add(int(match.group(1)))
+                continue
+            match = simple_pattern.search(child.name)
+            if match is not None:
+                indices.add(int(match.group(1)))
+    return sorted(indices)
+
+
+def next_generation_index(
+    generator_mode: str,
+    model_dir: Path,
+    extract_dir: Path,
+    final_dir: Path,
+    vector_dir: Path,
+    jobs_dir: Path,
+) -> int:
+    if generator_mode == "simple":
+        indices = existing_simple_structure_indices(
+            model_dir,
+            extract_dir,
+            final_dir,
+            vector_dir,
+            jobs_dir,
+        )
+    else:
+        indices = existing_job_indices(jobs_dir)
+    return (max(indices) + 1) if indices else 0
 
 
 def load_existing_manifest_jobs(manifest_path: Path) -> list[dict[str, Any]]:
@@ -327,6 +367,7 @@ def generate_simple_models_in_subprocess(
     output_dir: Path,
     seed: int | None,
     start_index: int = 0,
+    structure_types: tuple[str, ...] = DEFAULT_SIMPLE_STRUCTURE_TYPES,
 ) -> list[dict[str, str]]:
     code = r"""
 import importlib.util
@@ -340,6 +381,7 @@ samples_per_type = int(sys.argv[2])
 output_dir = Path(sys.argv[3])
 seed_arg = sys.argv[4]
 start_index = int(sys.argv[5])
+structure_types = [item for item in sys.argv[6].split(",") if item]
 if seed_arg != "":
     seed = int(seed_arg)
     random.seed(seed)
@@ -361,6 +403,7 @@ generated = module.generate_all_structure_batches(
     output_dir=str(output_dir),
     seed=None if seed_arg == "" else int(seed_arg),
     start_index=start_index,
+    structure_types=structure_types,
 )
 print("__GENERATED_JSON__" + json.dumps(generated, ensure_ascii=False))
 """
@@ -374,6 +417,7 @@ print("__GENERATED_JSON__" + json.dumps(generated, ensure_ascii=False))
             str(output_dir),
             "" if seed is None else str(seed),
             str(start_index),
+            ",".join(structure_types),
         ],
         cwd=str(ROOT),
         capture_output=True,
@@ -953,6 +997,7 @@ def run_pipeline(
     seed: int | None,
     generator_mode: str = "standard",
     simple_samples_per_type: int = SIMPLE_SAMPLES_PER_TYPE,
+    simple_structure_types: tuple[str, ...] = DEFAULT_SIMPLE_STRUCTURE_TYPES,
 ) -> tuple[list[Path], Path]:
     for output_dir in (model_dir, extract_dir, final_dir, vector_dir, jobs_dir):
         ensure_output_dir(output_dir)
@@ -972,11 +1017,13 @@ def run_pipeline(
             )
         elif generator_mode == "simple":
             print(f"[env] simple samples per type: {simple_samples_per_type}")
+            print(f"[env] simple structure types: {', '.join(simple_structure_types)}")
             generated = generate_simple_models_in_subprocess(
                 samples_per_type=simple_samples_per_type,
                 output_dir=model_dir,
                 seed=seed,
                 start_index=next_job_index,
+                structure_types=simple_structure_types,
             )
         else:
             raise RuntimeError(f"Unsupported generator mode: {generator_mode}")
@@ -1115,6 +1162,13 @@ def parse_args() -> argparse.Namespace:
         default=SIMPLE_SAMPLES_PER_TYPE,
         help="Number of models generated for each simple structure type when --simple-structures is enabled.",
     )
+    parser.add_argument(
+        "--simple-structure-types",
+        nargs="+",
+        choices=("single_rib", "parallel_ribs", "t_ribs", "sandwich_ribs", "grid_ribs"),
+        default=list(DEFAULT_SIMPLE_STRUCTURE_TYPES),
+        help="Selected simple structure types when --simple-structures is enabled.",
+    )
     parser.add_argument("--skip-pose-normals", action="store_true", help="Skip point pose normal computation.")
     parser.add_argument("--pose-normal-tol", type=float, default=1e-2, help="Point-to-face/arc tolerance for pose normals.")
     parser.add_argument("--extract-worker", action="store_true", help=argparse.SUPPRESS)
@@ -1155,6 +1209,7 @@ def main() -> None:
             seed=args.seed,
             generator_mode="simple" if args.simple_structures else "standard",
             simple_samples_per_type=args.simple_samples_per_type,
+            simple_structure_types=tuple(args.simple_structure_types),
         )
     except RuntimeError as exc:
         print(f"[error] {exc}", file=sys.stderr)

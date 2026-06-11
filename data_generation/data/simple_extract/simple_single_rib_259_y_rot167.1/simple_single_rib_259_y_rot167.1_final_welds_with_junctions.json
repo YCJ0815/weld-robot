@@ -1,0 +1,350 @@
+{
+  "solids": {},
+  "contact_edges": {
+    "1": {
+      "type": "line",
+      "start": [
+        -24.76196662411,
+        111.83733701354,
+        5.0
+      ],
+      "end": [
+        -69.84628901812071,
+        -84.66971521923759,
+        5.0
+      ],
+      "length": 201.61254351588016,
+      "solid_ids": [
+        1,
+        2
+      ],
+      "tangent": [
+        -0.22361863804599844,
+        -0.9746767180549933,
+        0.0
+      ],
+      "preferred_normal": [
+        0.9004838706262823,
+        -0.20659668277874765,
+        0.3826834323650898
+      ],
+      "points": [
+        {
+          "point_id": "P1",
+          "role": "endpoint"
+        },
+        {
+          "point_id": "P2",
+          "role": "endpoint"
+        }
+      ],
+      "samples": [
+        [
+          -24.76196662411,
+          111.83733701354,
+          5.0
+        ],
+        [
+          -69.84628901812071,
+          -84.66971521923759,
+          5.0
+        ]
+      ],
+      "corner_strategy": null,
+      "source_weld_id": "1"
+    },
+    "2": {
+      "type": "line",
+      "start": [
+        -24.76196662411,
+        111.83733701354,
+        5.0
+      ],
+      "end": [
+        -34.618230919251495,
+        114.09864515507353,
+        5.0
+      ],
+      "length": 10.112341982283182,
+      "solid_ids": [
+        1,
+        2
+      ],
+      "tangent": [
+        -0.9746767180549932,
+        0.22361863804599802,
+        0.0
+      ],
+      "preferred_normal": [
+        0.20659668277874765,
+        0.9004838706262823,
+        0.3826834323650898
+      ],
+      "points": [
+        {
+          "point_id": "P1",
+          "role": "endpoint"
+        },
+        {
+          "point_id": "P3",
+          "role": "endpoint"
+        }
+      ],
+      "samples": [
+        [
+          -24.76196662411,
+          111.83733701354,
+          5.0
+        ],
+        [
+          -34.618230919251495,
+          114.09864515507353,
+          5.0
+        ]
+      ],
+      "corner_strategy": null,
+      "source_weld_id": "2"
+    },
+    "3": {
+      "type": "line",
+      "start": [
+        -69.84628901811,
+        -84.66971521924,
+        5.0
+      ],
+      "end": [
+        -79.7025533132493,
+        -82.40840707770697,
+        5.0
+      ],
+      "length": 10.112341982280928,
+      "solid_ids": [
+        1,
+        2
+      ],
+      "tangent": [
+        -0.9746767180549931,
+        0.22361863804599869,
+        0.0
+      ],
+      "preferred_normal": [
+        -0.20659668277874765,
+        -0.9004838706262823,
+        0.3826834323650898
+      ],
+      "points": [
+        {
+          "point_id": "P2",
+          "role": "endpoint"
+        },
+        {
+          "point_id": "P4",
+          "role": "endpoint"
+        }
+      ],
+      "samples": [
+        [
+          -69.84628901811,
+          -84.66971521924,
+          5.0
+        ],
+        [
+          -79.7025533132493,
+          -82.40840707770697,
+          5.0
+        ]
+      ],
+      "corner_strategy": null,
+      "source_weld_id": "3"
+    },
+    "4": {
+      "type": "line",
+      "start": [
+        -34.61823091925,
+        114.09864515508,
+        5.0
+      ],
+      "end": [
+        -79.7025533132629,
+        -82.40840707770707,
+        5.0
+      ],
+      "length": 201.6125435158899,
+      "solid_ids": [
+        1,
+        2
+      ],
+      "tangent": [
+        -0.22361863804599844,
+        -0.9746767180549932,
+        0.0
+      ],
+      "preferred_normal": [
+        -0.9004838706262823,
+        0.20659668277874765,
+        0.3826834323650898
+      ],
+      "points": [
+        {
+          "point_id": "P3",
+          "role": "endpoint"
+        },
+        {
+          "point_id": "P4",
+          "role": "endpoint"
+        }
+      ],
+      "samples": [
+        [
+          -34.61823091925,
+          114.09864515508,
+          5.0
+        ],
+        [
+          -79.7025533132629,
+          -82.40840707770707,
+          5.0
+        ]
+      ],
+      "corner_strategy": null,
+      "source_weld_id": "4"
+    }
+  },
+  "weld_seams": {
+    "weld_1": {
+      "name": null,
+      "edge_ids": [
+        "1"
+      ],
+      "solid_pair": [
+        1,
+        2
+      ],
+      "preferred_solid_id": null,
+      "process": {
+        "travel_speed": null,
+        "torch_angle_deg": null,
+        "work_angle_deg": null
+      },
+      "safety": {
+        "approach_clearance": null,
+        "retract_clearance": null,
+        "approach_along_solid_id": null,
+        "retract_along_solid_id": null
+      }
+    },
+    "weld_2": {
+      "name": null,
+      "edge_ids": [
+        "2"
+      ],
+      "solid_pair": [
+        1,
+        2
+      ],
+      "preferred_solid_id": null,
+      "process": {
+        "travel_speed": null,
+        "torch_angle_deg": null,
+        "work_angle_deg": null
+      },
+      "safety": {
+        "approach_clearance": null,
+        "retract_clearance": null,
+        "approach_along_solid_id": null,
+        "retract_along_solid_id": null
+      }
+    },
+    "weld_3": {
+      "name": null,
+      "edge_ids": [
+        "3"
+      ],
+      "solid_pair": [
+        1,
+        2
+      ],
+      "preferred_solid_id": null,
+      "process": {
+        "travel_speed": null,
+        "torch_angle_deg": null,
+        "work_angle_deg": null
+      },
+      "safety": {
+        "approach_clearance": null,
+        "retract_clearance": null,
+        "approach_along_solid_id": null,
+        "retract_along_solid_id": null
+      }
+    },
+    "weld_4": {
+      "name": null,
+      "edge_ids": [
+        "4"
+      ],
+      "solid_pair": [
+        1,
+        2
+      ],
+      "preferred_solid_id": null,
+      "process": {
+        "travel_speed": null,
+        "torch_angle_deg": null,
+        "work_angle_deg": null
+      },
+      "safety": {
+        "approach_clearance": null,
+        "retract_clearance": null,
+        "approach_along_solid_id": null,
+        "retract_along_solid_id": null
+      }
+    }
+  },
+  "global_safety": {
+    "min_distance_to_base_plate": null,
+    "min_distance_between_tool_and_rib": null
+  },
+  "points": {
+    "P1": {
+      "id": "P1",
+      "xyz": [
+        -24.76196662411,
+        111.83733701354,
+        5.0
+      ],
+      "role": "endpoint"
+    },
+    "P2": {
+      "id": "P2",
+      "xyz": [
+        -69.84628901812071,
+        -84.66971521923759,
+        5.0
+      ],
+      "role": "endpoint"
+    },
+    "P3": {
+      "id": "P3",
+      "xyz": [
+        -34.618230919251495,
+        114.09864515507353,
+        5.0
+      ],
+      "role": "endpoint"
+    },
+    "P4": {
+      "id": "P4",
+      "xyz": [
+        -79.7025533132493,
+        -82.40840707770697,
+        5.0
+      ],
+      "role": "endpoint"
+    }
+  },
+  "up_axis": [
+    0.0,
+    0.0,
+    1.0
+  ]
+}

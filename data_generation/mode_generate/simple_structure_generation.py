@@ -54,6 +54,19 @@ SIMPLE_STRUCTURE_PARAMS = {
         **deepcopy(MODEL_GEN_PARAMS["plate"]),
         "edge_clearance_min": 50.0,
     },
+    "single_rib": {
+        "samples": 10,
+        "orientation_choices": MAIN_RIB_CFG["orientation_choices"],
+        "thickness_min": _loosen_min(MAIN_RIB_CFG["thickness_min"]),
+        "thickness_max": _loosen_max(MAIN_RIB_CFG["thickness_max"]),
+        "height_min": _loosen_min(MAIN_RIB_CFG["height_min"]),
+        "height_max": _height_max_capped(MAIN_RIB_CFG["height_max"]),
+        "length_ratio_min": _ratio_min(MAIN_RIB_CFG["length_ratio_min"], delta=0.45),
+        "length_ratio_max": _length_ratio_max_capped(MODEL_GEN_PARAMS["plate"]["length"], 350.0),
+        "placement_attempts": 1000,
+        "rotation_angle_min": 0.0,
+        "rotation_angle_max": 180.0,
+    },
     "parallel_ribs": {
         "rib_counts": [1, 2, 3],
         "samples_per_count": 10,
@@ -397,6 +410,65 @@ def _parallel_ribs_layout(rng, cfg, orientation, axis_dim, perp_dim, rib_count):
         )
         ribs.append(_parallel_rib(length, thickness, height, center_axis, center_perp, orientation))
     return ribs
+
+
+def _single_rib_layout(rng, cfg, orientation, axis_dim, perp_dim):
+    thickness = rng.uniform(cfg["thickness_min"], cfg["thickness_max"])
+    height = rng.uniform(cfg["height_min"], cfg["height_max"])
+    length, center_axis = _sample_length_and_center(
+        rng,
+        axis_dim,
+        cfg["length_ratio_min"],
+        cfg["length_ratio_max"],
+    )
+    center_perp = rng.uniform(-perp_dim / 2 + thickness / 2, perp_dim / 2 - thickness / 2)
+    return [_parallel_rib(length, thickness, height, center_axis, center_perp, orientation)]
+
+
+def generate_single_rib_plate(index, output_dir=None, params=SIMPLE_STRUCTURE_PARAMS, rng=None):
+    rng = rng or random
+    plate_cfg = params["plate"]
+    cfg = params["single_rib"]
+    output_dir = output_dir or params["batch"]["output_dir"]
+    plate_l = plate_cfg["length"]
+    plate_w = plate_cfg["width"]
+    edge_clearance_min = plate_cfg.get("edge_clearance_min", 0.0)
+
+    orientation, angle_deg, ribs = _sample_layout(
+        rng,
+        cfg,
+        plate_l,
+        plate_w,
+        edge_clearance_min,
+        _single_rib_layout,
+    )
+    step_filename, stl_filename = _write_model(
+        output_dir,
+        f"simple_single_rib_{index:03d}_{orientation.lower()}_rot{angle_deg:.1f}",
+        ribs,
+        angle_deg,
+        plate_cfg,
+    )
+    return {
+        "structure_type": "single_rib",
+        "rib_count": 1,
+        "orientation": orientation,
+        "rotation_angle_deg": angle_deg,
+        "step": step_filename,
+        "stl": stl_filename,
+    }
+
+
+def generate_single_rib_batch(samples=None, output_dir=None, params=SIMPLE_STRUCTURE_PARAMS, seed=None):
+    cfg = params["single_rib"]
+    samples = samples or cfg["samples"]
+    output_dir = output_dir or params["batch"]["output_dir"]
+
+    rng = random.Random(seed) if seed is not None else random
+    return [
+        generate_single_rib_plate(index, output_dir=output_dir, params=params, rng=rng)
+        for index in range(samples)
+    ]
 
 
 def generate_parallel_rib_plate(index, rib_count, output_dir=None, params=SIMPLE_STRUCTURE_PARAMS, rng=None):
@@ -827,54 +899,80 @@ def generate_all_structure_batches(
     params=SIMPLE_STRUCTURE_PARAMS,
     seed=None,
     start_index=0,
+    structure_types=None,
 ):
     output_dir = output_dir or params["batch"]["output_dir"]
     rng = random.Random(seed) if seed is not None else random
     generated = []
+    structure_types = structure_types or ["parallel_ribs", "t_ribs", "sandwich_ribs", "grid_ribs"]
 
-    parallel_cfg = params["parallel_ribs"]
-    for rib_count, sample_count in _parallel_sample_counts(
-        samples_per_type,
-        parallel_cfg["rib_counts"],
-    ).items():
-        for index in range(sample_count):
+    current_index = start_index
+
+    if "single_rib" in structure_types:
+        for _ in range(samples_per_type):
             generated.append(
-                generate_parallel_rib_plate(
-                    start_index + index,
-                    rib_count,
+                generate_single_rib_plate(
+                    current_index,
                     output_dir=output_dir,
                     params=params,
                     rng=rng,
                 )
             )
+            current_index += 1
 
-    for index in range(samples_per_type):
-        generated.append(
-            generate_t_rib_plate(
-                start_index + index,
-                output_dir=output_dir,
-                params=params,
-                rng=rng,
+    if "parallel_ribs" in structure_types:
+        parallel_cfg = params["parallel_ribs"]
+        for rib_count, sample_count in _parallel_sample_counts(
+            samples_per_type,
+            parallel_cfg["rib_counts"],
+        ).items():
+            for _ in range(sample_count):
+                generated.append(
+                    generate_parallel_rib_plate(
+                        current_index,
+                        rib_count,
+                        output_dir=output_dir,
+                        params=params,
+                        rng=rng,
+                    )
+                )
+                current_index += 1
+
+    if "t_ribs" in structure_types:
+        for _ in range(samples_per_type):
+            generated.append(
+                generate_t_rib_plate(
+                    current_index,
+                    output_dir=output_dir,
+                    params=params,
+                    rng=rng,
+                )
             )
-        )
-    for index in range(samples_per_type):
-        generated.append(
-            generate_sandwich_rib_plate(
-                start_index + index,
-                output_dir=output_dir,
-                params=params,
-                rng=rng,
+            current_index += 1
+
+    if "sandwich_ribs" in structure_types:
+        for _ in range(samples_per_type):
+            generated.append(
+                generate_sandwich_rib_plate(
+                    current_index,
+                    output_dir=output_dir,
+                    params=params,
+                    rng=rng,
+                )
             )
-        )
-    for index in range(samples_per_type):
-        generated.append(
-            generate_grid_rib_plate(
-                start_index + index,
-                output_dir=output_dir,
-                params=params,
-                rng=rng,
+            current_index += 1
+
+    if "grid_ribs" in structure_types:
+        for _ in range(samples_per_type):
+            generated.append(
+                generate_grid_rib_plate(
+                    current_index,
+                    output_dir=output_dir,
+                    params=params,
+                    rng=rng,
+                )
             )
-        )
+            current_index += 1
     return generated
 
 
@@ -884,7 +982,7 @@ def parse_args():
     )
     parser.add_argument(
         "--structure",
-        choices=["parallel_ribs", "t_ribs", "sandwich_ribs", "grid_ribs", "all"],
+        choices=["single_rib", "parallel_ribs", "t_ribs", "sandwich_ribs", "grid_ribs", "all"],
         default="parallel_ribs",
         help="Simple structure type to generate.",
     )
@@ -912,6 +1010,12 @@ def parse_args():
 
 def main():
     args = parse_args()
+    if args.structure in ("single_rib", "all"):
+        generate_single_rib_batch(
+            samples=args.samples_per_count,
+            output_dir=args.output_dir,
+            seed=args.seed,
+        )
     if args.structure in ("parallel_ribs", "all"):
         generate_parallel_rib_batch(
             rib_counts=args.rib_counts,
