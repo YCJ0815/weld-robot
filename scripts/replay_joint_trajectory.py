@@ -235,7 +235,7 @@ def parse_args() -> argparse.Namespace:
         "--camera-eye",
         type=float,
         nargs=3,
-        default=(2.0, -2.4, 1.4),
+        default=(0.55, 0.0, 2.35),
         metavar=("X", "Y", "Z"),
         help="Recording camera position in world coordinates.",
     )
@@ -243,7 +243,7 @@ def parse_args() -> argparse.Namespace:
         "--camera-target",
         type=float,
         nargs=3,
-        default=(0.0, 0.0, 0.45),
+        default=(0.5, 0.0, 0.1),
         metavar=("X", "Y", "Z"),
         help="Recording camera look-at target in world coordinates.",
     )
