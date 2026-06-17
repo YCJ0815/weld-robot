@@ -108,6 +108,14 @@ def parse_args() -> argparse.Namespace:
         help="Batch replay root. Each direct child directory containing pred_joint_horizon.npy is replayed in order.",
     )
     parser.add_argument(
+        "--replay-variant",
+        choices=("baseline", "candidate", "both"),
+        default="baseline",
+        help="When --batch-pred-check-root uses a nested baseline/candidate structure, "
+        "which variant to replay. 'both' replays baseline then candidate for each transition. "
+        "Ignored for flat directory structures.",
+    )
+    parser.add_argument(
         "--trajectory-representation",
         choices=("auto", "absolute", "delta"),
         default="auto",
@@ -476,17 +484,26 @@ def natural_sort_key(value: str) -> list[Any]:
     return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", value)]
 
 
-def discover_batch_pred_check_dirs(root: Path) -> list[Path]:
+def discover_batch_pred_check_dirs(root: Path, variant: str = "baseline") -> list[Path]:
     root = root.expanduser().resolve()
     if not root.is_dir():
         raise FileNotFoundError(f"--batch-pred-check-root does not exist or is not a directory: {root}")
 
-    sample_dirs = [
-        child.resolve()
-        for child in root.iterdir()
-        if child.is_dir() and (child / "pred_joint_horizon.npy").is_file()
-    ]
-    sample_dirs.sort(key=lambda path: natural_sort_key(path.name))
+    sample_dirs: list[Path] = []
+    for child in sorted(root.iterdir(), key=lambda p: natural_sort_key(p.name)):
+        if not child.is_dir():
+            continue
+        child = child.resolve()
+        # Backward compat: flat structure — child/pred_joint_horizon.npy
+        if (child / "pred_joint_horizon.npy").is_file():
+            sample_dirs.append(child)
+            continue
+        # Nested structure: child/{variant}/pred_joint_horizon.npy
+        variants = ("baseline", "candidate") if variant == "both" else (variant,)
+        for v in variants:
+            variant_dir = child / v
+            if variant_dir.is_dir() and (variant_dir / "pred_joint_horizon.npy").is_file():
+                sample_dirs.append(variant_dir)
     return sample_dirs
 
 
@@ -2047,11 +2064,12 @@ def main() -> None:
     if args.batch_pred_check_root is None and args.trajectory is None:
         raise RuntimeError("--trajectory is required unless --encode-only or --batch-pred-check-root is used.")
 
-    batch_sample_dirs = discover_batch_pred_check_dirs(args.batch_pred_check_root) if args.batch_pred_check_root is not None else []
+    batch_sample_dirs = discover_batch_pred_check_dirs(args.batch_pred_check_root, args.replay_variant) if args.batch_pred_check_root is not None else []
     if args.batch_pred_check_root is not None and not batch_sample_dirs:
         raise RuntimeError(
             f"No valid sample directories found under {args.batch_pred_check_root}. "
-            "Expected direct child directories containing pred_joint_horizon.npy."
+            "Expected either direct child directories containing pred_joint_horizon.npy, "
+            "or nested baseline/candidate subdirectories (see --replay-variant)."
         )
 
     frames_dir = prepare_recording_paths(args) if args.record else None
@@ -2112,9 +2130,14 @@ def main() -> None:
                 if args.stl is None:
                     sample_args.stl = None
                 apply_pred_check_defaults(sample_args)
+                sample_display_name = (
+                    f"{sample_dir.parent.name}/{sample_dir.name}"
+                    if sample_dir.parent != args.batch_pred_check_root.resolve()
+                    else sample_dir.name
+                )
                 log(
                     f"[weldRobot] Batch sample {sample_idx}/{len(batch_sample_dirs)}: "
-                    f"{sample_dir.name}, trajectory={sample_args.trajectory}, "
+                    f"{sample_display_name}, trajectory={sample_args.trajectory}, "
                     f"reference={sample_args.reference_trajectory or sample_args.reference_npz}, stl={sample_args.stl}"
                 )
                 try:
@@ -2124,16 +2147,16 @@ def main() -> None:
                         resolved_urdf=resolved_urdf,
                         args=sample_args,
                         rep=rep if args.record else None,
-                        sample_name=sample_dir.name,
+                        sample_name=sample_display_name,
                     )
                     successes.append(result)
                     if sample_idx < len(batch_sample_dirs):
                         frame_gap = render_pause_frames(world, sample_args, rep if args.record else None, sample_args.segment_gap_steps)
                         if frame_gap > 0:
-                            log(f"[weldRobot] Inserted {frame_gap} inter-sample pause frames after '{sample_dir.name}'")
+                            log(f"[weldRobot] Inserted {frame_gap} inter-sample pause frames after '{sample_display_name}'")
                 except Exception as exc:
-                    failures.append((sample_dir.name, str(exc)))
-                    log(f"[weldRobot] Skipping failed sample '{sample_dir.name}': {exc}")
+                    failures.append((sample_display_name, str(exc)))
+                    log(f"[weldRobot] Skipping failed sample '{sample_display_name}': {exc}")
                     cleanup_replay_prims(stage, sample_args)
                     world.reset()
             log(
