@@ -116,6 +116,12 @@ def parse_args() -> argparse.Namespace:
         "Ignored for flat directory structures.",
     )
     parser.add_argument(
+        "--skip-reference",
+        action="store_true",
+        help="Skip loading and replaying the ground-truth reference trajectory. "
+        "Only the predicted trajectory is replayed.",
+    )
+    parser.add_argument(
         "--trajectory-representation",
         choices=("auto", "absolute", "delta"),
         default="auto",
@@ -552,12 +558,15 @@ def apply_pred_check_defaults(args: argparse.Namespace) -> None:
         log(f"[weldRobot] Using predicted trajectory from pred-check dir: {pred_path}")
 
     if args.reference_trajectory is None and args.reference_npz is None:
-        gt_path = pred_check_dir / "gt_joint_horizon.npy"
-        if gt_path.is_file():
-            args.reference_trajectory = gt_path
-            log(f"[weldRobot] Using ground-truth trajectory from pred-check dir: {gt_path}")
+        if args.skip_reference:
+            log("[weldRobot] Skipping ground-truth reference (--skip-reference).")
         else:
-            log(f"[weldRobot] No ground-truth trajectory found at: {gt_path}")
+            gt_path = pred_check_dir / "gt_joint_horizon.npy"
+            if gt_path.is_file():
+                args.reference_trajectory = gt_path
+                log(f"[weldRobot] Using ground-truth trajectory from pred-check dir: {gt_path}")
+            else:
+                log(f"[weldRobot] No ground-truth trajectory found at: {gt_path}")
 
     if args.stl is None:
         summary_path = pred_check_dir / "summary.json"
@@ -2119,6 +2128,7 @@ def main() -> None:
             )
             successes: list[ReplaySampleResult] = []
             failures: list[tuple[str, str]] = []
+            prev_parent: Path | None = None
             for sample_idx, sample_dir in enumerate(batch_sample_dirs, start=1):
                 sample_args = clone_args(args)
                 sample_args.pred_check_dir = sample_dir
@@ -2129,6 +2139,11 @@ def main() -> None:
                     sample_args.reference_trajectory = None
                 if args.stl is None:
                     sample_args.stl = None
+                # In "both" mode, skip reference replay on the second sample
+                # (candidate) of each transition pair so gt plays only once.
+                if args.replay_variant == "both" and not args.skip_reference and sample_dir.parent == prev_parent:
+                    sample_args.skip_reference = True
+                prev_parent = sample_dir.parent
                 apply_pred_check_defaults(sample_args)
                 sample_display_name = (
                     f"{sample_dir.parent.name}/{sample_dir.name}"
